@@ -1,0 +1,99 @@
+
+*{margin:0;padding:0;box-sizing:border-box}
+img{display:block}
+a{text-decoration:none;color:inherit}
+button{font:inherit;border:0}
+.generated-screen [data-12ui-focus-fact]:focus-visible{outline:2px solid var(--ly-interaction-focus-color);outline-offset:2px}
+.generated-screen [data-12ui-hover-mode="surface-color"]:not(:disabled):hover{--ly-interaction-state-surface:var(--ly-interaction-hover-surface)}
+.generated-screen [data-12ui-hover-mode="color-ring"]:not(:disabled):hover{outline:2px solid var(--ly-interaction-focus-color);outline-offset:-2px}
+html{background:#faf9f4}
+.generated-screen{display:flow-root;background:#faf9f4;min-height:100vh}
+body{font-family:system-ui,sans-serif;line-height:normal;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.generated-screen{container-type:inline-size}
+.fx-col{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0}
+.fx-row{display:flex;flex-direction:row;align-items:flex-start;justify-content:flex-start;gap:0}
+.fx-abs{position:relative}
+#viewport-1-c-passage-tabs{background:#e5e8e0;border-radius:24.576px;border-radius:24.576px;position:absolute;left:51.2px;top:94.208px;width:360.448px;height:48.128px;margin:0;max-width:none;padding:0px 0 0 0px}
+.ly-anchor-canvas{position:relative;width:1536px;height:1024px;margin-inline:auto;zoom:min(1,calc(100cqw / 1536px));display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;padding:35.84px 0 0 0px}
+#page-flow{position:relative;margin:0px 0 0 0px;width:1536px;height:928.768px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c{position:relative;margin:0px 0 0 0px;width:1536px;height:928.768px;flex:none;max-width:none}
+#viewport-1-c-illustration{position:absolute;left:0px;top:336.896px;width:1536px;height:579.584px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader{position:absolute;left:303.104px;top:183.296px;width:1210.368px;height:642.048px;margin:0;max-width:none}
+#viewport-1-c-footer-nav{position:absolute;left:52.224px;top:861.184px;width:1431.552px;height:67.584px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-top-nav{position:absolute;left:66.56px;top:9.216px;width:166.912px;height:17.408px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-header{position:absolute;left:536.576px;top:13.312px;width:471.04px;height:72.704px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-accessibility{position:absolute;left:1261.568px;top:0px;width:220.16px;height:39.936px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-top-nav-back{position:relative;margin:0px 0 0 0px;width:166.912px;height:17.408px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-top-nav-back-icon{position:relative;margin:1.024px 0 0 0px;width:12.288px;height:14.336px;flex:none}
+#viewport-1-c-top-nav-back-text{position:relative;margin:0px 0 0 12.288px;width:142.336px;height:17.408px;flex:none}
+#viewport-1-c-header-text{position:relative;margin:0px 0 0 79.872px;width:301.056px;height:13.312px;flex:none}
+#viewport-1-c-header-heading{position:relative;margin:20.48px 0 0 0px;width:471.04px;height:38.912px;flex:none}
+#viewport-1-c-accessibility-font-size{position:relative;margin:0px 0 0 0px;width:220.16px;height:39.936px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-accessibility-font-size-text{position:relative;margin:10.24px 0 0 0px;width:27.648px;height:21.504px;flex:none}
+#viewport-1-c-accessibility-font-size-divider{position:relative;margin:1.024px 0 0 30.72px;width:1.024px;height:37.888px;flex:none}
+#viewport-1-c-accessibility-font-size-text-2{position:relative;margin:13.312px 0 0 36.864px;width:11.264px;height:12.288px;flex:none}
+#viewport-1-c-accessibility-font-size-badge{position:relative;margin:0px 0 0 25.6px;width:41.984px;height:39.936px;flex:none}
+#viewport-1-c-accessibility-font-size-text-3{position:relative;margin:6.144px 0 0 22.528px;width:22.528px;height:26.624px;flex:none}
+#viewport-1-c-passage-tabs-button{position:relative;margin:0px 0 0 0px;width:190.464px;height:48.128px;flex:none}
+#viewport-1-c-passage-tabs-button-2{position:relative;margin:0px 0 0 0px;width:169.984px;height:48.128px;flex:none}
+#viewport-1-c-illustration-left{position:relative;margin:0px 0 0 0px;width:312.32px;height:579.584px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-illustration-right{position:relative;margin:317.44px 0 0 933.888px;width:289.792px;height:209.92px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-illustration-left-decoration{position:relative;margin:0px 0 0 0px;width:312.32px;height:579.584px;flex:none}
+#viewport-1-c-illustration-right-decoration{position:relative;margin:0px 0 0 0px;width:289.792px;height:209.92px;flex:none}
+#viewport-1-c-reader-divider{position:absolute;left:678.912px;top:0px;width:1.024px;height:642.048px;margin:0}
+#viewport-1-c-reader-genesis-1{position:absolute;left:0px;top:1.024px;width:626.688px;height:378.88px;margin:0;max-width:none}
+#viewport-1-c-reader-genesis-2{position:absolute;left:43.008px;top:436.224px;width:599.04px;height:158.72px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-psalm-19{position:absolute;left:726.016px;top:1.024px;width:484.352px;height:587.776px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-genesis-1-text{position:absolute;left:0px;top:0px;width:103.424px;height:13.312px;margin:0}
+#viewport-1-c-reader-genesis-1-verse-1{position:absolute;left:0px;top:40.96px;width:611.328px;height:62.464px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-genesis-1-verse-2{position:absolute;left:32.768px;top:82.944px;width:571.392px;height:86.016px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-genesis-1-verse-3{position:absolute;left:31.744px;top:197.632px;width:530.432px;height:23.552px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-genesis-1-verse-4{position:absolute;left:31.744px;top:240.64px;width:552.96px;height:57.344px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-genesis-1-verse-5{position:absolute;left:31.744px;top:320.512px;width:594.944px;height:58.368px;margin:0;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-genesis-1-verse-1-text{position:relative;margin:0px 0 0 0px;width:20.48px;height:62.464px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-1-text-2{position:relative;margin:0px 0 0 31.744px;width:559.104px;height:23.552px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-2-text{position:relative;margin:0px 0 0 0px;width:8.192px;height:16.384px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-2-text-2{position:relative;margin:0px 0 0 10.24px;width:552.96px;height:86.016px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-3-text{position:relative;margin:3.072px 0 0 0px;width:9.216px;height:13.312px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-3-text-2{position:relative;margin:0px 0 0 19.456px;width:501.76px;height:23.552px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-4-text{position:relative;margin:4.096px 0 0 0px;width:9.216px;height:12.288px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-4-text-2{position:relative;margin:0px 0 0 10.24px;width:533.504px;height:57.344px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-5-text{position:relative;margin:3.072px 0 0 0px;width:9.216px;height:13.312px;flex:none}
+#viewport-1-c-reader-genesis-1-verse-5-text-2{position:relative;margin:0px 0 0 11.264px;width:574.464px;height:58.368px;flex:none}
+#viewport-1-c-reader-psalm-19-text{position:relative;margin:0px 0 0 0px;width:95.232px;height:12.288px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-1{position:relative;margin:28.672px 0 0 0px;width:394.24px;height:55.296px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-psalm-19-verse-2{position:relative;margin:19.456px 0 0 0px;width:457.728px;height:54.272px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-psalm-19-verse-3{position:relative;margin:24.576px 0 0 0px;width:413.696px;height:50.176px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-psalm-19-verse-4{position:relative;margin:32.768px 0 0 0px;width:484.352px;height:50.176px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-psalm-19-verse-5{position:relative;margin:32.768px 0 0 0px;width:447.488px;height:111.616px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-psalm-19-verse-6{position:relative;margin:32.768px 0 0 0px;width:442.368px;height:82.944px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-psalm-19-verse-1-text{position:relative;margin:0px 0 0 0px;width:20.48px;height:55.296px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-1-text-2{position:relative;margin:0px 0 0 24.576px;width:349.184px;height:55.296px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-2-text{position:relative;margin:3.072px 0 0 0px;width:9.216px;height:12.288px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-2-text-2{position:relative;margin:0px 0 0 22.528px;width:425.984px;height:54.272px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-3-text{position:relative;margin:3.072px 0 0 0px;width:9.216px;height:13.312px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-3-text-2{position:relative;margin:0px 0 0 20.48px;width:384px;height:50.176px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-4-text{position:relative;margin:3.072px 0 0 0px;width:9.216px;height:12.288px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-4-text-2{position:relative;margin:0px 0 0 20.48px;width:454.656px;height:50.176px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-5-text{position:relative;margin:2.048px 0 0 0px;width:9.216px;height:13.312px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-5-text-2{position:relative;margin:0px 0 0 22.528px;width:415.744px;height:111.616px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-6-text{position:relative;margin:3.072px 0 0 0px;width:9.216px;height:13.312px;flex:none}
+#viewport-1-c-reader-psalm-19-verse-6-text-2{position:relative;margin:0px 0 0 21.504px;width:411.648px;height:82.944px;flex:none}
+#viewport-1-c-reader-genesis-2-text{position:relative;margin:0px 0 0 0px;width:104.448px;height:12.288px;flex:none}
+#viewport-1-c-reader-genesis-2-verse-1{position:relative;margin:26.624px 0 0 0px;width:599.04px;height:119.808px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-reader-genesis-2-verse-1-text{position:relative;margin:1.024px 0 0 0px;width:5.12px;height:14.336px;flex:none}
+#viewport-1-c-reader-genesis-2-verse-1-text-2{position:relative;margin:0px 0 0 15.36px;width:578.56px;height:119.808px;flex:none}
+#viewport-1-c-footer-nav-divider{position:relative;margin:0px 0 0 0px;width:1431.552px;height:1.024px;flex:none}
+#viewport-1-c-footer-nav-source-row-2{position:relative;margin:25.6px 0 0 184.32px;width:1060.864px;height:40.96px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-footer-nav-previous{position:relative;margin:0px 0 0 0px;width:168.96px;height:40.96px;flex:none;max-width:none}
+#viewport-1-c-footer-nav-current{position:relative;margin:8.192px 0 0 281.6px;width:160.768px;height:23.552px;flex:none;max-width:none;padding:0px 0 0 0px}
+#viewport-1-c-footer-nav-next{position:relative;margin:0px 0 0 306.176px;width:143.36px;height:40.96px;flex:none;max-width:none}
+#viewport-1-c-footer-nav-previous-button{position:absolute;left:0px;top:0px;width:41.984px;height:40.96px;margin:0}
+#viewport-1-c-footer-nav-previous-icon{position:absolute;left:18.432px;top:12.288px;width:12.288px;height:15.36px;margin:0}
+#viewport-1-c-footer-nav-previous-text{position:absolute;left:61.44px;top:14.336px;width:107.52px;height:13.312px;margin:0}
+#viewport-1-c-footer-nav-current-icon{position:relative;margin:0px 0 0 0px;width:27.648px;height:23.552px;flex:none}
+#viewport-1-c-footer-nav-current-text{position:relative;margin:3.072px 0 0 18.432px;width:83.968px;height:14.336px;flex:none}
+#viewport-1-c-footer-nav-current-icon-2{position:relative;margin:7.168px 0 0 17.408px;width:13.312px;height:8.192px;flex:none}
+#viewport-1-c-footer-nav-next-button{position:absolute;left:0px;top:0px;width:40.96px;height:40.96px;margin:0}
+#viewport-1-c-footer-nav-next-icon{position:absolute;left:18.432px;top:12.288px;width:12.288px;height:15.36px;margin:0}
+#viewport-1-c-footer-nav-next-text{position:absolute;left:59.392px;top:12.288px;width:83.968px;height:15.36px;margin:0}

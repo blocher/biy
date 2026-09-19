@@ -2,7 +2,7 @@ from datetime import timedelta
 from typing import Literal
 from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -50,7 +50,7 @@ def sign_in(request, payload: LoginIn):
     login(request,user)
     LoginAttempt.objects.filter(address=address).delete()
     LoginAttempt.objects.filter(attempted_at__lt=cutoff).delete()
-    return {'user':{'username':user.username}, 'csrf':get_token(request)}
+    return JsonResponse({'user':{'username':user.username}, 'csrf':get_token(request)})
 
 @api.post('/logout')
 def sign_out(request):

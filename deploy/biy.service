@@ -1,0 +1,22 @@
+[Unit]
+Description=Bible in a Year private study app
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=biy
+Group=biy
+WorkingDirectory=/var/www/biy-app/backend
+EnvironmentFile=/etc/biy/biy.env
+ExecStart=/var/www/biy-app/.venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8017 --workers 2 --timeout 60 --access-logfile - --error-logfile -
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/biy
+
+[Install]
+WantedBy=multi-user.target
