@@ -1,0 +1,3586 @@
+[
+  {
+    "number": 1,
+    "readings": [
+      "Genesis 1-2",
+      "Psalm 19"
+    ],
+    "era": "Early World",
+    "color": "#64b6bd"
+  },
+  {
+    "number": 2,
+    "readings": [
+      "Genesis 3-4",
+      "Psalm 104"
+    ],
+    "era": "Early World",
+    "color": "#64b6bd"
+  },
+  {
+    "number": 3,
+    "readings": [
+      "Genesis 5-6",
+      "Psalm 136"
+    ],
+    "era": "Early World",
+    "color": "#64b6bd"
+  },
+  {
+    "number": 4,
+    "readings": [
+      "Genesis 7-9",
+      "Psalm 1"
+    ],
+    "era": "Early World",
+    "color": "#64b6bd"
+  },
+  {
+    "number": 5,
+    "readings": [
+      "Genesis 10-11",
+      "Psalm 2"
+    ],
+    "era": "Early World",
+    "color": "#64b6bd"
+  },
+  {
+    "number": 6,
+    "readings": [
+      "Genesis 12-13",
+      "Job 1-2",
+      "Proverbs 1:1-7"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 7,
+    "readings": [
+      "Genesis 14-15",
+      "Job 3-4",
+      "Proverbs 1:8-19"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 8,
+    "readings": [
+      "Genesis 16-17",
+      "Job 5-6",
+      "Proverbs 1:20-33"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 9,
+    "readings": [
+      "Genesis 18-19",
+      "Job 7-8",
+      "Proverbs 2:1-5"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 10,
+    "readings": [
+      "Genesis 20-21",
+      "Job 9-10",
+      "Proverbs 2:6-8"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 11,
+    "readings": [
+      "Genesis 22-23",
+      "Job 11-12",
+      "Proverbs 2:9-15"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 12,
+    "readings": [
+      "Genesis 24",
+      "Job 13-14",
+      "Proverbs 2:16-19"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 13,
+    "readings": [
+      "Genesis 25-26",
+      "Job 15-16",
+      "Proverbs 2:20-22"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 14,
+    "readings": [
+      "Genesis 27-28",
+      "Job 17-18",
+      "Proverbs 3:1-4"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 15,
+    "readings": [
+      "Genesis 29-30",
+      "Job 19-20",
+      "Proverbs 3:5-8"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 16,
+    "readings": [
+      "Genesis 31-32",
+      "Job 21-22",
+      "Proverbs 3:9-12"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 17,
+    "readings": [
+      "Genesis 33-34",
+      "Job 23-24",
+      "Proverbs 3:13-18"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 18,
+    "readings": [
+      "Genesis 35-36",
+      "Job 25-26",
+      "Proverbs 3:19-24"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 19,
+    "readings": [
+      "Genesis 37",
+      "Job 27-28",
+      "Proverbs 3:25-27"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 20,
+    "readings": [
+      "Genesis 38",
+      "Job 29-30",
+      "Proverbs 3:28-32"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 21,
+    "readings": [
+      "Genesis 39-40",
+      "Job 31-32",
+      "Proverbs 3:33-35"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 22,
+    "readings": [
+      "Genesis 41-42",
+      "Job 33-34",
+      "Proverbs 4:1-9"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 23,
+    "readings": [
+      "Genesis 43-44",
+      "Job 35-36",
+      "Proverbs 4:10-19"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 24,
+    "readings": [
+      "Genesis 45-46",
+      "Job 37-38",
+      "Proverbs 4:20-27"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 25,
+    "readings": [
+      "Genesis 47-48",
+      "Job 39-40",
+      "Psalm 16"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 26,
+    "readings": [
+      "Genesis 49-50",
+      "Job 41-42",
+      "Psalm 17"
+    ],
+    "era": "Patriarchs",
+    "color": "#771051"
+  },
+  {
+    "number": 27,
+    "readings": [
+      "Exodus 1-2",
+      "Leviticus 1",
+      "Psalm 44"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 28,
+    "readings": [
+      "Exodus 3",
+      "Leviticus 2-3",
+      "Psalm 45"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 29,
+    "readings": [
+      "Exodus 4-5",
+      "Leviticus 4",
+      "Psalm 46"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 30,
+    "readings": [
+      "Exodus 6-7",
+      "Leviticus 5",
+      "Psalm 47"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 31,
+    "readings": [
+      "Exodus 8",
+      "Leviticus 6",
+      "Psalm 48"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 32,
+    "readings": [
+      "Exodus 9",
+      "Leviticus 7",
+      "Psalm 49"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 33,
+    "readings": [
+      "Exodus 10-11",
+      "Leviticus 8",
+      "Psalm 50"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 34,
+    "readings": [
+      "Exodus 12",
+      "Leviticus 9",
+      "Psalm 114"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 35,
+    "readings": [
+      "Exodus 13-14",
+      "Leviticus 10",
+      "Psalm 53"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 36,
+    "readings": [
+      "Exodus 15-16",
+      "Leviticus 11",
+      "Psalm 71"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 37,
+    "readings": [
+      "Exodus 17-18",
+      "Leviticus 12",
+      "Psalm 73"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 38,
+    "readings": [
+      "Exodus 19-20",
+      "Leviticus 13",
+      "Psalm 74"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 39,
+    "readings": [
+      "Exodus 21",
+      "Leviticus 14",
+      "Psalm 75"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 40,
+    "readings": [
+      "Exodus 22",
+      "Leviticus 15",
+      "Psalm 76"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 41,
+    "readings": [
+      "Exodus 23",
+      "Leviticus 16",
+      "Psalm 77"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 42,
+    "readings": [
+      "Exodus 24",
+      "Leviticus 17-18",
+      "Psalm 78"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 43,
+    "readings": [
+      "Exodus 25-26",
+      "Leviticus 19",
+      "Psalm 79"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 44,
+    "readings": [
+      "Exodus 27-28",
+      "Leviticus 20",
+      "Psalm 119:1-88"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 45,
+    "readings": [
+      "Exodus 29",
+      "Leviticus 21",
+      "Psalm 119:89-176"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 46,
+    "readings": [
+      "Exodus 30-31",
+      "Leviticus 22",
+      "Psalm 115"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 47,
+    "readings": [
+      "Exodus 32",
+      "Leviticus 23",
+      "Psalm 80"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 48,
+    "readings": [
+      "Exodus 33-34",
+      "Leviticus 24",
+      "Psalm 81"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 49,
+    "readings": [
+      "Exodus 35-36",
+      "Leviticus 25",
+      "Psalm 82"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 50,
+    "readings": [
+      "Exodus 37-38",
+      "Leviticus 26",
+      "Psalm 83"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 51,
+    "readings": [
+      "Exodus 39-40",
+      "Leviticus 27",
+      "Psalm 84"
+    ],
+    "era": "Egypt and Exodus",
+    "color": "#cd3d37"
+  },
+  {
+    "number": 52,
+    "readings": [
+      "Numbers 1",
+      "Deuteronomy 1",
+      "Psalm 85"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 53,
+    "readings": [
+      "Numbers 2",
+      "Deuteronomy 2",
+      "Psalm 87"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 54,
+    "readings": [
+      "Numbers 3",
+      "Deuteronomy 3",
+      "Psalm 88"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 55,
+    "readings": [
+      "Numbers 4",
+      "Deuteronomy 4",
+      "Psalm 89"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 56,
+    "readings": [
+      "Numbers 5",
+      "Deuteronomy 5",
+      "Psalm 90"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 57,
+    "readings": [
+      "Numbers 6",
+      "Deuteronomy 6",
+      "Psalm 91"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 58,
+    "readings": [
+      "Numbers 7",
+      "Deuteronomy 7",
+      "Psalm 92"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 59,
+    "readings": [
+      "Numbers 8-9",
+      "Deuteronomy 8",
+      "Psalm 93"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 60,
+    "readings": [
+      "Numbers 10",
+      "Deuteronomy 9",
+      "Psalm 10"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 61,
+    "readings": [
+      "Numbers 11",
+      "Deuteronomy 10",
+      "Psalm 33"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 62,
+    "readings": [
+      "Numbers 12-13",
+      "Deuteronomy 11",
+      "Psalm 94"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 63,
+    "readings": [
+      "Numbers 14",
+      "Deuteronomy 12",
+      "Psalm 95"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 64,
+    "readings": [
+      "Numbers 15",
+      "Deuteronomy 13-14",
+      "Psalm 96"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 65,
+    "readings": [
+      "Numbers 16",
+      "Deuteronomy 15-16",
+      "Psalm 97"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 66,
+    "readings": [
+      "Numbers 17",
+      "Deuteronomy 17-18",
+      "Psalm 98"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 67,
+    "readings": [
+      "Numbers 18",
+      "Deuteronomy 19-20",
+      "Psalm 99"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 68,
+    "readings": [
+      "Numbers 19-20",
+      "Deuteronomy 21",
+      "Psalm 100"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 69,
+    "readings": [
+      "Numbers 21",
+      "Deuteronomy 22",
+      "Psalm 102"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 70,
+    "readings": [
+      "Numbers 22",
+      "Deuteronomy 23",
+      "Psalm 105"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 71,
+    "readings": [
+      "Numbers 23",
+      "Deuteronomy 24-25",
+      "Psalm 106"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 72,
+    "readings": [
+      "Numbers 24-25",
+      "Deuteronomy 26",
+      "Psalm 107"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 73,
+    "readings": [
+      "Numbers 26",
+      "Deuteronomy 27",
+      "Psalm 111"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 74,
+    "readings": [
+      "Numbers 27-28",
+      "Deuteronomy 28",
+      "Psalm 112"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 75,
+    "readings": [
+      "Numbers 29-30",
+      "Deuteronomy 29",
+      "Psalm 113"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 76,
+    "readings": [
+      "Numbers 31",
+      "Deuteronomy 30",
+      "Psalm 116"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 77,
+    "readings": [
+      "Numbers 32",
+      "Deuteronomy 31",
+      "Psalm 117"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 78,
+    "readings": [
+      "Numbers 33",
+      "Deuteronomy 32",
+      "Psalm 118"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 79,
+    "readings": [
+      "Numbers 34",
+      "Deuteronomy 33",
+      "Psalm 120"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 80,
+    "readings": [
+      "Numbers 35-36",
+      "Deuteronomy 34",
+      "Psalm 121"
+    ],
+    "era": "Desert Wanderings",
+    "color": "#dbbe7d"
+  },
+  {
+    "number": 81,
+    "readings": [
+      "Joshua 1-4",
+      "Psalm 123"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 82,
+    "readings": [
+      "Joshua 5-7",
+      "Psalm 125"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 83,
+    "readings": [
+      "Joshua 8-9",
+      "Psalm 126"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 84,
+    "readings": [
+      "Joshua 10-11",
+      "Psalm 128"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 85,
+    "readings": [
+      "Joshua 12-14",
+      "Psalm 129"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 86,
+    "readings": [
+      "Joshua 15-18",
+      "Psalm 130"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 87,
+    "readings": [
+      "Joshua 19-21",
+      "Psalm 131"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 88,
+    "readings": [
+      "Joshua 22-24",
+      "Psalm 132"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 89,
+    "readings": [
+      "Judges 1-3",
+      "Ruth 1",
+      "Psalm 133"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 90,
+    "readings": [
+      "Judges 4-5",
+      "Ruth 2",
+      "Psalm 134"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 91,
+    "readings": [
+      "Judges 6-8",
+      "Ruth 3",
+      "Psalm 135"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 92,
+    "readings": [
+      "Judges 9-11",
+      "Ruth 4",
+      "Psalm 137"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 93,
+    "readings": [
+      "Judges 12-15",
+      "Psalm 146"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 94,
+    "readings": [
+      "Judges 16-18",
+      "Psalm 147"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 95,
+    "readings": [
+      "Judges 19-21",
+      "Psalm 148"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 96,
+    "readings": [
+      "1 Samuel 1-2",
+      "Psalm 149"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 97,
+    "readings": [
+      "1 Samuel 3-5",
+      "Psalm 150"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 98,
+    "readings": [
+      "1 Samuel 6-8",
+      "Psalm 86"
+    ],
+    "era": "Conquest and Judges",
+    "color": "#31a153"
+  },
+  {
+    "number": 99,
+    "readings": [
+      "John 1-3",
+      "Proverbs 5:1-6"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 100,
+    "readings": [
+      "John 4-6",
+      "Proverbs 5:7-14"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 101,
+    "readings": [
+      "John 7-9",
+      "Proverbs 5:15-23"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 102,
+    "readings": [
+      "John 10-12",
+      "Proverbs 6:1-11"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 103,
+    "readings": [
+      "John 13-15",
+      "Proverbs 6:12-19"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 104,
+    "readings": [
+      "John 16-18",
+      "Proverbs 6:20-24"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 105,
+    "readings": [
+      "John 19-21",
+      "Proverbs 6:25-35"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 106,
+    "readings": [
+      "1 Samuel 9-10",
+      "Psalm 50"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 107,
+    "readings": [
+      "1 Samuel 11-12",
+      "Psalm 55"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 108,
+    "readings": [
+      "1 Samuel 13-14",
+      "Psalm 58"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 109,
+    "readings": [
+      "1 Samuel 15-16",
+      "Psalm 61"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 110,
+    "readings": [
+      "1 Samuel 17",
+      "Psalm 12"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 111,
+    "readings": [
+      "1 Samuel 18-19",
+      "Psalm 59"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 112,
+    "readings": [
+      "1 Samuel 20",
+      "Psalm 142"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 113,
+    "readings": [
+      "1 Samuel 21-22",
+      "Psalm 52"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 114,
+    "readings": [
+      "1 Samuel 23",
+      "Psalm 54"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 115,
+    "readings": [
+      "1 Samuel 24",
+      "Psalm 57"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 116,
+    "readings": [
+      "1 Samuel 25",
+      "Psalm 63"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 117,
+    "readings": [
+      "1 Samuel 26",
+      "Psalm 56"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 118,
+    "readings": [
+      "1 Samuel 27-28",
+      "Psalm 34"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 119,
+    "readings": [
+      "1 Samuel 29-31",
+      "Psalm 18"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 120,
+    "readings": [
+      "2 Samuel 1",
+      "1 Chronicles 1",
+      "Psalm 13"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 121,
+    "readings": [
+      "2 Samuel 2",
+      "1 Chronicles 2",
+      "Psalm 24"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 122,
+    "readings": [
+      "2 Samuel 3",
+      "1 Chronicles 3-4",
+      "Psalm 25"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 123,
+    "readings": [
+      "2 Samuel 4",
+      "1 Chronicles 5-6",
+      "Psalm 26"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 124,
+    "readings": [
+      "2 Samuel 5",
+      "1 Chronicles 7-8",
+      "Psalm 27"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 125,
+    "readings": [
+      "2 Samuel 6-7",
+      "1 Chronicles 9",
+      "Psalm 89"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 126,
+    "readings": [
+      "2 Samuel 8",
+      "1 Chronicles 10-11",
+      "Psalm 60"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 127,
+    "readings": [
+      "2 Samuel 9",
+      "1 Chronicles 12",
+      "Psalm 28"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 128,
+    "readings": [
+      "2 Samuel 10",
+      "1 Chronicles 13",
+      "Psalm 31"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 129,
+    "readings": [
+      "2 Samuel 11",
+      "1 Chronicles 14-15",
+      "Psalm 32"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 130,
+    "readings": [
+      "2 Samuel 12",
+      "1 Chronicles 16",
+      "Psalm 51"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 131,
+    "readings": [
+      "2 Samuel 13",
+      "1 Chronicles 17",
+      "Psalm 35"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 132,
+    "readings": [
+      "2 Samuel 14",
+      "1 Chronicles 18",
+      "Psalm 14"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 133,
+    "readings": [
+      "2 Samuel 15",
+      "1 Chronicles 19-20",
+      "Psalm 3"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 134,
+    "readings": [
+      "2 Samuel 16",
+      "1 Chronicles 21",
+      "Psalm 15"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 135,
+    "readings": [
+      "2 Samuel 17",
+      "1 Chronicles 22",
+      "Psalm 36"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 136,
+    "readings": [
+      "2 Samuel 18",
+      "1 Chronicles 23",
+      "Psalm 37"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 137,
+    "readings": [
+      "2 Samuel 19",
+      "1 Chronicles 24",
+      "Psalm 38"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 138,
+    "readings": [
+      "2 Samuel 20",
+      "1 Chronicles 25",
+      "Psalm 39"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 139,
+    "readings": [
+      "2 Samuel 21",
+      "1 Chronicles 26",
+      "Psalm 40"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 140,
+    "readings": [
+      "2 Samuel 22",
+      "1 Chronicles 27",
+      "Psalm 41"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 141,
+    "readings": [
+      "2 Samuel 23",
+      "1 Chronicles 28",
+      "Psalm 42"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 142,
+    "readings": [
+      "2 Samuel 24",
+      "1 Chronicles 29",
+      "Psalm 30"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 143,
+    "readings": [
+      "1 Kings 1",
+      "2 Chronicles 1",
+      "Psalm 43"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 144,
+    "readings": [
+      "1 Kings 2",
+      "2 Chronicles 2-3",
+      "Psalm 62"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 145,
+    "readings": [
+      "1 Kings 3",
+      "2 Chronicles 4-5",
+      "Psalm 64"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 146,
+    "readings": [
+      "1 Kings 4",
+      "2 Chronicles 6",
+      "Psalm 65"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 147,
+    "readings": [
+      "1 Kings 5",
+      "2 Chronicles 7-8",
+      "Psalm 66"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 148,
+    "readings": [
+      "1 Kings 6",
+      "2 Chronicles 9",
+      "Psalm 4"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 149,
+    "readings": [
+      "1 Kings 7",
+      "Ecclesiastes 1-3",
+      "Psalm 5"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 150,
+    "readings": [
+      "1 Kings 8",
+      "Ecclesiastes 4-6",
+      "Psalm 6"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 151,
+    "readings": [
+      "1 Kings 9",
+      "Ecclesiastes 5-6",
+      "Psalm 7"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 152,
+    "readings": [
+      "1 Kings 10",
+      "Ecclesiastes 7-9",
+      "Psalm 8"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 153,
+    "readings": [
+      "1 Kings 11",
+      "Ecclesiastes 10-12",
+      "Psalm 9"
+    ],
+    "era": "Royal Kingdom",
+    "color": "#493390"
+  },
+  {
+    "number": 154,
+    "readings": [
+      "Mark 1-2",
+      "Psalm 11"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 155,
+    "readings": [
+      "Mark 3-4",
+      "Psalm 20"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 156,
+    "readings": [
+      "Mark 5-6",
+      "Psalm 21"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 157,
+    "readings": [
+      "Mark 7-8",
+      "Psalm 23"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 158,
+    "readings": [
+      "Mark 9-10",
+      "Psalm 29"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 159,
+    "readings": [
+      "Mark 11-12",
+      "Psalm 67"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 160,
+    "readings": [
+      "Mark 13-14",
+      "Psalm 68"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 161,
+    "readings": [
+      "Mark 15-16",
+      "Psalm 22"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 162,
+    "readings": [
+      "1 Kings 12",
+      "2 Chronicles 10-11",
+      "Song of Solomon 1"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 163,
+    "readings": [
+      "1 Kings 13",
+      "2 Chronicles 12-13",
+      "Song of Solomon 2"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 164,
+    "readings": [
+      "1 Kings 14",
+      "2 Chronicles 14-15",
+      "Song of Solomon 3"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 165,
+    "readings": [
+      "1 Kings 15-16",
+      "2 Chronicles 16-17",
+      "Song of Solomon 4"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 166,
+    "readings": [
+      "1 Kings 17-18",
+      "2 Chronicles 18-19",
+      "Song of Solomon 5"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 167,
+    "readings": [
+      "1 Kings 19-20",
+      "2 Chronicles 20",
+      "Song of Solomon 6"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 168,
+    "readings": [
+      "1 Kings 21",
+      "2 Chronicles 21-22",
+      "Song of Solomon 7"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 169,
+    "readings": [
+      "1 Kings 22",
+      "2 Chronicles 23",
+      "Song of Solomon 8"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 170,
+    "readings": [
+      "2 Kings 1",
+      "2 Chronicles 24",
+      "Psalm 69"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 171,
+    "readings": [
+      "2 Kings 2",
+      "2 Chronicles 25",
+      "Psalm 70"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 172,
+    "readings": [
+      "2 Kings 3",
+      "2 Chronicles 26-27",
+      "Psalm 72"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 173,
+    "readings": [
+      "2 Kings 4",
+      "2 Chronicles 28",
+      "Psalm 127"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 174,
+    "readings": [
+      "2 Kings 5",
+      "Hosea 1-3",
+      "Psalm 101"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 175,
+    "readings": [
+      "2 Kings 6-7",
+      "Hosea 4-7",
+      "Psalm 103"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 176,
+    "readings": [
+      "2 Kings 8",
+      "Hosea 8-10",
+      "Psalm 108"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 177,
+    "readings": [
+      "2 Kings 9",
+      "Hosea 11-14",
+      "Psalm 109"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 178,
+    "readings": [
+      "2 Kings 10",
+      "Amos 1-3",
+      "Psalm 110"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 179,
+    "readings": [
+      "2 Kings 11-12",
+      "Amos 4-6",
+      "Psalm 122"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 180,
+    "readings": [
+      "2 Kings 13-14",
+      "Amos 7-9",
+      "Psalm 124"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 181,
+    "readings": [
+      "2 Kings 15",
+      "Jonah 1-4",
+      "Psalm 138"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 182,
+    "readings": [
+      "2 Kings 16",
+      "Micah 1-4",
+      "Psalm 139"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 183,
+    "readings": [
+      "2 Kings 17",
+      "Micah 5-7",
+      "Psalm 140"
+    ],
+    "era": "Divided Kingdom",
+    "color": "#221f20"
+  },
+  {
+    "number": 184,
+    "readings": [
+      "2 Kings 18",
+      "2 Chronicles 29",
+      "Psalm 141"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 185,
+    "readings": [
+      "2 Kings 19",
+      "2 Chronicles 30",
+      "Psalm 143"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 186,
+    "readings": [
+      "2 Kings 20",
+      "2 Chronicles 31",
+      "Psalm 144"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 187,
+    "readings": [
+      "2 Kings 21",
+      "2 Chronicles 32",
+      "Psalm 145"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 188,
+    "readings": [
+      "2 Kings 22",
+      "2 Chronicles 33",
+      "Proverbs 7"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 189,
+    "readings": [
+      "2 Kings 23",
+      "2 Chronicles 34",
+      "Proverbs 8:1-21"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 190,
+    "readings": [
+      "2 Kings 24",
+      "2 Chronicles 35",
+      "Proverbs 8:22-36"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 191,
+    "readings": [
+      "2 Kings 25",
+      "2 Chronicles 36",
+      "Proverbs 9:1-6"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 192,
+    "readings": [
+      "Isaiah 1-2",
+      "Tobit 1-2",
+      "Proverbs 9:7-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 193,
+    "readings": [
+      "Isaiah 3-4",
+      "Tobit 3-4",
+      "Proverbs 9:13-18"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 194,
+    "readings": [
+      "Isaiah 5-6",
+      "Tobit 5-6",
+      "Proverbs 10:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 195,
+    "readings": [
+      "Isaiah 7-8",
+      "Tobit 7-9",
+      "Proverbs 10:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 196,
+    "readings": [
+      "Isaiah 9-10",
+      "Tobit 10-12",
+      "Proverbs 10:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 197,
+    "readings": [
+      "Isaiah 11-13",
+      "Tobit 13-14",
+      "Proverbs 10:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 198,
+    "readings": [
+      "Isaiah 14-15",
+      "Joel 1-2",
+      "Proverbs 10:17-20"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 199,
+    "readings": [
+      "Isaiah 16-17",
+      "Joel 3",
+      "Proverbs 10:21-24"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 200,
+    "readings": [
+      "Isaiah 18-20",
+      "Nahum 1-2",
+      "Proverbs 10:25-28"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 201,
+    "readings": [
+      "Isaiah 21-22",
+      "Nahum 3",
+      "Proverbs 10:29-32"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 202,
+    "readings": [
+      "Isaiah 23-24",
+      "Habakkuk 1-2",
+      "Proverbs 11:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 203,
+    "readings": [
+      "Isaiah 25-27",
+      "Habakkuk 3",
+      "Proverbs 11:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 204,
+    "readings": [
+      "Isaiah 28-29",
+      "Zephaniah 1-2",
+      "Proverbs 11:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 205,
+    "readings": [
+      "Isaiah 30-31",
+      "Zephaniah 3",
+      "Proverbs 11:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 206,
+    "readings": [
+      "Isaiah 32-33",
+      "Baruch 1-2",
+      "Proverbs 11:17-20"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 207,
+    "readings": [
+      "Isaiah 34-36",
+      "Baruch 3-4",
+      "Proverbs 11:21-24"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 208,
+    "readings": [
+      "Isaiah 37-38",
+      "Baruch 5-6",
+      "Proverbs 11:25-28"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 209,
+    "readings": [
+      "Isaiah 39-40",
+      "Ezekiel 1",
+      "Proverbs 11:29-31"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 210,
+    "readings": [
+      "Isaiah 41-42",
+      "Ezekiel 2-3",
+      "Proverbs 12:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 211,
+    "readings": [
+      "Isaiah 43-44",
+      "Ezekiel 4-5",
+      "Proverbs 12:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 212,
+    "readings": [
+      "Isaiah 45-46",
+      "Ezekiel 6-7",
+      "Proverbs 12:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 213,
+    "readings": [
+      "Isaiah 47-48",
+      "Ezekiel 8-9",
+      "Proverbs 12:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 214,
+    "readings": [
+      "Isaiah 49-50",
+      "Ezekiel 10-11",
+      "Proverbs 12:17-20"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 215,
+    "readings": [
+      "Isaiah 51-52",
+      "Ezekiel 12-13",
+      "Proverbs 12:21-24"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 216,
+    "readings": [
+      "Isaiah 53-54",
+      "Ezekiel 14-15",
+      "Proverbs 12:25-28"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 217,
+    "readings": [
+      "Isaiah 55-56",
+      "Ezekiel 16",
+      "Proverbs 13:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 218,
+    "readings": [
+      "Isaiah 57-58",
+      "Ezekiel 17-18",
+      "Proverbs 13:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 219,
+    "readings": [
+      "Isaiah 59-60",
+      "Ezekiel 19",
+      "Proverbs 13:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 220,
+    "readings": [
+      "Isaiah 61-62",
+      "Ezekiel 20",
+      "Proverbs 13:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 221,
+    "readings": [
+      "Isaiah 63-64",
+      "Ezekiel 21-22",
+      "Proverbs 13:17-20"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 222,
+    "readings": [
+      "Isaiah 65",
+      "Ezekiel 23-24",
+      "Proverbs 13:21-25"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 223,
+    "readings": [
+      "Isaiah 66",
+      "Ezekiel 25-26",
+      "Proverbs 14:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 224,
+    "readings": [
+      "Jeremiah 1",
+      "Ezekiel 27",
+      "Proverbs 14:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 225,
+    "readings": [
+      "Jeremiah 2",
+      "Ezekiel 28",
+      "Proverbs 14:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 226,
+    "readings": [
+      "Jeremiah 3",
+      "Ezekiel 29-30",
+      "Proverbs 14:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 227,
+    "readings": [
+      "Jeremiah 4",
+      "Ezekiel 31-32",
+      "Proverbs 14:17-20"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 228,
+    "readings": [
+      "Jeremiah 5",
+      "Ezekiel 33",
+      "Proverbs 14:21-24"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 229,
+    "readings": [
+      "Jeremiah 6",
+      "Ezekiel 34-35",
+      "Proverbs 14:25-28"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 230,
+    "readings": [
+      "Jeremiah 7",
+      "Ezekiel 36",
+      "Proverbs 14:29-32"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 231,
+    "readings": [
+      "Jeremiah 8",
+      "Ezekiel 37-38",
+      "Proverbs 14:33-35"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 232,
+    "readings": [
+      "Jeremiah 9",
+      "Ezekiel 39",
+      "Proverbs 15:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 233,
+    "readings": [
+      "Jeremiah 10-11",
+      "Ezekiel 40",
+      "Proverbs 15:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 234,
+    "readings": [
+      "Jeremiah 12-13",
+      "Ezekiel 41-42",
+      "Proverbs 15:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 235,
+    "readings": [
+      "Jeremiah 14-15",
+      "Ezekiel 43-44",
+      "Proverbs 15:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 236,
+    "readings": [
+      "Jeremiah 16-17",
+      "Ezekiel 45-46",
+      "Proverbs 15:17-20"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 237,
+    "readings": [
+      "Jeremiah 18-19",
+      "Ezekiel 47-48",
+      "Proverbs 15:21-24"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 238,
+    "readings": [
+      "Jeremiah 20-21",
+      "Daniel 1-2",
+      "Proverbs 15:25-28"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 239,
+    "readings": [
+      "Jeremiah 22",
+      "Daniel 3",
+      "Proverbs 15:29-33"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 240,
+    "readings": [
+      "Jeremiah 23",
+      "Daniel 4-5",
+      "Proverbs 16:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 241,
+    "readings": [
+      "Jeremiah 24-25",
+      "Daniel 6-7",
+      "Proverbs 16:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 242,
+    "readings": [
+      "Jeremiah 26-27",
+      "Daniel 8-9",
+      "Proverbs 16:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 243,
+    "readings": [
+      "Jeremiah 28-29",
+      "Daniel 10-11",
+      "Proverbs 16:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 244,
+    "readings": [
+      "Jeremiah 30",
+      "Daniel 12-13",
+      "Proverbs 16:17-20"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 245,
+    "readings": [
+      "Jeremiah 31",
+      "Daniel 14",
+      "Proverbs 16:21-24"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 246,
+    "readings": [
+      "Jeremiah 32",
+      "Judith 1-2",
+      "Proverbs 16:25-28"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 247,
+    "readings": [
+      "Jeremiah 33-34",
+      "Judith 3-5",
+      "Proverbs 16:29-33"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 248,
+    "readings": [
+      "Jeremiah 35-36",
+      "Judith 6-7",
+      "Proverbs 17:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 249,
+    "readings": [
+      "Jeremiah 37-38",
+      "Judith 8-9",
+      "Proverbs 17:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 250,
+    "readings": [
+      "Jeremiah 39-40",
+      "Judith 10-11",
+      "Proverbs 17:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 251,
+    "readings": [
+      "Jeremiah 41-42",
+      "Judith 12-14",
+      "Proverbs 17:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 252,
+    "readings": [
+      "Jeremiah 43-44",
+      "Judith 15-16",
+      "Proverbs 17:17-20"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 253,
+    "readings": [
+      "Jeremiah 45-46",
+      "Lamentations 1",
+      "Proverbs 17:21-24"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 254,
+    "readings": [
+      "Jeremiah 47-48",
+      "Lamentations 2",
+      "Proverbs 18:1-4"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 255,
+    "readings": [
+      "Jeremiah 49-50",
+      "Lamentations 3",
+      "Proverbs 18:5-8"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 256,
+    "readings": [
+      "Jeremiah 51",
+      "Lamentations 4-5",
+      "Proverbs 18:9-12"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 257,
+    "readings": [
+      "Jeremiah 52",
+      "Obadiah 1",
+      "Proverbs 18:13-16"
+    ],
+    "era": "Exile",
+    "color": "#8db5e2"
+  },
+  {
+    "number": 258,
+    "readings": [
+      "Matthew 1-4",
+      "Proverbs 18:17-20"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 259,
+    "readings": [
+      "Matthew 5-7",
+      "Proverbs 18:21-24"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 260,
+    "readings": [
+      "Matthew 8-10",
+      "Proverbs 19:1-4"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 261,
+    "readings": [
+      "Matthew 11-13",
+      "Proverbs 19:5-8"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 262,
+    "readings": [
+      "Matthew 14-17",
+      "Proverbs 19:9-12"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 263,
+    "readings": [
+      "Matthew 18-21",
+      "Proverbs 19:13-16"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 264,
+    "readings": [
+      "Matthew 22-24",
+      "Proverbs 19:17-20"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 265,
+    "readings": [
+      "Matthew 25-26",
+      "Proverbs 19:21-24"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 266,
+    "readings": [
+      "Matthew 27-28",
+      "Proverbs 19:25-29"
+    ],
+    "era": "Messianic Checkpoint",
+    "color": "#b1922f"
+  },
+  {
+    "number": 267,
+    "readings": [
+      "Ezra 1-2",
+      "Haggai 1-2",
+      "Proverbs 20:1-3"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 268,
+    "readings": [
+      "Ezra 3-4",
+      "Zechariah 1-3",
+      "Proverbs 20:4-7"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 269,
+    "readings": [
+      "Ezra 5-6",
+      "Zechariah 4-6",
+      "Proverbs 20:8-11"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 270,
+    "readings": [
+      "Ezra 7-8",
+      "Zechariah 7-8",
+      "Proverbs 20:12-15"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 271,
+    "readings": [
+      "Ezra 9-10",
+      "Zechariah 9-11",
+      "Proverbs 20:16-19"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 272,
+    "readings": [
+      "Nehemiah 1-2",
+      "Zechariah 12-13",
+      "Proverbs 20:20-22"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 273,
+    "readings": [
+      "Nehemiah 3",
+      "Zechariah 14",
+      "Proverbs 20:23-26"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 274,
+    "readings": [
+      "Nehemiah 4-5",
+      "Esther 1-2",
+      "Proverbs 20:27-30"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 275,
+    "readings": [
+      "Nehemiah 6-7",
+      "Esther 3, 13",
+      "Proverbs 21:1-4"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 276,
+    "readings": [
+      "Nehemiah 8",
+      "Esther 4, 14",
+      "Proverbs 21:5-8"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 277,
+    "readings": [
+      "Nehemiah 9",
+      "Esther 15, 6-7",
+      "Proverbs 21:9-12"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 278,
+    "readings": [
+      "Nehemiah 10",
+      "Esther 8, 16",
+      "Proverbs 21:13-16"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 279,
+    "readings": [
+      "Nehemiah 11",
+      "Esther 9-11",
+      "Proverbs 21:17-20"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 280,
+    "readings": [
+      "Nehemiah 12",
+      "Esther 10-12",
+      "Proverbs 21:21-24"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 281,
+    "readings": [
+      "Nehemiah 13",
+      "Malachi 1-4",
+      "Proverbs 21:25-28"
+    ],
+    "era": "Return",
+    "color": "#f4d02b"
+  },
+  {
+    "number": 282,
+    "readings": [
+      "1 Maccabees 1",
+      "Sirach 1-3",
+      "Proverbs 21:29-31"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 283,
+    "readings": [
+      "1 Maccabees 2",
+      "Sirach 4-6",
+      "Proverbs 22:1-4"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 284,
+    "readings": [
+      "1 Maccabees 3",
+      "Sirach 7-9",
+      "Proverbs 22:5-8"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 285,
+    "readings": [
+      "1 Maccabees 4",
+      "Sirach 10-12",
+      "Proverbs 22:9-12"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 286,
+    "readings": [
+      "1 Maccabees 5",
+      "Sirach 13-15",
+      "Proverbs 22:13-16"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 287,
+    "readings": [
+      "1 Maccabees 6",
+      "Sirach 16-18",
+      "Proverbs 22:17-21"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 288,
+    "readings": [
+      "1 Maccabees 7",
+      "Sirach 19-21",
+      "Proverbs 22:22-25"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 289,
+    "readings": [
+      "1 Maccabees 8",
+      "Sirach 22-23",
+      "Proverbs 22:26-29"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 290,
+    "readings": [
+      "1 Maccabees 9",
+      "Sirach 24-25",
+      "Proverbs 23:1-4"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 291,
+    "readings": [
+      "1 Maccabees 10",
+      "Sirach 26-27",
+      "Proverbs 23:5-8"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 292,
+    "readings": [
+      "1 Maccabees 11",
+      "Sirach 28-29",
+      "Proverbs 23:9-12"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 293,
+    "readings": [
+      "1 Maccabees 12",
+      "Sirach 30-31",
+      "Proverbs 23:13-16"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 294,
+    "readings": [
+      "1 Maccabees 13",
+      "Sirach 32-33",
+      "Proverbs 23:17-21"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 295,
+    "readings": [
+      "1 Maccabees 14",
+      "Sirach 34-35",
+      "Proverbs 23:22-25"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 296,
+    "readings": [
+      "1 Maccabees 15",
+      "Sirach 36-37",
+      "Proverbs 23:26-28"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 297,
+    "readings": [
+      "1 Maccabees 16",
+      "Sirach 38-39",
+      "Proverbs 23:29-35"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 298,
+    "readings": [
+      "2 Maccabees 1",
+      "Sirach 40-41",
+      "Proverbs 24:1-7"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 299,
+    "readings": [
+      "2 Maccabees 2",
+      "Sirach 42-44",
+      "Proverbs 24:8-9"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 300,
+    "readings": [
+      "2 Maccabees 3",
+      "Sirach 45-46",
+      "Proverbs 24:10-12"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 301,
+    "readings": [
+      "2 Maccabees 4",
+      "Sirach 47-49",
+      "Proverbs 24:13-16"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 302,
+    "readings": [
+      "2 Maccabees 5",
+      "Sirach 50-51",
+      "Proverbs 24:17-20"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 303,
+    "readings": [
+      "2 Maccabees 6",
+      "Wisdom 1-2",
+      "Proverbs 24:21-26"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 304,
+    "readings": [
+      "2 Maccabees 7",
+      "Wisdom 3-4",
+      "Proverbs 24:27-29"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 305,
+    "readings": [
+      "2 Maccabees 8",
+      "Wisdom 5-6",
+      "Proverbs 24:30-34"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 306,
+    "readings": [
+      "2 Maccabees 9",
+      "Wisdom 7-8",
+      "Proverbs 25:1-3"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 307,
+    "readings": [
+      "2 Maccabees 10",
+      "Wisdom 9-10",
+      "Proverbs 25:4-7"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 308,
+    "readings": [
+      "2 Maccabees 11",
+      "Wisdom 11-12",
+      "Proverbs 25:8-10"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 309,
+    "readings": [
+      "2 Maccabees 12",
+      "Wisdom 13-14",
+      "Proverbs 25:11-14"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 310,
+    "readings": [
+      "2 Maccabees 13",
+      "Wisdom 15-16",
+      "Proverbs 25:15-17"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 311,
+    "readings": [
+      "2 Maccabees 14",
+      "Wisdom 17-18",
+      "Proverbs 25:18-20"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 312,
+    "readings": [
+      "2 Maccabees 15",
+      "Wisdom 19",
+      "Proverbs 25:21-23"
+    ],
+    "era": "Maccabean Revolt",
+    "color": "#d8792d"
+  },
+  {
+    "number": 313,
+    "readings": [
+      "Luke 1-2",
+      "Proverbs 25:24-26"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 314,
+    "readings": [
+      "Luke 3-5",
+      "Proverbs 25:27-28"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 315,
+    "readings": [
+      "Luke 6-8",
+      "Proverbs 26:1-3"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 316,
+    "readings": [
+      "Luke 9-10",
+      "Proverbs 26:4-6"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 317,
+    "readings": [
+      "Luke 11-12",
+      "Proverbs 26:7-9"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 318,
+    "readings": [
+      "Luke 13-16",
+      "Proverbs 26:10-12"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 319,
+    "readings": [
+      "Luke 17-19",
+      "Proverbs 26:13-16"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 320,
+    "readings": [
+      "Luke 20-22:38",
+      "Proverbs 26:17-19"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 321,
+    "readings": [
+      "Luke 22:39-24",
+      "Proverbs 26:20-23"
+    ],
+    "era": "Messianic Fulfillment",
+    "color": "#b1922f"
+  },
+  {
+    "number": 322,
+    "readings": [
+      "Acts 1",
+      "Romans 1",
+      "Proverbs 26:24-26"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 323,
+    "readings": [
+      "Acts 2",
+      "Romans 2-3",
+      "Proverbs 26:27-28"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 324,
+    "readings": [
+      "Acts 3",
+      "Romans 4-5",
+      "Proverbs 27:1-3"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 325,
+    "readings": [
+      "Acts 4",
+      "Romans 6-7",
+      "Proverbs 27:4-6"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 326,
+    "readings": [
+      "Acts 5",
+      "Romans 8",
+      "Proverbs 27:7-9"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 327,
+    "readings": [
+      "Acts 6",
+      "Romans 9-10",
+      "Proverbs 27:10-12"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 328,
+    "readings": [
+      "Acts 7",
+      "Romans 11-12",
+      "Proverbs 27:13-14"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 329,
+    "readings": [
+      "Acts 8",
+      "Romans 13-14",
+      "Proverbs 27:15-17"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 330,
+    "readings": [
+      "Acts 9",
+      "Romans 15-16",
+      "Proverbs 27:18-20"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 331,
+    "readings": [
+      "Acts 10",
+      "1 Corinthians 1-2",
+      "Proverbs 27:21-22"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 332,
+    "readings": [
+      "Acts 11",
+      "1 Corinthians 3-4",
+      "Proverbs 27:23-27"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 333,
+    "readings": [
+      "Acts 12",
+      "1 Corinthians 5-6",
+      "Proverbs 28:1-3"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 334,
+    "readings": [
+      "Acts 13",
+      "1 Corinthians 7-8",
+      "Proverbs 28:4-6"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 335,
+    "readings": [
+      "Acts 14",
+      "1 Corinthians 9-10",
+      "Proverbs 28:7-9"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 336,
+    "readings": [
+      "Acts 15",
+      "1 Corinthians 11-12",
+      "Proverbs 28:10-12"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 337,
+    "readings": [
+      "Acts 16",
+      "1 Corinthians 13-14",
+      "Proverbs 28:13-15"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 338,
+    "readings": [
+      "Acts 17",
+      "1 Corinthians 15",
+      "Proverbs 28:16-18"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 339,
+    "readings": [
+      "Acts 18",
+      "1 Corinthians 16",
+      "Proverbs 28:19-21"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 340,
+    "readings": [
+      "Acts 19",
+      "2 Corinthians 1-2",
+      "Proverbs 28:22-24"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 341,
+    "readings": [
+      "Acts 20",
+      "2 Corinthians 3-5",
+      "Proverbs 28:25-28"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 342,
+    "readings": [
+      "Acts 21",
+      "2 Corinthians 6-8",
+      "Proverbs 29:1-4"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 343,
+    "readings": [
+      "Acts 22",
+      "2 Corinthians 9-11",
+      "Proverbs 29:5-7"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 344,
+    "readings": [
+      "Acts 23",
+      "2 Corinthians 12-13",
+      "Proverbs 29:8-11"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 345,
+    "readings": [
+      "Acts 24",
+      "Galatians 1-3",
+      "Proverbs 29:12-14"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 346,
+    "readings": [
+      "Acts 25",
+      "Galatians 4-6",
+      "Proverbs 29:15-17"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 347,
+    "readings": [
+      "Acts 26",
+      "Ephesians 1-3",
+      "Proverbs 29:18-21"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 348,
+    "readings": [
+      "Acts 27",
+      "Ephesians 4-6",
+      "Proverbs 29:22-24"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 349,
+    "readings": [
+      "Acts 28",
+      "Philippians 1-2",
+      "Proverbs 29:25-27"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 350,
+    "readings": [
+      "James 1-2",
+      "Philippians 3-4",
+      "Proverbs 30:1-6"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 351,
+    "readings": [
+      "James 3-5",
+      "Colossians 1-2",
+      "Proverbs 30:7-9"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 352,
+    "readings": [
+      "1 Peter 1-2",
+      "Colossians 3-4",
+      "Proverbs 30:10-14"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 353,
+    "readings": [
+      "1 Peter 3-5",
+      "1 Thessalonians 1-3",
+      "Proverbs 30:15-16"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 354,
+    "readings": [
+      "2 Peter 1-3",
+      "1 Thessalonians 4-5",
+      "Proverbs 30:17-19"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 355,
+    "readings": [
+      "1 John 1-3",
+      "2 Thessalonians 1-3",
+      "Proverbs 30:20-23"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 356,
+    "readings": [
+      "1 John 4-5",
+      "1 Timothy 1-3",
+      "Proverbs 30:24-28"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 357,
+    "readings": [
+      "2 John, 3 John",
+      "1 Timothy 4-6",
+      "Proverbs 30:29-33"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 358,
+    "readings": [
+      "Jude",
+      "2 Timothy 1-2",
+      "Proverbs 31:1-7"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 359,
+    "readings": [
+      "Revelation 1-3",
+      "2 Timothy 3-4",
+      "Proverbs 31:8-9"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 360,
+    "readings": [
+      "Revelation 4-7",
+      "Titus 1-3",
+      "Proverbs 31:10-15"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 361,
+    "readings": [
+      "Revelation 8-11",
+      "Philemon",
+      "Proverbs 31:16-18"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 362,
+    "readings": [
+      "Revelation 12-14",
+      "Hebrews 1-4",
+      "Proverbs 31:19-22"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 363,
+    "readings": [
+      "Revelation 15-17",
+      "Hebrews 5-8",
+      "Proverbs 31:23-25"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 364,
+    "readings": [
+      "Revelation 18-20",
+      "Hebrews 9-10",
+      "Proverbs 31:26-29"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  },
+  {
+    "number": 365,
+    "readings": [
+      "Revelation 21-22",
+      "Hebrews 11-13",
+      "Proverbs 31:30-31"
+    ],
+    "era": "The Church",
+    "color": "#efefef"
+  }
+]
