@@ -1,14 +1,184 @@
-import {useEffect,useState} from 'react'
-import {Check,Trash2,Edit3,Clock} from 'lucide-react'
-import {api,date,time} from './api'
-import type {Note,Episode} from './types'
-import {useAudio} from './Audio'
-export function Notes({target,user,episode,onError}:{target:string;user:string;episode:Episode|null;onError:(e:string)=>void}){
- const [notes,setNotes]=useState<Note[]>([]),[body,setBody]=useState(''),[kind,setKind]=useState<'note'|'journal'>('note'),[editing,setEditing]=useState<number|null>(null),[attach,setAttach]=useState(false),[busy,setBusy]=useState(false),[saved,setSaved]=useState(false)
- const audio=useAudio(),key=`biy-draft:${user}:${target}`
- useEffect(()=>{let live=true;setBody(sessionStorage.getItem(key)||'');setEditing(null);setSaved(false);void api<Note[]>(target+'/notes').then(data=>{if(live)setNotes(data)}).catch(err=>onError(err.message));return()=>{live=false}},[target,key])
- function change(value:string){setBody(value);setSaved(false);sessionStorage.setItem(key,value)}
- async function save(){setBusy(true);try{const note=await api<Note>(editing?`/notes/${editing}`:target+'/notes',editing?'PUT':'POST',{body,kind,audio_time:attach&&audio.episode?.id===episode?.id?audio.position:null});setNotes(current=>editing?current.map(n=>n.id===editing?note:n):[note,...current]);setBody('');setEditing(null);sessionStorage.removeItem(key);setSaved(true)}catch(err){onError((err as Error).message)}finally{setBusy(false)}}
- async function remove(note:Note){if(!confirm('Delete this saved entry?'))return;try{await api(`/notes/${note.id}`,'DELETE');setNotes(ns=>ns.filter(n=>n.id!==note.id))}catch(err){onError((err as Error).message)}}
- return <section className="notes" aria-label="Private notes and journal"><div className="section-heading"><h2>Your reflections</h2><span className="quiet">Only you can see these</span></div><div className="segmented"><button className={kind==='note'?'active':''} onClick={()=>setKind('note')}>Notes</button><button className={kind==='journal'?'active':''} onClick={()=>setKind('journal')}>Journal</button></div><label className="sr-only" htmlFor="note-body">{kind==='journal'?'Journal entry':'Study note'}</label><textarea id="note-body" value={body} onChange={e=>change(e.target.value)} maxLength={50000} rows={5} placeholder={kind==='journal'?'What is staying with you today? Write a reflection, a question, or a prayer…':'Capture a thought, a connection, or something to return to…'}/><div className="note-actions">{episode&&audio.episode?.id===episode.id&&<label><input type="checkbox" checked={attach} onChange={e=>setAttach(e.target.checked)}/> Link to {time(audio.position)}</label>}<button className="primary" disabled={busy||!body.trim()} onClick={save}>{busy?'Saving…':editing?'Save changes':'Save '+kind}</button>{editing&&<button onClick={()=>{setEditing(null);change('')}}>Cancel</button>}{saved&&<span className="saved" role="status"><Check size={16}/> Saved</span>}</div><div className="note-list">{notes.filter(n=>n.kind===kind).map(note=><article className="note" key={note.id}><div className="note-meta"><span>{date(note.created_at)}</span>{note.audio_time!==null&&episode&&<button onClick={()=>audio.play(episode,note.audio_time!)}><Clock size={13}/>{time(note.audio_time)}</button>}<button aria-label="Edit entry" onClick={()=>{setEditing(note.id);change(note.body);setKind(note.kind)}}><Edit3 size={15}/></button><button aria-label="Delete entry" onClick={()=>remove(note)}><Trash2 size={15}/></button></div><p>{note.body}</p></article>)}</div></section>
+import { useEffect, useState } from "react";
+import { Check, Trash2, Edit3, Clock } from "lucide-react";
+import { api, date, time } from "./api";
+import type { Note, Episode } from "./types";
+import { useAudio } from "./Audio";
+export function Notes({
+  target,
+  user,
+  episode,
+  onError,
+}: {
+  target: string;
+  user: string;
+  episode: Episode | null;
+  onError: (e: string) => void;
+}) {
+  const [notes, setNotes] = useState<Note[]>([]),
+    [body, setBody] = useState(""),
+    [kind, setKind] = useState<"note" | "journal">("note"),
+    [editing, setEditing] = useState<number | null>(null),
+    [attach, setAttach] = useState(false),
+    [busy, setBusy] = useState(false),
+    [saved, setSaved] = useState(false);
+  const audio = useAudio(),
+    key = `biy-draft:${user}:${target}`;
+  useEffect(() => {
+    let live = true;
+    setBody(sessionStorage.getItem(key) || "");
+    setEditing(null);
+    setSaved(false);
+    void api<Note[]>(target + "/notes")
+      .then((data) => {
+        if (live) setNotes(data);
+      })
+      .catch((err) => onError(err.message));
+    return () => {
+      live = false;
+    };
+  }, [target, key]);
+  function change(value: string) {
+    setBody(value);
+    setSaved(false);
+    sessionStorage.setItem(key, value);
+  }
+  async function save() {
+    setBusy(true);
+    try {
+      const note = await api<Note>(
+        editing ? `/notes/${editing}` : target + "/notes",
+        editing ? "PUT" : "POST",
+        {
+          body,
+          kind,
+          audio_time:
+            attach && audio.episode?.id === episode?.id ? audio.position : null,
+        },
+      );
+      setNotes((current) =>
+        editing
+          ? current.map((n) => (n.id === editing ? note : n))
+          : [note, ...current],
+      );
+      setBody("");
+      setEditing(null);
+      sessionStorage.removeItem(key);
+      setSaved(true);
+    } catch (err) {
+      onError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remove(note: Note) {
+    if (!confirm("Delete this saved entry?")) return;
+    try {
+      await api(`/notes/${note.id}`, "DELETE");
+      setNotes((ns) => ns.filter((n) => n.id !== note.id));
+    } catch (err) {
+      onError((err as Error).message);
+    }
+  }
+  return (
+    <section className="notes" aria-label="Private notes and journal">
+      <div className="section-heading">
+        <h2>Your reflections</h2>
+        <span className="quiet">Only you can see these</span>
+      </div>
+      <div className="segmented">
+        <button
+          className={kind === "note" ? "active" : ""}
+          onClick={() => setKind("note")}
+        >
+          Notes
+        </button>
+        <button
+          className={kind === "journal" ? "active" : ""}
+          onClick={() => setKind("journal")}
+        >
+          Journal
+        </button>
+      </div>
+      <label className="sr-only" htmlFor="note-body">
+        {kind === "journal" ? "Journal entry" : "Study note"}
+      </label>
+      <textarea
+        id="note-body"
+        value={body}
+        onChange={(e) => change(e.target.value)}
+        maxLength={50000}
+        rows={5}
+        placeholder={
+          kind === "journal"
+            ? "What is staying with you today? Write a reflection, a question, or a prayer…"
+            : "Capture a thought, a connection, or something to return to…"
+        }
+      />
+      <div className="note-actions">
+        {episode && audio.episode?.id === episode.id && (
+          <label>
+            <input
+              type="checkbox"
+              checked={attach}
+              onChange={(e) => setAttach(e.target.checked)}
+            />{" "}
+            Link to {time(audio.position)}
+          </label>
+        )}
+        <button
+          className="primary"
+          disabled={busy || !body.trim()}
+          onClick={save}
+        >
+          {busy ? "Saving…" : editing ? "Save changes" : "Save " + kind}
+        </button>
+        {editing && (
+          <button
+            onClick={() => {
+              setEditing(null);
+              change("");
+            }}
+          >
+            Cancel
+          </button>
+        )}
+        {saved && (
+          <span className="saved" role="status">
+            <Check size={16} /> Saved
+          </span>
+        )}
+      </div>
+      <div className="note-list">
+        {notes
+          .filter((n) => n.kind === kind)
+          .map((note) => (
+            <article className="note" key={note.id}>
+              <div className="note-meta">
+                <span>{date(note.created_at)}</span>
+                {note.audio_time !== null && episode && (
+                  <button onClick={() => audio.play(episode, note.audio_time!)}>
+                    <Clock size={13} />
+                    {time(note.audio_time)}
+                  </button>
+                )}
+                <button
+                  aria-label="Edit entry"
+                  onClick={() => {
+                    setEditing(note.id);
+                    change(note.body);
+                    setKind(note.kind);
+                  }}
+                >
+                  <Edit3 size={15} />
+                </button>
+                <button aria-label="Delete entry" onClick={() => remove(note)}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
+              <p>{note.body}</p>
+            </article>
+          ))}
+      </div>
+    </section>
+  );
 }

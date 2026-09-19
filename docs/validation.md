@@ -6,6 +6,7 @@
 - Exactly **365 reading-plan records, one podcast episode (Day 1), and 70 RSV-2CE verses**. No supplementary or other daily episode was imported.
 - Publisher feed inspected read-only: **386 episodes dated in 2025**, including 365 daily episodes and 21 extras. The importer tests publication dates in their original timezone and strips leading title whitespace before day matching.
 - **13 Django tests passed**: plan idempotence, dates outside 2025, database year constraint, reference parsing, source Bible book order, annotation removal, private notes, session/CSRF authentication, idempotent completion timestamps, independent extra-episode completion, audio byte ranges, source-preserving AI classification and cache reuse.
+- Ruff lint/format checks passed. Production-mode Django checks have only the two optional HSTS subdomain/preload recommendations; these are intentionally not enabled for this single hostname.
 - **2 frontend unit tests passed**; TypeScript and production Vite build passed; npm audit reports **zero vulnerabilities**.
 - Real Chromium desktop/mobile smoke test passed: login; authenticated Day 1 audio; seek to 120 seconds; full-page reader and font size; journal save/reload/delete; day completion/reload/undo. No browser JavaScript errors. Desktop (1440px) and mobile (390px) checked for horizontal overflow.
 - Separate browser-only fixtures verified full vs commentary-only transcript, edited prose, source-time playback, and supplementary episode/reader screens. These fixtures never write generated text or extra episodes to the real database.

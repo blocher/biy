@@ -1,30 +1,467 @@
-import {useMemo,useState,useEffect} from 'react'
-import {Link,useSearchParams} from 'react-router-dom'
-import {ArrowRight,Check,Search,List,LayoutGrid,Headphones,NotebookPen} from 'lucide-react'
-import type {Library,PlanDay,Note} from './types'
-import {api,date,episodeTitle} from './api'
-import {Sidebar} from './navigation'
-export function DayTable({library,onChange,onError,compact=false}:{library:Library;onChange:()=>void;onError:(e:string)=>void;compact?:boolean}){
- const [params]=useSearchParams()
- const [query,setQuery]=useState(''),[era,setEra]=useState(params.get('era')||''),[status,setStatus]=useState('all'),[view,setView]=useState('list'),[page,setPage]=useState(1),[saving,setSaving]=useState<number|null>(null)
- useEffect(()=>{setEra(params.get('era')||'');setPage(1)},[params])
- const eras=useMemo(()=>Array.from(new Map(library.days.map(d=>[d.era,d.color]))),[library])
- const filtered=library.days.filter(d=>(!era||d.era===era)&&(status==='all'||(status==='complete'?!!d.completed_at:!d.completed_at))&&(!query||`${d.number} day ${d.number} ${d.readings.join(' ')} ${d.episode?.title||''}`.toLowerCase().includes(query.toLowerCase())))
- const count=compact?8:25,pages=Math.max(1,Math.ceil(filtered.length/count)),safePage=Math.min(page,pages),shown=filtered.slice((safePage-1)*count,safePage*count)
- async function toggle(d:PlanDay){setSaving(d.number);try{await api(`/days/${d.number}/completion`,'PUT',{completed:!d.completed_at});onChange()}catch(e){onError((e as Error).message)}finally{setSaving(null)}}
- function checkbox(d:PlanDay){return <button className={'day-check '+(d.completed_at?'checked':'')} aria-label={`${d.completed_at?'Mark incomplete':'Mark complete'}: Day ${d.number}`} title={d.completed_at?`Completed ${date(d.completed_at)}`:'Mark complete'} disabled={saving===d.number} onClick={()=>toggle(d)}>{d.completed_at?<Check size={15}/>:<span/>}</button>}
- return <section className="plan-section" id="reading-plan"><div className="section-heading"><h2>Your reading plan</h2><span className="quiet">{filtered.length} days</span></div><div className="filters"><label className="search"><Search size={17}/><input aria-label="Search days or readings" placeholder="Find a day, book, or reading…" value={query} onChange={e=>{setQuery(e.target.value);setPage(1)}}/></label><select aria-label="Filter by period" value={era} onChange={e=>{setEra(e.target.value);setPage(1)}}><option value="">All periods</option>{eras.map(([name])=><option key={name}>{name}</option>)}</select><select aria-label="Filter by completion" value={status} onChange={e=>{setStatus(e.target.value);setPage(1)}}><option value="all">All days</option><option value="unread">Unread</option><option value="complete">Completed</option></select><div className="view-switch"><button aria-label="Table view" aria-pressed={view==='list'} onClick={()=>setView('list')}><List size={18}/></button><button aria-label="Card view" aria-pressed={view==='grid'} onClick={()=>setView('grid')}><LayoutGrid size={18}/></button></div></div>{!shown.length?<div className="empty-content"><Search/><h3>No matching days</h3><p>Try another book, day number, or filter.</p><button onClick={()=>{setQuery('');setEra('');setStatus('all')}}>Clear filters</button></div>:view==='list'?<div className="table-scroll"><table className="day-table"><thead><tr><th><span className="sr-only">Complete</span></th><th>Day</th><th>Readings</th><th>Period</th><th>Status</th><th><span className="sr-only">Open</span></th></tr></thead><tbody>{shown.map(d=><tr key={d.number} className={d.number===library.next_day?'next-day':''}><td>{checkbox(d)}</td><td><Link to={`/day/${d.number}`}>Day {d.number}</Link></td><td><Link to={`/day/${d.number}`}><strong>{d.episode?episodeTitle(d.episode.title):d.readings[0]}</strong><small>{d.readings.join(' · ')}</small></Link></td><td><span className="era-label"><i style={{background:d.color}}/>{d.era}</span></td><td><span className={d.completed_at?'status-complete':'quiet'}>{d.completed_at?'Completed':d.number===library.next_day?'Up next':'Unread'}</span></td><td><Link aria-label={`Open Day ${d.number}`} to={`/day/${d.number}`}><ArrowRight size={17}/></Link></td></tr>)}</tbody></table></div>:<div className="day-grid">{shown.map(d=><article key={d.number} className="day-card" style={{borderTopColor:d.color}}><div className="section-heading"><span className="eyebrow">DAY {d.number}</span>{checkbox(d)}</div><Link to={`/day/${d.number}`}><h3>{d.episode?episodeTitle(d.episode.title):d.readings[0]}</h3><p>{d.readings.join(' · ')}</p><span className="era-label"><i style={{background:d.color}}/>{d.era}</span></Link></article>)}</div>}<div className="pagination"><span>{filtered.length?`${(safePage-1)*count+1}–${Math.min(safePage*count,filtered.length)} of ${filtered.length}`:'0 days'}</span><button disabled={safePage<=1} onClick={()=>setPage(safePage-1)}>Previous</button><span>{safePage} / {pages}</span><button disabled={safePage>=pages} onClick={()=>setPage(safePage+1)}>Next</button></div></section>
+import { useMemo, useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  ArrowRight,
+  Check,
+  Search,
+  List,
+  LayoutGrid,
+  Headphones,
+  NotebookPen,
+} from "lucide-react";
+import type { Library, PlanDay, Note } from "./types";
+import { api, date, episodeTitle } from "./api";
+import { Sidebar } from "./navigation";
+export function DayTable({
+  library,
+  onChange,
+  onError,
+  compact = false,
+}: {
+  library: Library;
+  onChange: () => void;
+  onError: (e: string) => void;
+  compact?: boolean;
+}) {
+  const [params] = useSearchParams();
+  const [query, setQuery] = useState(""),
+    [era, setEra] = useState(params.get("era") || ""),
+    [status, setStatus] = useState("all"),
+    [view, setView] = useState("list"),
+    [page, setPage] = useState(1),
+    [saving, setSaving] = useState<number | null>(null);
+  useEffect(() => {
+    setEra(params.get("era") || "");
+    setPage(1);
+  }, [params]);
+  const eras = useMemo(
+    () => Array.from(new Map(library.days.map((d) => [d.era, d.color]))),
+    [library],
+  );
+  const filtered = library.days.filter(
+    (d) =>
+      (!era || d.era === era) &&
+      (status === "all" ||
+        (status === "complete" ? !!d.completed_at : !d.completed_at)) &&
+      (!query ||
+        `${d.number} day ${d.number} ${d.readings.join(" ")} ${d.episode?.title || ""}`
+          .toLowerCase()
+          .includes(query.toLowerCase())),
+  );
+  const count = compact ? 8 : 25,
+    pages = Math.max(1, Math.ceil(filtered.length / count)),
+    safePage = Math.min(page, pages),
+    shown = filtered.slice((safePage - 1) * count, safePage * count);
+  async function toggle(d: PlanDay) {
+    setSaving(d.number);
+    try {
+      await api(`/days/${d.number}/completion`, "PUT", {
+        completed: !d.completed_at,
+      });
+      onChange();
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setSaving(null);
+    }
+  }
+  function checkbox(d: PlanDay) {
+    return (
+      <button
+        className={"day-check " + (d.completed_at ? "checked" : "")}
+        aria-label={`${d.completed_at ? "Mark incomplete" : "Mark complete"}: Day ${d.number}`}
+        title={
+          d.completed_at ? `Completed ${date(d.completed_at)}` : "Mark complete"
+        }
+        disabled={saving === d.number}
+        onClick={() => toggle(d)}
+      >
+        {d.completed_at ? <Check size={15} /> : <span />}
+      </button>
+    );
+  }
+  return (
+    <section className="plan-section" id="reading-plan">
+      <div className="section-heading">
+        <h2>Your reading plan</h2>
+        <span className="quiet">{filtered.length} days</span>
+      </div>
+      <div className="filters">
+        <label className="search">
+          <Search size={17} />
+          <input
+            aria-label="Search days or readings"
+            placeholder="Find a day, book, or reading…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <select
+          aria-label="Filter by period"
+          value={era}
+          onChange={(e) => {
+            setEra(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">All periods</option>
+          {eras.map(([name]) => (
+            <option key={name}>{name}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Filter by completion"
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="all">All days</option>
+          <option value="unread">Unread</option>
+          <option value="complete">Completed</option>
+        </select>
+        <div className="view-switch">
+          <button
+            aria-label="Table view"
+            aria-pressed={view === "list"}
+            onClick={() => setView("list")}
+          >
+            <List size={18} />
+          </button>
+          <button
+            aria-label="Card view"
+            aria-pressed={view === "grid"}
+            onClick={() => setView("grid")}
+          >
+            <LayoutGrid size={18} />
+          </button>
+        </div>
+      </div>
+      {!shown.length ? (
+        <div className="empty-content">
+          <Search />
+          <h3>No matching days</h3>
+          <p>Try another book, day number, or filter.</p>
+          <button
+            onClick={() => {
+              setQuery("");
+              setEra("");
+              setStatus("all");
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : view === "list" ? (
+        <div className="table-scroll">
+          <table className="day-table">
+            <thead>
+              <tr>
+                <th>
+                  <span className="sr-only">Complete</span>
+                </th>
+                <th>Day</th>
+                <th>Readings</th>
+                <th>Period</th>
+                <th>Status</th>
+                <th>
+                  <span className="sr-only">Open</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((d) => (
+                <tr
+                  key={d.number}
+                  className={d.number === library.next_day ? "next-day" : ""}
+                >
+                  <td>{checkbox(d)}</td>
+                  <td>
+                    <Link to={`/day/${d.number}`}>Day {d.number}</Link>
+                  </td>
+                  <td>
+                    <Link to={`/day/${d.number}`}>
+                      <strong>
+                        {d.episode
+                          ? episodeTitle(d.episode.title)
+                          : d.readings[0]}
+                      </strong>
+                      <small>{d.readings.join(" · ")}</small>
+                    </Link>
+                  </td>
+                  <td>
+                    <span className="era-label">
+                      <i style={{ background: d.color }} />
+                      {d.era}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={d.completed_at ? "status-complete" : "quiet"}
+                    >
+                      {d.completed_at
+                        ? "Completed"
+                        : d.number === library.next_day
+                          ? "Up next"
+                          : "Unread"}
+                    </span>
+                  </td>
+                  <td>
+                    <Link
+                      aria-label={`Open Day ${d.number}`}
+                      to={`/day/${d.number}`}
+                    >
+                      <ArrowRight size={17} />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="day-grid">
+          {shown.map((d) => (
+            <article
+              key={d.number}
+              className="day-card"
+              style={{ borderTopColor: d.color }}
+            >
+              <div className="section-heading">
+                <span className="eyebrow">DAY {d.number}</span>
+                {checkbox(d)}
+              </div>
+              <Link to={`/day/${d.number}`}>
+                <h3>
+                  {d.episode ? episodeTitle(d.episode.title) : d.readings[0]}
+                </h3>
+                <p>{d.readings.join(" · ")}</p>
+                <span className="era-label">
+                  <i style={{ background: d.color }} />
+                  {d.era}
+                </span>
+              </Link>
+            </article>
+          ))}
+        </div>
+      )}
+      <div className="pagination">
+        <span>
+          {filtered.length
+            ? `${(safePage - 1) * count + 1}–${Math.min(safePage * count, filtered.length)} of ${filtered.length}`
+            : "0 days"}
+        </span>
+        <button disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>
+          Previous
+        </button>
+        <span>
+          {safePage} / {pages}
+        </span>
+        <button
+          disabled={safePage >= pages}
+          onClick={() => setPage(safePage + 1)}
+        >
+          Next
+        </button>
+      </div>
+    </section>
+  );
 }
-export function Timeline({library}:{library:Library}){
- const eras=Array.from(new Map(library.days.map(d=>[d.era,{color:d.color,day:d.number}])).entries())
- return <div className="timeline"><div className="section-heading"><h2>One story, a journey through Scripture</h2></div><div className="timeline-colors">{eras.map(([name,e])=><Link title={name} key={name} to={`/plan?era=${encodeURIComponent(name)}`} style={{background:e.color}}/>)}</div><div className="timeline-labels">{eras.map(([name,e])=><span key={name}><i style={{background:e.color}}/>{name}</span>)}</div></div>
+export function Timeline({ library }: { library: Library }) {
+  const eras = Array.from(
+    new Map(
+      library.days.map((d) => [d.era, { color: d.color, day: d.number }]),
+    ).entries(),
+  );
+  return (
+    <div className="timeline">
+      <div className="section-heading">
+        <h2>One story, a journey through Scripture</h2>
+      </div>
+      <div className="timeline-colors">
+        {eras.map(([name, e]) => (
+          <Link
+            title={name}
+            key={name}
+            to={`/plan?era=${encodeURIComponent(name)}`}
+            style={{ background: e.color }}
+          />
+        ))}
+      </div>
+      <div className="timeline-labels">
+        {eras.map(([name, e]) => (
+          <span key={name}>
+            <i style={{ background: e.color }} />
+            {name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }
-export function LibraryPage({library,user,onChange,onError,mode}:{library:Library;user:string;onChange:()=>void;onError:(e:string)=>void;mode:'plan'|'extras'}){
- const [query,setQuery]=useState('')
- return <div className="app-frame"><Sidebar user={user}/><main className="simple-page"><span className="eyebrow">YOUR DAILY COMPANION</span><h1>{mode==='plan'?'A year in the Word.':'A little more context.'}</h1><p className="page-intro">{mode==='plan'?'365 days. One unfolding story. Find your place and keep going.':'Introductions, conversations, and bonus episodes from 2025.'}</p>{mode==='plan'?<><Timeline library={library}/><DayTable library={library} onChange={onChange} onError={onError}/></>:<><label className="search"><Search size={17}/><input placeholder="Search extra episodes…" aria-label="Search extra episodes" value={query} onChange={e=>setQuery(e.target.value)}/></label>{library.extras.length?<div className="extras-grid">{library.extras.filter(e=>e.title.toLowerCase().includes(query.toLowerCase())).map(e=><Link className="extra-card" to={`/episode/${e.id}`} key={e.id}><div className="section-heading"><Headphones style={{color:e.color}}/>{e.completed_at&&<Check size={18}/>}</div><h2>{episodeTitle(e.title)}</h2><p>{date(e.published_at)} · {Math.ceil(e.duration/60)} min</p><span className="text-link">Open study <ArrowRight size={16}/></span></Link>)}</div>:<div className="empty-content"><Headphones size={32}/><h2>Room for the whole conversation.</h2><p>Introductions and bonus episodes will appear here when imported. Each gets transcripts, commentary, audio links, and a private journal.</p><p className="quiet">The current test imports Day 1 only. Extra episodes don’t count toward your 365 days.</p></div>}</>}</main></div>
+export function LibraryPage({
+  library,
+  user,
+  onChange,
+  onError,
+  mode,
+}: {
+  library: Library;
+  user: string;
+  onChange: () => void;
+  onError: (e: string) => void;
+  mode: "plan" | "extras";
+}) {
+  const [query, setQuery] = useState("");
+  return (
+    <div className="app-frame">
+      <Sidebar user={user} />
+      <main className="simple-page">
+        <span className="eyebrow">YOUR DAILY COMPANION</span>
+        <h1>
+          {mode === "plan" ? "A year in the Word." : "A little more context."}
+        </h1>
+        <p className="page-intro">
+          {mode === "plan"
+            ? "365 days. One unfolding story. Find your place and keep going."
+            : "Introductions, conversations, and bonus episodes from 2025."}
+        </p>
+        {mode === "plan" ? (
+          <>
+            <Timeline library={library} />
+            <DayTable library={library} onChange={onChange} onError={onError} />
+          </>
+        ) : (
+          <>
+            <label className="search">
+              <Search size={17} />
+              <input
+                placeholder="Search extra episodes…"
+                aria-label="Search extra episodes"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            {library.extras.length ? (
+              <div className="extras-grid">
+                {library.extras
+                  .filter((e) =>
+                    e.title.toLowerCase().includes(query.toLowerCase()),
+                  )
+                  .map((e) => (
+                    <Link
+                      className="extra-card"
+                      to={`/episode/${e.id}`}
+                      key={e.id}
+                    >
+                      <div className="section-heading">
+                        <Headphones style={{ color: e.color }} />
+                        {e.completed_at && <Check size={18} />}
+                      </div>
+                      <h2>{episodeTitle(e.title)}</h2>
+                      <p>
+                        {date(e.published_at)} · {Math.ceil(e.duration / 60)}{" "}
+                        min
+                      </p>
+                      <span className="text-link">
+                        Open study <ArrowRight size={16} />
+                      </span>
+                    </Link>
+                  ))}
+              </div>
+            ) : (
+              <div className="empty-content">
+                <Headphones size={32} />
+                <h2>Room for the whole conversation.</h2>
+                <p>
+                  Introductions and bonus episodes will appear here when
+                  imported. Each gets transcripts, commentary, audio links, and
+                  a private journal.
+                </p>
+                <p className="quiet">
+                  The current test imports Day 1 only. Extra episodes don’t
+                  count toward your 365 days.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
 }
-export function Journal({user,onError}:{user:string;onError:(e:string)=>void}){
- const [notes,setNotes]=useState<Note[]|null>(null),[query,setQuery]=useState('')
- useEffect(()=>{api<Note[]>('/notes').then(setNotes).catch(e=>onError(e.message))},[])
- return <div className="app-frame"><Sidebar user={user}/><main className="simple-page"><span className="eyebrow">YOUR PRIVATE REFLECTIONS</span><h1>What stays with you.</h1><p className="page-intro">Your notes, questions, and prayers, gathered along the way.</p><label className="search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search your reflections…" aria-label="Search your reflections"/></label>{notes===null?<p role="status">Loading reflections…</p>:notes.length?<div className="journal-grid">{notes.filter(n=>n.body.toLowerCase().includes(query.toLowerCase())).map(n=><article className="journal-card" key={n.id}><span className="eyebrow">{n.kind} · {date(n.created_at)}</span><p>{n.body}</p><Link className="text-link" to={n.day?`/day/${n.day}`:`/episode/${n.episode}`}>Return to {n.day?`Day ${n.day}`:'episode'} <ArrowRight size={15}/></Link></article>)}</div>:<div className="empty-content"><NotebookPen size={32}/><h2>A space to make it your own.</h2><p>Open a day and save a note or journal entry. Your reflections will collect here, just for you.</p><Link className="primary" to="/day/1">Begin with Day 1 <ArrowRight size={16}/></Link></div>}</main></div>
+export function Journal({
+  user,
+  onError,
+}: {
+  user: string;
+  onError: (e: string) => void;
+}) {
+  const [notes, setNotes] = useState<Note[] | null>(null),
+    [query, setQuery] = useState("");
+  useEffect(() => {
+    api<Note[]>("/notes")
+      .then(setNotes)
+      .catch((e) => onError(e.message));
+  }, []);
+  return (
+    <div className="app-frame">
+      <Sidebar user={user} />
+      <main className="simple-page">
+        <span className="eyebrow">YOUR PRIVATE REFLECTIONS</span>
+        <h1>What stays with you.</h1>
+        <p className="page-intro">
+          Your notes, questions, and prayers, gathered along the way.
+        </p>
+        <label className="search">
+          <Search size={17} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search your reflections…"
+            aria-label="Search your reflections"
+          />
+        </label>
+        {notes === null ? (
+          <p role="status">Loading reflections…</p>
+        ) : notes.length ? (
+          <div className="journal-grid">
+            {notes
+              .filter((n) => n.body.toLowerCase().includes(query.toLowerCase()))
+              .map((n) => (
+                <article className="journal-card" key={n.id}>
+                  <span className="eyebrow">
+                    {n.kind} · {date(n.created_at)}
+                  </span>
+                  <p>{n.body}</p>
+                  <Link
+                    className="text-link"
+                    to={n.day ? `/day/${n.day}` : `/episode/${n.episode}`}
+                  >
+                    Return to {n.day ? `Day ${n.day}` : "episode"}{" "}
+                    <ArrowRight size={15} />
+                  </Link>
+                </article>
+              ))}
+          </div>
+        ) : (
+          <div className="empty-content">
+            <NotebookPen size={32} />
+            <h2>A space to make it your own.</h2>
+            <p>
+              Open a day and save a note or journal entry. Your reflections will
+              collect here, just for you.
+            </p>
+            <Link className="primary" to="/day/1">
+              Begin with Day 1 <ArrowRight size={16} />
+            </Link>
+          </div>
+        )}
+      </main>
+    </div>
+  );
 }
