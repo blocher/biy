@@ -14,3 +14,8 @@ media/
 staticfiles/
 .DS_Store
 *.log
+
+*.tsbuildinfo
+# Full local 12ui conversion artifacts contain redundant assets and temporary URLs.
+docs/design/*
+!docs/design/README.md

@@ -21,7 +21,7 @@ export function Home({user,library,onChange,onError}:{user:string;library:Librar
  'hero-progress':<div className="progress-panel"><div><strong>{library.completed}</strong> of 365 days complete <span>{percent}%</span></div><progress value={library.completed} max={365} aria-label="Year completion"/><p className="quiet">Every day is a new beginning.</p></div>,
  'hero-quote':null,
  'reading-rhythm':<DayTable library={library} onChange={onChange} onError={onError} compact/>,
- 'reflection':<><span className="eyebrow">PAUSE & REFLECT</span><h2>What is staying<br/>with you today?</h2><p>A thought, a question, a moment of grace.<br/>Make a little space to notice.</p><Link className="text-link" to="/journal"><NotebookPen size={18}/> Open your journal <ArrowRight size={16}/></Link></>,
+ 'reflection':<><span className="eyebrow">PAUSE & REFLECT</span><h2>What is staying <br/>with you today?</h2><p>A thought, a question, a moment of grace. <br/>Make a little space to notice.</p><Link className="text-link" to="/journal"><NotebookPen size={18}/> Open your journal <ArrowRight size={16}/></Link></>,
  'listen':<><span className="eyebrow">BEYOND THE DAILY READING</span><h2>Listen a little deeper.</h2><p>Explore the introductions and conversations that help the bigger story come into focus.</p><Link className="text-link" to="/extras"><Headphones size={18}/> Extra episodes <ArrowRight size={16}/></Link></>,
  'eras':<Timeline library={library}/>,
  }}/>

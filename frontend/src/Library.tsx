@@ -1,11 +1,13 @@
 import {useMemo,useState,useEffect} from 'react'
-import {Link} from 'react-router-dom'
+import {Link,useSearchParams} from 'react-router-dom'
 import {ArrowRight,Check,Search,List,LayoutGrid,Headphones,NotebookPen} from 'lucide-react'
 import type {Library,PlanDay,Note} from './types'
 import {api,date,episodeTitle} from './api'
 import {Sidebar} from './navigation'
 export function DayTable({library,onChange,onError,compact=false}:{library:Library;onChange:()=>void;onError:(e:string)=>void;compact?:boolean}){
- const [query,setQuery]=useState(''),[era,setEra]=useState(''),[status,setStatus]=useState('all'),[view,setView]=useState('list'),[page,setPage]=useState(1),[saving,setSaving]=useState<number|null>(null)
+ const [params]=useSearchParams()
+ const [query,setQuery]=useState(''),[era,setEra]=useState(params.get('era')||''),[status,setStatus]=useState('all'),[view,setView]=useState('list'),[page,setPage]=useState(1),[saving,setSaving]=useState<number|null>(null)
+ useEffect(()=>{setEra(params.get('era')||'');setPage(1)},[params])
  const eras=useMemo(()=>Array.from(new Map(library.days.map(d=>[d.era,d.color]))),[library])
  const filtered=library.days.filter(d=>(!era||d.era===era)&&(status==='all'||(status==='complete'?!!d.completed_at:!d.completed_at))&&(!query||`${d.number} day ${d.number} ${d.readings.join(' ')} ${d.episode?.title||''}`.toLowerCase().includes(query.toLowerCase())))
  const count=compact?8:25,pages=Math.max(1,Math.ceil(filtered.length/count)),safePage=Math.min(page,pages),shown=filtered.slice((safePage-1)*count,safePage*count)

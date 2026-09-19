@@ -132,3 +132,39 @@ class APITests(TestCase):
     def test_out_of_year_database_constraint(self):
         with self.assertRaises(IntegrityError),transaction.atomic():
             Episode.objects.filter(pk=self.episode.pk).update(source_date='2026-01-01')
+
+class GenerationTests(TestCase):
+    def setUp(self):
+        self.era=Era.objects.create(name='Early World',color='#64b6bd',order=1)
+        self.ep=Episode.objects.create(guid='ai-test',era=self.era,title='Introduction',published_at=datetime(2025,1,1,tzinfo=dt_timezone.utc),source_date='2025-01-01',audio_url='https://example.org/test.mp3',audio_file='episodes/1/audio.mp3',transcript=[{'id':0,'start':0,'end':10,'speaker':'A','text':'In the beginning God created the heavens and the earth.'},{'id':1,'start':10,'end':20,'speaker':'A','text':'This teaches us that creation is a gift.'},{'id':2,'start':20,'end':25,'speaker':'A','text':'Let us pray together.'}])
+
+    def test_commentary_is_source_preserving_and_outline_uses_real_offsets(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from .importing import generate_study,Classifications,StudyContent
+        labels=Classifications.model_validate({'segments':[{'id':0,'kind':'scripture','commentary_text':None},{'id':1,'kind':'commentary','commentary_text':None},{'id':2,'kind':'prayer','commentary_text':None}]})
+        content=StudyContent.model_validate({'summary':'The episode reflects on creation as a gift.','paragraphs':[{'heading':'Creation as gift','text':'Creation is a gift.','segment_ids':[1]}],'outline':[{'title':'Creation as gift','segment_id':1}]})
+        client=Mock();client.responses.parse.side_effect=[SimpleNamespace(output_parsed=labels),SimpleNamespace(output_parsed=content)]
+        with TemporaryDirectory() as directory,override_settings(MEDIA_ROOT=Path(directory)):
+            Path(directory,'episodes/1').mkdir(parents=True)
+            generate_study(self.ep,client)
+            generated_input=json.loads(client.responses.parse.call_args_list[1].kwargs['input'][1]['content'])
+            self.assertEqual([s['id'] for s in generated_input['commentary']],[1,2])
+            self.assertEqual(self.ep.outline[0]['start'],10)
+            self.assertEqual(len(self.ep.transcript),3)
+            self.assertEqual(self.ep.status,'ready')
+            # Checkpoints prevent repeated paid generation on retry.
+            client.responses.parse.reset_mock()
+            generate_study(self.ep,client)
+            client.responses.parse.assert_not_called()
+
+    def test_rejects_rewritten_mixed_commentary(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from .importing import generate_study,Classifications
+        labels=Classifications.model_validate({'segments':[{'id':0,'kind':'scripture','commentary_text':None},{'id':1,'kind':'mixed','commentary_text':'An invented paraphrase.'},{'id':2,'kind':'prayer','commentary_text':None}]})
+        client=Mock();client.responses.parse.return_value=SimpleNamespace(output_parsed=labels)
+        with TemporaryDirectory() as directory,override_settings(MEDIA_ROOT=Path(directory)):
+            Path(directory,'episodes/1').mkdir(parents=True)
+            with self.assertRaisesRegex(ValueError,'exact source excerpt'):
+                generate_study(self.ep,client)
