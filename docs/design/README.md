@@ -11,3 +11,7 @@ Four visual directions were explored with 12ui. Candidate B was selected for its
 The generated HTML documents and element IDs are retained in `frontend/src/design`, with their CSS and extracted images. `Design.tsx` binds the exported sections to real data and React controls. `styles.css` adapts fixed viewport anchors for growing transcripts, all 365 days, keyboard access and small screens. Source mockup names, dates, passages, progress and transcript excerpts are replaced with actual stored data. Generated mockup text is never a content source.
 
 All period colors come directly from PDF fill colors. Conquest and Judges is a combined period; the repeated Messianic Checkpoints are preserved. Local full conversion artifacts are ignored under `docs/design`; reusable checked-in templates and assets live in the frontend.
+
+## Collaborative leaderboard (2026-09-20)
+
+The leaderboard uses candidate C from the community-progress design run, selected for its restrained table and comparison dropdown. Conversion `0f541002-f9bd-4321-b053-5a2d7ab3f8d3` and responsive HTML export `7b52067c-10f1-4292-a962-cef1cc9f9fa8` supply `frontend/src/design/leaderboard.html` and its scoped CSS. `Leaderboard.tsx` binds the existing app navigation, persisted comparison control, shared start date, and authenticated progress data. `leaderboard.css` adapts the converted document to the existing shell and readable mobile progress rows.

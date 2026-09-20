@@ -1,9 +1,10 @@
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import httpx
 from django.core.management.base import BaseCommand, CommandError
-from django.db import connection
+from django.db import close_old_connections, connection
 from openai import OpenAI
 
 from study.importing import (
@@ -14,6 +15,7 @@ from study.importing import (
     parse_feed,
     transcribe,
 )
+from study.models import Episode
 
 
 class Command(BaseCommand):
@@ -34,8 +36,58 @@ class Command(BaseCommand):
         stage = parser.add_mutually_exclusive_group()
         stage.add_argument("--catalog-only", action="store_true")
         stage.add_argument("--download-only", action="store_true")
+        parser.add_argument(
+            "--workers",
+            type=int,
+            default=1,
+            help="Number of episodes to process concurrently (1-8; default: 1).",
+        )
+
+    def process_episode(self, episode_id, download_only):
+        """Process one independently locked episode in a worker thread."""
+        close_old_connections()
+        ep = None
+        locked = False
+        try:
+            ep = Episode.objects.get(pk=episode_id)
+            # This lock is session-scoped, so acquisition and release must stay on this thread.
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_try_advisory_lock(2025, %s)", [ep.id])
+                locked = cursor.fetchone()[0]
+            if not locked:
+                raise CommandError(f"Episode {ep.id} is being processed by another importer.")
+            download_audio(ep)
+            if download_only or ep.status == "ready":
+                return f"Audio ready: {ep.title}"
+            if not os.getenv("OPENAI_API_KEY"):
+                raise CommandError(
+                    "Audio downloaded. Set OPENAI_API_KEY in the ignored .env, then rerun this same single-episode command. No AI requests were made."
+                )
+            client = OpenAI(timeout=180, max_retries=2)
+            if not ep.transcript:
+                transcribe(ep, client)
+            generate_study(ep, client)
+            return f"Ready: {ep.title}"
+        except Exception as exc:
+            # Avoid persisting API error payloads or credentials. Checkpoints remain resumable.
+            if ep is not None:
+                ep.status = "failed"
+                ep.error = f"{type(exc).__name__}: processing did not finish; rerun the selected episode."
+                ep.save(update_fields=["status", "error"])
+            if isinstance(exc, CommandError):
+                raise
+            raise CommandError(
+                f"{type(exc).__name__}: episode {episode_id} failed. Check local configuration and resume; completed checkpoints were preserved."
+            ) from None
+        finally:
+            if locked:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT pg_advisory_unlock(2025, %s)", [episode_id])
+            close_old_connections()
 
     def handle(self, **options):
+        if not 1 <= options["workers"] <= 8:
+            raise CommandError("--workers must be between 1 and 8.")
         if options["feed_file"]:
             xml = options["feed_file"].read_bytes()
         else:
@@ -52,45 +104,26 @@ class Command(BaseCommand):
         if options["day"] is not None and len(rows) != 1:
             raise CommandError("Ambiguous day: expected exactly one 2025 episode.")
         self.stdout.write(f"Selected {len(rows)} episode(s), all published in 2025.")
-        for row in rows:
-            ep = catalog_entry(row)
-            if options["catalog_only"]:
+        episodes = [catalog_entry(row) for row in rows]
+        if options["catalog_only"]:
+            for ep in episodes:
                 self.stdout.write(f"Cataloged: {ep.title}")
-                continue
-            # Session advisory lock prevents overlapping CLI runs from duplicating paid calls.
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT pg_try_advisory_lock(2025, %s)", [ep.id])
-                locked = cursor.fetchone()[0]
-            if not locked:
-                raise CommandError(f"Episode {ep.id} is being processed by another importer.")
-            try:
-                download_audio(ep)
-                self.stdout.write(f"Audio ready: {ep.title}")
-                if options["download_only"] or ep.status == "ready":
-                    continue
-                if not os.getenv("OPENAI_API_KEY"):
-                    raise CommandError(
-                        "Audio downloaded. Set OPENAI_API_KEY in the ignored .env, then rerun this same single-episode command. No AI requests were made."
-                    )
-                client = OpenAI(timeout=180, max_retries=2)
-                if not ep.transcript:
-                    self.stdout.write("Transcribing (three-minute checkpoints)…")
-                    transcribe(ep, client)
-                self.stdout.write("Separating Scripture and generating study views…")
-                generate_study(ep, client)
-                self.stdout.write(f"Ready: {ep.title}")
-            except Exception as exc:
-                # Avoid persisting API error payloads or credentials. Checkpoints remain resumable.
-                ep.status = "failed"
-                ep.error = (
-                    f"{type(exc).__name__}: processing did not finish; rerun the selected episode."
-                )
-                ep.save(update_fields=["status", "error"])
-                if isinstance(exc, CommandError):
-                    raise
-                raise CommandError(
-                    f"{type(exc).__name__}: episode {ep.id} failed. Check local configuration and resume; completed checkpoints were preserved."
-                ) from None
-            finally:
-                with connection.cursor() as cursor:
-                    cursor.execute("SELECT pg_advisory_unlock(2025, %s)", [ep.id])
+            return
+
+        if options["workers"] > 1:
+            self.stdout.write(f"Processing with {options['workers']} concurrent episode workers.")
+        failures = []
+        with ThreadPoolExecutor(max_workers=options["workers"]) as executor:
+            futures = {
+                executor.submit(self.process_episode, ep.id, options["download_only"]): ep
+                for ep in episodes
+            }
+            for future in as_completed(futures):
+                try:
+                    self.stdout.write(future.result())
+                except CommandError as exc:
+                    failures.append(str(exc))
+        if failures:
+            raise CommandError(
+                f"{len(failures)} episode(s) did not finish; completed checkpoints were preserved. First failure: {failures[0]}"
+            )

@@ -1,7 +1,70 @@
-import type { Scripture as Passage } from "./types";
-export function Scripture({ passages }: { passages: Passage[] }) {
+import { Pause, Play } from "lucide-react";
+import { time } from "./api";
+import type { Scripture as Passage, ScriptureAudioCue } from "./types";
+
+type ScriptureAudio = {
+  episodeActive: boolean;
+  position: number;
+  playing: boolean;
+  playAll: () => void;
+  playPassage: (cue: ScriptureAudioCue) => void;
+  toggle: () => void;
+};
+
+export function Scripture({
+  passages,
+  audio,
+}: {
+  passages: Passage[];
+  audio?: ScriptureAudio;
+}) {
+  const cues = passages.flatMap((passage) =>
+    passage.audio ? [passage.audio] : [],
+  );
+  const currentCue = cues.find(
+    (cue) =>
+      audio?.episodeActive &&
+      audio.position >= cue.start &&
+      audio.position < cue.end,
+  );
+  const totalSeconds = cues.reduce(
+    (total, cue) => total + cue.end - cue.start,
+    0,
+  );
   return (
     <div className="scripture-text">
+      {audio && cues.length > 0 && (
+        <div className="scripture-audio-bar">
+          <button
+            className="scripture-audio-primary"
+            onClick={() => (currentCue ? audio.toggle() : audio.playAll())}
+          >
+            <span className="scripture-audio-icon">
+              {currentCue && audio.playing ? (
+                <Pause size={17} />
+              ) : (
+                <Play size={17} />
+              )}
+            </span>
+            <span>
+              <strong>
+                {currentCue
+                  ? audio.playing
+                    ? "Pause Scripture"
+                    : "Resume Scripture"
+                  : "Play Scripture"}
+              </strong>
+              <small>
+                {cues.length === passages.length
+                  ? `${cues.length} ${cues.length === 1 ? "reading" : "readings"}`
+                  : `${cues.length} of ${passages.length} readings available`}
+                {" · "}
+                {time(totalSeconds)}
+              </small>
+            </span>
+          </button>
+        </div>
+      )}
       {passages.map((passage, index) => (
         <section
           key={passage.reference}
@@ -9,8 +72,32 @@ export function Scripture({ passages }: { passages: Passage[] }) {
           className="passage"
         >
           <div className="passage-heading">
-            <span className="eyebrow">THE WORD</span>
-            <h2>{passage.reference}</h2>
+            <div>
+              <span className="eyebrow">THE WORD</span>
+              <h2>{passage.reference}</h2>
+            </div>
+            {audio && passage.audio && (
+              <button
+                className="passage-audio-button"
+                aria-label={`${currentCue === passage.audio && audio.playing ? "Pause" : "Play"} ${passage.reference}`}
+                onClick={() =>
+                  currentCue === passage.audio
+                    ? audio.toggle()
+                    : audio.playPassage(passage.audio!)
+                }
+              >
+                {currentCue === passage.audio && audio.playing ? (
+                  <Pause size={14} />
+                ) : (
+                  <Play size={14} />
+                )}
+                <span>
+                  {currentCue === passage.audio && audio.playing
+                    ? "Pause passage"
+                    : "Play passage"}
+                </span>
+              </button>
+            )}
           </div>
           {passage.groups.map((group, gi) =>
             group.missing ? (

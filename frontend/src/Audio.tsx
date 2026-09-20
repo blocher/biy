@@ -9,11 +9,13 @@ import {
 import { Play, Pause, SkipBack, SkipForward, X, Volume2 } from "lucide-react";
 import { api, time, episodeTitle } from "./api";
 import type { Episode } from "./types";
+export type AudioClip = { start: number; end: number };
 type AudioState = {
   episode: Episode | null;
   position: number;
   playing: boolean;
   play: (e: Episode, at?: number) => void;
+  playClips: (e: Episode, clips: AudioClip[]) => void;
   seek: (n: number) => void;
   toggle: () => void;
 };
@@ -34,7 +36,9 @@ export function AudioProvider({
     pending = useRef<number | null>(null),
     autoplay = useRef(false),
     lastSave = useRef(0),
-    episodeRef = useRef<Episode | null>(null);
+    episodeRef = useRef<Episode | null>(null),
+    clipQueue = useRef<AudioClip[]>([]),
+    clipIndex = useRef(0);
   function save() {
     const e = episodeRef.current;
     if (e && audio.current)
@@ -42,7 +46,7 @@ export function AudioProvider({
         position: audio.current.currentTime,
       }).catch((err) => onError(err.message));
   }
-  function play(e: Episode, at?: number) {
+  function begin(e: Episode, at?: number) {
     if (!e.has_audio && !e.audio) {
       onError("Audio has not been imported for this episode yet.");
       return;
@@ -62,12 +66,38 @@ export function AudioProvider({
     setPosition(pending.current);
     lastSave.current = 0;
   }
+  function play(e: Episode, at?: number) {
+    clipQueue.current = [];
+    clipIndex.current = 0;
+    begin(e, at);
+  }
+  function playClips(e: Episode, clips: AudioClip[]) {
+    const valid = clips.filter(
+      (clip) =>
+        Number.isFinite(clip.start) &&
+        Number.isFinite(clip.end) &&
+        clip.start >= 0 &&
+        clip.end > clip.start,
+    );
+    if (!valid.length) {
+      onError("Scripture audio is not available for this reading yet.");
+      return;
+    }
+    clipQueue.current = valid;
+    clipIndex.current = 0;
+    begin(e, valid[0].start);
+  }
   function seek(n: number) {
-    if (audio.current)
-      audio.current.currentTime = Math.max(
-        0,
-        Math.min(n, audio.current.duration || episode?.duration || 0),
-      );
+    if (audio.current) {
+      const clip = clipQueue.current[clipIndex.current];
+      const minimum = clip?.start ?? 0;
+      const maximum =
+        clip?.end ??
+        (Number.isFinite(audio.current.duration)
+          ? audio.current.duration
+          : (episode?.duration ?? 0));
+      audio.current.currentTime = Math.max(minimum, Math.min(n, maximum));
+    }
   }
   function toggle() {
     if (!audio.current) return;
@@ -85,7 +115,7 @@ export function AudioProvider({
   }, []);
   return (
     <AudioContext.Provider
-      value={{ episode, position, playing, play, seek, toggle }}
+      value={{ episode, position, playing, play, playClips, seek, toggle }}
     >
       {children}
       <audio
@@ -109,6 +139,23 @@ export function AudioProvider({
         onTimeUpdate={() => {
           const value = audio.current?.currentTime || 0;
           setPosition(value);
+          const clip = clipQueue.current[clipIndex.current];
+          if (audio.current && clip && value >= clip.end - 0.05) {
+            const nextIndex = clipIndex.current + 1;
+            const next = clipQueue.current[nextIndex];
+            if (next) {
+              clipIndex.current = nextIndex;
+              audio.current.currentTime = next.start;
+              setPosition(next.start);
+            } else {
+              audio.current.pause();
+              audio.current.currentTime = clip.end;
+              setPosition(clip.end);
+              clipQueue.current = [];
+              clipIndex.current = 0;
+            }
+            return;
+          }
           if (Date.now() - lastSave.current > 15000) {
             lastSave.current = Date.now();
             save();
@@ -121,6 +168,8 @@ export function AudioProvider({
         }}
         onEnded={() => {
           setPlaying(false);
+          clipQueue.current = [];
+          clipIndex.current = 0;
           save();
         }}
         onError={() =>
@@ -209,6 +258,8 @@ export function AudioProvider({
               audio.current?.pause();
               save();
               episodeRef.current = null;
+              clipQueue.current = [];
+              clipIndex.current = 0;
               setEpisode(null);
             }}
           >

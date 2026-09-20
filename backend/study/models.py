@@ -45,6 +45,7 @@ class Episode(models.Model):
     classification = models.JSONField(default=list)
     edited_commentary = models.JSONField(default=list)
     summary = models.TextField(blank=True)
+    key_points = models.JSONField(default=list)
     outline = models.JSONField(default=list)
     provenance = models.JSONField(default=dict)
     processed_at = models.DateTimeField(null=True, blank=True)
@@ -100,6 +101,8 @@ class Note(models.Model):
     episode = models.ForeignKey(Episode, null=True, blank=True, on_delete=models.CASCADE)
     kind = models.CharField(max_length=12, choices=[("note", "Note"), ("journal", "Journal")])
     body = models.TextField()
+    shared = models.BooleanField(default=False)
+    shared_notified_at = models.DateTimeField(null=True, blank=True)
     audio_time = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -120,3 +123,30 @@ class Note(models.Model):
 class LoginAttempt(models.Model):
     address = models.GenericIPAddressField()
     attempted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    leaderboard_visible = models.BooleanField(default=True)
+    email_notifications = models.BooleanField(default=True)
+    progress_basis = models.CharField(
+        max_length=24,
+        default="first-completion",
+        choices=[
+            ("first-completion", "Personal start dates"),
+            ("leaderboard", "Leaderboard start date"),
+            ("january-1", "January 1"),
+        ],
+    )
+
+
+class CommunitySettings(models.Model):
+    """One shared schedule for the small trusted group."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    start_date = models.DateField()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=models.Q(id=1), name="single_community_settings")
+        ]

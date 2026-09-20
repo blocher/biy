@@ -38,6 +38,18 @@ class FeedTests(TestCase):
         self.assertEqual(next(r for r in rows if r["guid"] == "e")["day"], 148)
         self.assertIsNone(next(r for r in rows if r["guid"] == "b")["day"])
 
+    def test_duplicate_day_prefers_the_entry_on_its_plan_date(self):
+        feed = (
+            "<rss><channel>"
+            + item("Day 324: The Name of Jesus (2025)", "Mon, 20 Oct 2025 03:15:00 -0400", "wrong")
+            + item("Day 324: The Name of Jesus (2025)", "Thu, 20 Nov 2025 03:15:00 -0500", "correct")
+            + "</channel></rss>"
+        )
+
+        rows = parse_feed(feed)
+
+        self.assertEqual([row["guid"] for row in rows], ["correct"])
+
     def test_day_plan_exact_and_idempotent(self):
         call_command("seed_plan", verbosity=0)
         call_command("seed_plan", verbosity=0)
@@ -125,6 +137,63 @@ class APITests(TestCase):
         self.assertEqual(data["completed"], 0)
         self.assertIsNotNone(data["extras"][0]["completed_at"])
 
+    def test_day_detail_exposes_aligned_scripture_audio(self):
+        Verse.objects.create(
+            book="Genesis",
+            chapter=1,
+            number=1,
+            text="In the beginning God created the heavens and the earth.",
+        )
+        self.episode.audio_file = "episodes/day-1/audio.mp3"
+        self.episode.transcript = [
+            {
+                "id": 1,
+                "start": 12.5,
+                "end": 17.25,
+                "speaker": "Voice A",
+                "text": "In the beginning God created the heavens and the earth.",
+            }
+        ]
+        self.episode.classification = [
+            {"id": 1, "kind": "scripture", "commentary_text": None}
+        ]
+        self.episode.save(
+            update_fields=["audio_file", "transcript", "classification"]
+        )
+
+        scripture = self.client.get("/api/days/1").json()["scripture"]
+
+        self.assertEqual(
+            scripture[0]["audio"],
+            {
+                "passage_index": 0,
+                "reference": "Genesis 1",
+                "start": 12.5,
+                "end": 17.25,
+                "confidence": 1.0,
+            },
+        )
+
+    def test_completion_date_can_be_overridden_after_completion(self):
+        self.assertEqual(
+            self.put("/api/days/1/completed-at", {"completed_on": "2025-01-02"}).status_code,
+            400,
+        )
+        self.put("/api/days/1/completion", {"completed": True})
+        response = self.put(
+            "/api/days/1/completed-at", {"completed_on": "2025-01-02"}
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(response.json()["completed_at"].startswith("2025-01-02"))
+
+        self.put(f"/api/episodes/{self.extra.id}/completion", {"completed": True})
+        response = self.put(
+            f"/api/episodes/{self.extra.id}/completed-at",
+            {"completed_on": "2025-01-03"},
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(response.json()["completed_at"].startswith("2025-01-03"))
+
     def test_notes_are_private_and_daily_episode_notes_use_day(self):
         response = self.client.post(
             f"/api/episodes/{self.episode.id}/notes",
@@ -182,6 +251,47 @@ class APITests(TestCase):
         )
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(c.get("/api/library").status_code, 200)
+
+    def test_account_details_and_password_can_be_updated(self):
+        response = self.put(
+            "/api/account",
+            {
+                "username": "benjamin",
+                "first_name": "Benjamin",
+                "last_name": "Locher",
+                "email": "benjamin@example.com",
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["username"], "benjamin")
+        self.assertEqual(response.json()["email"], "benjamin@example.com")
+        self.assertEqual(
+            self.put(
+                "/api/account/password",
+                {"new_password": "a-new-long-password"},
+            ).status_code,
+            200,
+        )
+        self.client.logout()
+        self.assertTrue(self.client.login(username="benjamin", password="a-new-long-password"))
+
+    def test_account_rejects_duplicate_username(self):
+        self.assertEqual(
+            self.put(
+                "/api/account",
+                {"username": "other", "first_name": "", "last_name": "", "email": ""},
+            ).status_code,
+            422,
+        )
+
+    def test_account_rejects_invalid_email(self):
+        self.assertEqual(
+            self.put(
+                "/api/account",
+                {"username": "ben", "first_name": "", "last_name": "", "email": "not-an-email"},
+            ).status_code,
+            422,
+        )
 
     @override_settings(DEBUG=True)
     def test_private_audio_supports_seek_ranges(self):
@@ -252,6 +362,9 @@ class GenerationTests(TestCase):
         content = StudyContent.model_validate(
             {
                 "summary": "The episode reflects on creation as a gift.",
+                "key_points": [
+                    {"text": "Creation is received as a gift from God."},
+                ],
                 "paragraphs": [
                     {
                         "heading": "Creation as gift",
@@ -259,7 +372,20 @@ class GenerationTests(TestCase):
                         "segment_ids": [1],
                     }
                 ],
-                "outline": [{"title": "Creation as gift", "segment_id": 1}],
+                "outline": [
+                    {
+                        "heading": "Reading",
+                        "title": "Bible reading",
+                        "segment_id": 0,
+                        "speaker": "Fr. Mike Schmitz",
+                    },
+                    {
+                        "heading": "Commentary",
+                        "title": "Creation as gift",
+                        "segment_id": 1,
+                        "speaker": "Fr. Mike Schmitz",
+                    },
+                ],
             }
         )
         client = Mock()
@@ -273,8 +399,15 @@ class GenerationTests(TestCase):
             generated_input = json.loads(
                 client.responses.parse.call_args_list[1].kwargs["input"][1]["content"]
             )
+            self.assertEqual([s["id"] for s in generated_input["scripture"]], [0])
             self.assertEqual([s["id"] for s in generated_input["commentary"]], [1, 2])
-            self.assertEqual(self.ep.outline[0]["start"], 10)
+            prompt = client.responses.parse.call_args_list[1].kwargs["input"][0]["content"]
+            self.assertIn("Fr. Mike", prompt)
+            self.assertIn("Every outline item must have heading Reading or Commentary", prompt)
+            self.assertIn("key points", prompt)
+            self.assertEqual(self.ep.outline[0]["start"], 0)
+            self.assertEqual(self.ep.outline[1]["start"], 10)
+            self.assertEqual(self.ep.key_points[0]["text"], "Creation is received as a gift from God.")
             self.assertEqual(len(self.ep.transcript), 3)
             self.assertEqual(self.ep.status, "ready")
             # Checkpoints prevent repeated paid generation on retry.

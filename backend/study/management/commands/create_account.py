@@ -16,13 +16,25 @@ class Command(BaseCommand):
             action="store_true",
             help="Seed with an unusable password; run changepassword to activate.",
         )
+        parser.add_argument(
+            "--admin",
+            action="store_true",
+            help="Allow this account to manage other BIY accounts.",
+        )
 
-    def handle(self, username, seed, **options):
+    def handle(self, username, seed, admin, **options):
         User = get_user_model()
-        if User.objects.filter(username=username).exists():
-            self.stdout.write("Account already exists; password unchanged.")
+        existing = User.objects.filter(username=username).first()
+        make_admin = admin or username == "ben"
+        if existing:
+            if make_admin and not existing.is_staff:
+                existing.is_staff = True
+                existing.save(update_fields=["is_staff"])
+                self.stdout.write("Account already exists; administrator access enabled.")
+            else:
+                self.stdout.write("Account already exists; password unchanged.")
             return
-        user = User(username=username)
+        user = User(username=username, is_staff=make_admin)
         if seed:
             user.set_unusable_password()
         else:
@@ -37,5 +49,6 @@ class Command(BaseCommand):
         user.save()
         self.stdout.write(
             f"Created {username}."
+            + (" Administrator access enabled." if make_admin else "")
             + (" Set a password with manage.py changepassword." if seed else "")
         )

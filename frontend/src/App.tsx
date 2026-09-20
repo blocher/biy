@@ -5,17 +5,22 @@ import {
   Route,
   useLocation,
   Link,
+  Navigate,
 } from "react-router-dom";
 import { ArrowRight, X } from "lucide-react";
 import { api, setCSRF } from "./api";
 import type { Library } from "./types";
-import { Brand, LogoutContext } from "./navigation";
+import { AdminContext, Brand, LogoutContext } from "./navigation";
 import { AudioProvider } from "./Audio";
 import { Study } from "./Study";
 import { LibraryPage, Journal } from "./Library";
 import { Home } from "./Home";
+import { Leaderboard } from "./Leaderboard";
+import { Account } from "./Account";
+import { AdminPeople } from "./AdminPeople";
 function AppContent() {
   const [user, setUser] = useState<string | null>(null),
+    [isAdmin, setIsAdmin] = useState(false),
     [checking, setChecking] = useState(true),
     [library, setLibrary] = useState<Library | null>(null),
     [error, setError] = useState(""),
@@ -30,15 +35,19 @@ function AppContent() {
       .catch((e) => setError(e.message));
   }, []);
   useEffect(() => {
-    api<{ user: { username: string } | null; csrf: string }>("/session")
+    api<{ user: { username: string; is_admin: boolean } | null; csrf: string }>(
+      "/session",
+    )
       .then((s) => {
         setCSRF(s.csrf);
         setUser(s.user?.username || null);
+        setIsAdmin(s.user?.is_admin || false);
       })
       .catch((e) => setError(e.message))
       .finally(() => setChecking(false));
     const expired = () => {
       setUser(null);
+      setIsAdmin(false);
       setLibrary(null);
     };
     window.addEventListener("session-expired", expired);
@@ -55,13 +64,13 @@ function AppContent() {
     setBusy(true);
     setError("");
     try {
-      const result = await api<{ user: { username: string }; csrf: string }>(
-        "/login",
-        "POST",
-        { username, password },
-      );
+      const result = await api<{
+        user: { username: string; is_admin: boolean };
+        csrf: string;
+      }>("/login", "POST", { username, password });
       setCSRF(result.csrf);
       setUser(result.user.username);
+      setIsAdmin(result.user.is_admin);
       setPassword("");
     } catch (e) {
       setError((e as Error).message);
@@ -73,6 +82,7 @@ function AppContent() {
     try {
       await api("/logout", "POST");
       setUser(null);
+      setIsAdmin(false);
       setLibrary(null);
       const session = await api<{ csrf: string }>("/session");
       setCSRF(session.csrf);
@@ -176,87 +186,110 @@ function AppContent() {
     );
   return (
     <LogoutContext.Provider value={logout}>
-      <AudioProvider key={user} onError={onError}>
-        <a className="skip-link" href="#main-content">
-          Skip to content
-        </a>
-        <div id="main-content">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Home
-                  user={user}
-                  library={library}
-                  onChange={refresh}
-                  onError={onError}
-                />
-              }
-            />
-            <Route
-              path="/plan"
-              element={
-                <LibraryPage
-                  user={user}
-                  library={library}
-                  onChange={refresh}
-                  onError={onError}
-                  mode="plan"
-                />
-              }
-            />
-            <Route
-              path="/extras"
-              element={
-                <LibraryPage
-                  user={user}
-                  library={library}
-                  onChange={refresh}
-                  onError={onError}
-                  mode="extras"
-                />
-              }
-            />
-            <Route
-              path="/journal"
-              element={<Journal user={user} onError={onError} />}
-            />
-            {["/day/:day", "/episode/:episode"].map((path) => (
+      <AdminContext.Provider value={isAdmin}>
+        <AudioProvider key={user} onError={onError}>
+          <a className="skip-link" href="#main-content">
+            Skip to content
+          </a>
+          <div id="main-content">
+            <Routes>
               <Route
-                key={path}
-                path={path}
+                path="/"
                 element={
-                  <Study user={user} onError={onError} onChange={refresh} />
-                }
-              />
-            ))}
-            {["/day/:day/reader", "/episode/:episode/reader"].map((path) => (
-              <Route
-                key={path}
-                path={path}
-                element={
-                  <Study
+                  <Home
                     user={user}
-                    onError={onError}
+                    library={library}
                     onChange={refresh}
-                    reader
+                    onError={onError}
                   />
                 }
               />
-            ))}
-            <Route
-              path="*"
-              element={
-                <div className="simple-page">
-                  <h1>Page not found</h1>
-                  <Link to="/">Return to your journey</Link>
-                </div>
-              }
-            />
-          </Routes>
-        </div>
-        {notice}
-      </AudioProvider>
+              <Route
+                path="/plan"
+                element={<Navigate to={`/${location.search}`} replace />}
+              />
+              <Route
+                path="/extras"
+                element={<LibraryPage user={user} library={library} />}
+              />
+              <Route
+                path="/journal"
+                element={<Journal user={user} onError={onError} />}
+              />
+              <Route
+                path="/leaderboard"
+                element={<Leaderboard user={user} onError={onError} />}
+              />
+              <Route
+                path="/account"
+                element={
+                  <Account
+                    user={user}
+                    onUserChange={setUser}
+                    onError={onError}
+                  />
+                }
+              />
+              <Route
+                path="/admin/people"
+                element={
+                  isAdmin ? (
+                    <AdminPeople
+                      user={user}
+                      onSessionChange={(username, admin) => {
+                        setUser(username);
+                        setIsAdmin(admin);
+                      }}
+                      onError={onError}
+                    />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
+              {["/day/:day", "/episode/:episode"].map((path) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <Study
+                      user={user}
+                      completedDays={library.completed}
+                      onError={onError}
+                      onChange={refresh}
+                    />
+                  }
+                />
+              ))}
+              {["/day/:day/reader", "/episode/:episode/reader"].map((path) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <Study
+                      user={user}
+                      completedDays={library.completed}
+                      onError={onError}
+                      onChange={refresh}
+                      reader
+                    />
+                  }
+                />
+              ))}
+              <Route
+                path="*"
+                element={
+                  <div className="simple-page">
+                    <h1>Page not found</h1>
+                    <Link to="/">Return to your journey</Link>
+                  </div>
+                }
+              />
+            </Routes>
+          </div>
+          {notice}
+        </AudioProvider>
+      </AdminContext.Provider>
     </LogoutContext.Provider>
   );
 }

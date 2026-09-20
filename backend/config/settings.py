@@ -48,3 +48,17 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+
+# Shared journey settings. SMTP configuration matches Therapy2.0.
+LEADERBOARD_START_DATE = os.getenv("LEADERBOARD_START_DATE", "2026-09-20")
+PUBLIC_APP_URL = os.getenv("PUBLIC_APP_URL", "http://localhost:5178").rstrip("/")
+EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+DEFAULT_FROM_EMAIL = os.getenv("DJANGO_DEFAULT_FROM_EMAIL", "")
+EMAIL_HOST = os.getenv("DJANGO_EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("DJANGO_EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("DJANGO_EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("DJANGO_EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("DJANGO_EMAIL_USE_TLS", "true").lower() == "true"
+EMAIL_TIMEOUT = 10
+EMAIL_DELIVERY_MODE = os.getenv("BIY_EMAIL_DELIVERY_MODE", "redirect")
+EMAIL_REDIRECT_TO = os.getenv("DJANGO_EMAIL_REDIRECT_TO", "")

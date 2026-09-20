@@ -15,6 +15,8 @@ export function Notes({
   onError: (e: string) => void;
 }) {
   const [notes, setNotes] = useState<Note[]>([]),
+    [sharedNotes, setSharedNotes] = useState<Note[]>([]),
+    [shared, setShared] = useState(false),
     [body, setBody] = useState(""),
     [kind, setKind] = useState<"note" | "journal">("note"),
     [editing, setEditing] = useState<number | null>(null),
@@ -27,7 +29,17 @@ export function Notes({
     let live = true;
     setBody(sessionStorage.getItem(key) || "");
     setEditing(null);
+    setShared(false);
     setSaved(false);
+    setNotes([]);
+    setSharedNotes([]);
+    void api<Note[]>(
+      `/shared-notes?${target.startsWith("/days/") ? "day" : "episode"}=${target.split("/").at(-1)}`,
+    )
+      .then((data) => {
+        if (live) setSharedNotes(data);
+      })
+      .catch((err) => onError(err.message));
     void api<Note[]>(target + "/notes")
       .then((data) => {
         if (live) setNotes(data);
@@ -51,6 +63,7 @@ export function Notes({
         {
           body,
           kind,
+          shared,
           audio_time:
             attach && audio.episode?.id === episode?.id ? audio.position : null,
         },
@@ -61,6 +74,7 @@ export function Notes({
           : [note, ...current],
       );
       setBody("");
+      setShared(false);
       setEditing(null);
       sessionStorage.removeItem(key);
       setSaved(true);
@@ -80,10 +94,10 @@ export function Notes({
     }
   }
   return (
-    <section className="notes" aria-label="Private notes and journal">
+    <section className="notes" aria-label="Notes and journal">
       <div className="section-heading">
         <h2>Your reflections</h2>
-        <span className="quiet">Only you can see these</span>
+        <span className="quiet">Private unless marked Shared</span>
       </div>
       <div className="segmented">
         <button
@@ -114,6 +128,14 @@ export function Notes({
             : "Capture a thought, a connection, or something to return to…"
         }
       />
+      <label className="share-control">
+        <input
+          type="checkbox"
+          checked={shared}
+          onChange={(e) => setShared(e.target.checked)}
+        />{" "}
+        Shared — visible to all signed-in members
+      </label>
       <div className="note-actions">
         {episode && audio.episode?.id === episode.id && (
           <label>
@@ -136,6 +158,7 @@ export function Notes({
           <button
             onClick={() => {
               setEditing(null);
+              setShared(false);
               change("");
             }}
           >
@@ -154,7 +177,9 @@ export function Notes({
           .map((note) => (
             <article className="note" key={note.id}>
               <div className="note-meta">
-                <span>{date(note.created_at)}</span>
+                <span>
+                  {date(note.created_at)} · {note.shared ? "Shared" : "Private"}
+                </span>
                 {note.audio_time !== null && episode && (
                   <button onClick={() => audio.play(episode, note.audio_time!)}>
                     <Clock size={13} />
@@ -167,6 +192,7 @@ export function Notes({
                     setEditing(note.id);
                     change(note.body);
                     setKind(note.kind);
+                    setShared(note.shared);
                   }}
                 >
                   <Edit3 size={15} />
@@ -179,6 +205,27 @@ export function Notes({
             </article>
           ))}
       </div>
+      <section
+        className="shared-reflections"
+        aria-label="Community reflections"
+      >
+        <h2>Community reflections</h2>
+        {sharedNotes.length ? (
+          sharedNotes.map((note) => (
+            <article className="note" key={note.id}>
+              <div className="note-meta">
+                <strong>{note.author.name}</strong>
+                <span>
+                  {note.kind} · {date(note.created_at)}
+                </span>
+              </div>
+              <p>{note.body}</p>
+            </article>
+          ))
+        ) : (
+          <p className="quiet">No shared reflections from others here yet.</p>
+        )}
+      </section>
     </section>
   );
 }

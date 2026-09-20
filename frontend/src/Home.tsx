@@ -1,16 +1,26 @@
+import { usePreferences, BasisSelect } from "./Preferences";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
   NotebookPen,
   Headphones,
   CheckCircle2,
+  CalendarDays,
+  Clock3,
+  TrendingUp,
 } from "lucide-react";
 import { Design } from "./Design";
 import source from "./design/home.html?raw";
 import type { Library } from "./types";
 import { Sidebar } from "./navigation";
 import { DayTable, Timeline } from "./Library";
-import { episodeTitle } from "./api";
+import { date, episodeTitle } from "./api";
+import { progressStats } from "./progress";
+
+function percent(value: number) {
+  return `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
+}
+
 export function Home({
   user,
   library,
@@ -22,8 +32,29 @@ export function Home({
   onChange: () => void;
   onError: (e: string) => void;
 }) {
+  const preferenceState = usePreferences(onError);
   const next = library.days.find((d) => d.number === library.next_day),
-    percent = Math.round((library.completed / 365) * 100);
+    stats = progressStats(
+      library,
+      preferenceState.preferences?.progress_basis || "first-completion",
+      new Date(),
+      preferenceState.preferences?.leaderboard_start_date,
+    );
+  const schedule =
+    stats.scheduleDelta === null
+      ? {
+          label: "Complete Day 1 to begin",
+          tone: "starting",
+          icon: CalendarDays,
+        }
+      : stats.scheduleDelta === 0
+        ? { label: "On schedule", tone: "on-schedule", icon: CheckCircle2 }
+        : {
+            label: `${Math.abs(stats.scheduleDelta)} day${Math.abs(stats.scheduleDelta) === 1 ? "" : "s"} ${stats.scheduleDelta > 0 ? "ahead of" : "behind"} schedule`,
+            tone: stats.scheduleDelta > 0 ? "ahead" : "behind",
+            icon: stats.scheduleDelta > 0 ? TrendingUp : Clock3,
+          };
+  const ScheduleIcon = schedule.icon;
   return (
     <Design
       source={source}
@@ -82,32 +113,40 @@ export function Home({
             <span className="quiet">Your next unread day</span>
           </>
         ) : (
-          <Link className="primary" to="/plan">
+          <Link className="primary" to="/">
             <CheckCircle2 size={20} /> Revisit your year
           </Link>
         ),
         "hero-progress": (
           <div className="progress-panel">
-            <div>
-              <strong>{library.completed}</strong> of 365 days complete{" "}
-              <span>{percent}%</span>
+            <div className="progress-summary">
+              <strong
+                className={`schedule-status schedule-status--${schedule.tone}`}
+              >
+                <ScheduleIcon size={17} aria-hidden="true" />
+                {schedule.label}
+              </strong>
+              <span>
+                {stats.lastCompleted
+                  ? `Last completed: Day ${stats.lastCompleted.number} · ${date(stats.lastCompleted.completed_at)}`
+                  : "No days completed yet"}
+              </span>
             </div>
             <progress
-              value={library.completed}
+              value={stats.completed}
               max={365}
               aria-label="Year completion"
             />
-            <p className="quiet">Every day is a new beginning.</p>
+            <div className="progress-percentages">
+              <span>{percent(stats.completedPercent)} completed</span>
+              <span>{percent(stats.remainingPercent)} remaining</span>
+            </div>
+            <BasisSelect {...preferenceState} />
           </div>
         ),
         "hero-quote": null,
         "reading-rhythm": (
-          <DayTable
-            library={library}
-            onChange={onChange}
-            onError={onError}
-            compact
-          />
+          <DayTable library={library} onChange={onChange} onError={onError} />
         ),
         reflection: (
           <>

@@ -1,0 +1,65 @@
+import { describe, expect, it } from "vitest";
+import type { Episode, Library, PlanDay } from "./types";
+import { planEntries } from "./planEntries";
+
+const episode = (
+  id: number,
+  published_at: string,
+  day: number | null,
+): Episode => ({
+  id,
+  title: day ? `Day ${day}` : `Supplement ${id}`,
+  day,
+  era: "Early World",
+  color: "#64b6bd",
+  duration: 1200,
+  status: "complete",
+  has_audio: true,
+  source_date: published_at.slice(0, 10),
+  published_at,
+});
+
+const day = (number: number, ep: Episode): PlanDay => ({
+  number,
+  readings: [`Reading ${number}`],
+  era: "Early World",
+  color: "#64b6bd",
+  completed_at: null,
+  episode: ep,
+});
+
+describe("planEntries", () => {
+  it("places supplementary episodes between the correct days in publication order", () => {
+    const day1 = episode(1, "2025-01-01T08:00:00Z", 1);
+    const extra = episode(2, "2025-01-01T18:00:00Z", null);
+    const day2 = episode(3, "2025-01-02T08:00:00Z", 2);
+    const library: Library = {
+      days: [day(1, day1), day(2, day2)],
+      extras: [extra],
+      completed: 0,
+      next_day: 1,
+    };
+
+    expect(planEntries(library).map((entry) => entry.key)).toEqual([
+      "day-1",
+      "episode-2",
+      "day-2",
+    ]);
+  });
+
+  it("keeps multiple episodes with the same timestamp in feed id order", () => {
+    const first = episode(8, "2025-01-03T08:00:00Z", null);
+    const second = episode(9, "2025-01-03T08:00:00Z", null);
+    const library: Library = {
+      days: [],
+      extras: [second, first],
+      completed: 0,
+      next_day: null,
+    };
+
+    expect(planEntries(library).map((entry) => entry.key)).toEqual([
+      "episode-8",
+      "episode-9",
+    ]);
+  });
+});

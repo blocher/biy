@@ -1,5 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,11 +13,20 @@ import {
   Maximize2,
   Play,
   BookOpen,
+  ChevronDown,
   Minus,
   Plus,
+  Pencil,
   X,
 } from "lucide-react";
-import { api, date, episodeTitle, time } from "./api";
+import {
+  api,
+  date,
+  dateInputValue,
+  episodeTitle,
+  shortDate,
+  time,
+} from "./api";
 import type { DayDetail, Episode, Segment } from "./types";
 import { Design } from "./Design";
 import studySource from "./design/study.html?raw";
@@ -23,11 +37,13 @@ import { Scripture } from "./Scripture";
 import { Sidebar } from "./navigation";
 export function Study({
   user,
+  completedDays,
   onError,
   onChange,
   reader = false,
 }: {
   user: string;
+  completedDays: number;
   onError: (e: string) => void;
   onChange: () => void;
   reader?: boolean;
@@ -41,8 +57,10 @@ export function Study({
     [size, setSize] = useState(
       () => Number(localStorage.getItem("biy-font-size")) || 20,
     ),
-    [saving, setSaving] = useState(false);
-  const tab = search.get("tab") || "scripture",
+    [saving, setSaving] = useState(false),
+    [editingCompletionDate, setEditingCompletionDate] = useState(false);
+  const navigate = useNavigate(),
+    tab = search.get("tab") || "scripture",
     audio = useAudio();
   useEffect(() => {
     let live = true;
@@ -96,6 +114,8 @@ export function Study({
     base = day ? `/day/${day.number}` : `/episode/${episode!.id}`;
   const title = episode ? episodeTitle(episode.title) : day!.readings[0],
     completed = data.completed_at;
+  const completionPercent = Math.round((completedDays / 365) * 1000) / 10;
+  const completionPercentLabel = `${Number.isInteger(completionPercent) ? completionPercent : completionPercent.toFixed(1)}%`;
   async function complete() {
     setSaving(true);
     try {
@@ -112,6 +132,22 @@ export function Study({
       onError((e as Error).message);
     } finally {
       setSaving(false);
+    }
+  }
+  async function updateCompletionDate(completed_on: string) {
+    try {
+      const result = await api<{ completed_at: string }>(
+        `${target}/completed-at`,
+        "PUT",
+        { completed_on },
+      );
+      setData((current) =>
+        current ? { ...current, completed_at: result.completed_at } : current,
+      );
+      setEditingCompletionDate(false);
+      onChange();
+    } catch (e) {
+      onError((e as Error).message);
     }
   }
   const completion = (
@@ -182,9 +218,26 @@ export function Study({
     ["edited", "Edited commentary"],
   ].filter(([key]) => day || key !== "scripture");
   const selected = tabs.some(([key]) => key === tab) ? tab : "transcript";
+  const scriptureCues = day?.scripture.flatMap((passage) =>
+    passage.audio ? [passage.audio] : [],
+  );
   const content =
     selected === "scripture" && day ? (
-      <Scripture passages={day.scripture} />
+      <Scripture
+        passages={day.scripture}
+        audio={
+          reader && episode?.has_audio && scriptureCues?.length
+            ? {
+                episodeActive: audio.episode?.id === episode.id,
+                position: audio.position,
+                playing: audio.playing,
+                playAll: () => audio.playClips(episode, scriptureCues),
+                playPassage: (cue) => audio.playClips(episode, [cue]),
+                toggle: audio.toggle,
+              }
+            : undefined
+        }
+      />
     ) : selected === "transcript" ? (
       transcript(episode?.transcript)
     ) : selected === "commentary" ? (
@@ -232,6 +285,36 @@ export function Study({
       <Link to={`${base}?tab=${selected}`}>
         <X size={18} /> Exit reader
       </Link>
+      <nav className="reader-mode-switcher" aria-label="Reading mode section">
+        <div className="reader-mode-links">
+          {tabs.map(([id, label]) => (
+            <Link
+              key={id}
+              className={selected === id ? "active" : ""}
+              aria-current={selected === id ? "page" : undefined}
+              to={`${base}/reader?tab=${id}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+        <label className="reader-mode-select">
+          <span className="sr-only">Reading mode section</span>
+          <select
+            aria-label="Reading mode section"
+            value={selected}
+            onChange={(event) =>
+              navigate(`${base}/reader?tab=${event.target.value}`)
+            }
+          >
+            {tabs.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </nav>
       <div className="font-controls">
         <button
           aria-label="Smaller text"
@@ -308,18 +391,81 @@ export function Study({
           <ArrowLeft size={15} /> Reading plan
         </Link>
         <span className="quiet">
-          {episode ? date(episode.published_at) : "Your daily companion"}
+          {episode ? (
+            <>
+              Published {shortDate(episode.published_at)}
+              {completed && (
+                <>
+                  {" · "}
+                  {editingCompletionDate ? (
+                    <input
+                      autoFocus
+                      aria-label="Completion date"
+                      className="completion-date-input"
+                      type="date"
+                      defaultValue={dateInputValue(completed)}
+                      onBlur={() => setEditingCompletionDate(false)}
+                      onChange={(event) =>
+                        updateCompletionDate(event.target.value)
+                      }
+                    />
+                  ) : (
+                    <>
+                      Completed {shortDate(completed)}
+                      <button
+                        className="edit-completion-date"
+                        aria-label="Change completion date"
+                        title="Change completion date"
+                        onClick={() => setEditingCompletionDate(true)}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            "Your daily companion"
+          )}
         </span>
       </>
     ),
     "viewport-1-a-hero-title": (
       <>
-        <span
-          className="eyebrow"
-          style={{ color: day?.color || episode?.color }}
-        >
-          {day ? `DAY ${day.number} OF 365` : "SUPPLEMENTARY EPISODE"} ·{" "}
-          {data.era || "BIBLE IN A YEAR"}
+        <span className="study-day-progress-row">
+          <span
+            className="eyebrow"
+            style={{ color: day?.color || episode?.color }}
+          >
+            {day ? `DAY ${day.number} OF 365` : "SUPPLEMENTARY EPISODE"} ·{" "}
+            {data.era || "BIBLE IN A YEAR"}
+          </span>
+          {day && (
+            <span
+              className="day-progress-compact"
+              aria-label={`${completionPercentLabel} of daily readings completed`}
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <circle
+                  className="track"
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  pathLength="100"
+                />
+                <circle
+                  className="value"
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  pathLength="100"
+                  strokeDasharray={`${completionPercent} 100`}
+                />
+              </svg>
+              {completionPercentLabel}
+            </span>
+          )}
         </span>
         <h1>{title}</h1>
       </>
@@ -331,12 +477,14 @@ export function Study({
         </p>
         <div className="completion-row">
           {completion}
-          {completed && <span className="quiet">{date(completed)}</span>}
+          {completed && (
+            <span className="quiet">Completed {date(completed)}</span>
+          )}
         </div>
       </>
     ),
     "viewport-1-a-audio": (
-      <div className="listen-row">
+      <div className="study-primary-actions">
         <button
           className="primary"
           disabled={!episode?.has_audio}
@@ -345,9 +493,40 @@ export function Study({
           <Play size={17} />
           {episode?.position ? "Resume listening" : "Listen to episode"}
         </button>
+        <div className="reading-mode-split">
+          <Link
+            className="reading-mode-main"
+            to={`${base}/reader?tab=${selected}`}
+            title={`Open ${tabs.find(([id]) => id === selected)?.[1] || "this section"} in reading mode`}
+          >
+            <BookOpen size={18} />
+            <span>Reading mode</span>
+            <ArrowRight size={16} />
+          </Link>
+          <label className="reading-mode-menu">
+            <span className="sr-only">Open a section in reading mode</span>
+            <select
+              aria-label="Open a section in reading mode"
+              defaultValue=""
+              onChange={(event) =>
+                navigate(`${base}/reader?tab=${event.target.value}`)
+              }
+            >
+              <option value="" disabled>
+                Choose a section
+              </option>
+              {tabs.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={17} aria-hidden="true" />
+          </label>
+        </div>
         <span className="quiet">
           {episode?.has_audio
-            ? `${Math.ceil(episode.duration / 60)} min · 2025 edition`
+            ? `${Math.ceil(episode.duration / 60)} min`
             : "Audio not imported yet"}
         </span>
       </div>
@@ -374,7 +553,13 @@ export function Study({
               <li key={i}>
                 <button onClick={() => audio.play(episode, item.start)}>
                   <span className="outline-number">{i + 1}</span>
-                  <strong>{item.title}</strong>
+                  <span className="outline-copy">
+                    <span className="outline-label">{item.heading}</span>
+                    <strong>{item.title}</strong>
+                    {!day && item.speaker && (
+                      <span className="outline-speaker">{item.speaker}</span>
+                    )}
+                  </span>
                   <span className="timestamp">
                     {time(item.start)} <Play size={12} />
                   </span>
@@ -384,8 +569,8 @@ export function Study({
           </ol>
         ) : (
           <p className="quiet empty">
-            A clickable outline will be generated from this episode’s
-            commentary.
+            A clickable outline of the reading and commentary will appear once
+            this episode has been processed.
           </p>
         )}
       </>
@@ -393,21 +578,23 @@ export function Study({
     "viewport-1-a-transcript": (
       <div className="preview-panel">
         <div className="section-heading">
-          <h2>Read along</h2>
+          <h2>Key points</h2>
           <BookOpen size={20} />
         </div>
-        {episode?.transcript?.length ? (
-          transcript(episode.transcript.slice(0, 3))
+        {episode?.key_points?.length ? (
+          <ul className="key-points">
+            {episode.key_points.map((point, i) => (
+              <li key={i}>{point.text}</li>
+            ))}
+          </ul>
         ) : (
           <>
             <p className="serif">
-              A little each day.
-              <br />
-              Space to listen, learn, and reflect.
+              Key points will be generated from this episode’s teaching.
             </p>
             <p className="quiet">
-              The full transcript will include speaker labels and clickable
-              timestamps.
+              They will be grounded in the episode and available alongside the
+              full transcript.
             </p>
           </>
         )}

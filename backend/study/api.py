@@ -1,8 +1,12 @@
-from datetime import timedelta
+from datetime import date as calendar_date
+from datetime import datetime, time, timedelta
 from typing import Literal
 
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.middleware.csrf import get_token
@@ -14,8 +18,18 @@ from ninja.errors import HttpError
 from ninja.security import django_auth
 from pydantic import Field
 
-from .models import Day, DayProgress, Episode, EpisodeProgress, LoginAttempt, Note
+from .models import (
+    CommunitySettings,
+    Day,
+    DayProgress,
+    Episode,
+    EpisodeProgress,
+    LoginAttempt,
+    Note,
+    Profile,
+)
 from .scripture import reading_text
+from .scripture_audio import align_scripture_audio
 
 api = NinjaAPI(title="Bible in a Year", auth=django_auth, docs_url=None)
 
@@ -29,6 +43,10 @@ class CompleteIn(Schema):
     completed: bool
 
 
+class CompletedAtIn(Schema):
+    completed_on: calendar_date
+
+
 class PositionIn(Schema):
     position: float = Field(ge=0, le=86400, allow_inf_nan=False)
 
@@ -36,13 +54,170 @@ class PositionIn(Schema):
 class NoteIn(Schema):
     body: str = Field(min_length=1, max_length=50000)
     kind: Literal["note", "journal"] = "note"
+    shared: bool = False
     audio_time: float | None = Field(default=None, ge=0, le=86400, allow_inf_nan=False)
+
+
+class AccountIn(Schema):
+    username: str = Field(min_length=1, max_length=150)
+    first_name: str = Field(default="", max_length=150)
+    last_name: str = Field(default="", max_length=150)
+    email: str = Field(default="", max_length=254)
+
+
+class AdminUserCreateIn(AccountIn):
+    password: str = Field(min_length=8, max_length=256)
+    is_active: bool = True
+    is_admin: bool = False
+    leaderboard_visible: bool = True
+    email_notifications: bool = True
+    progress_basis: Literal["first-completion", "leaderboard", "january-1"] = (
+        "first-completion"
+    )
+
+
+class AdminUserUpdateIn(AccountIn):
+    password: str | None = Field(default=None, min_length=8, max_length=256)
+    is_active: bool
+    is_admin: bool
+    leaderboard_visible: bool
+    email_notifications: bool
+    progress_basis: Literal["first-completion", "leaderboard", "january-1"]
+
+
+def community_settings():
+    return CommunitySettings.objects.get_or_create(
+        pk=1, defaults={"start_date": calendar_date.fromisoformat(settings.LEADERBOARD_START_DATE)}
+    )[0]
+
+
+def require_admin(request):
+    if not request.user.is_staff:
+        raise HttpError(403, "Administrator access is required.")
+
+
+def clean_account_fields(payload, *, excluding_user=None):
+    username = payload.username.strip()
+    email = payload.email.strip()
+    if not username:
+        raise HttpError(422, "Choose a user name.")
+    if email:
+        try:
+            validate_email(email)
+        except ValidationError:
+            raise HttpError(422, "Enter a valid email address.")
+    users = get_user_model().objects.all()
+    if excluding_user is not None:
+        users = users.exclude(pk=excluding_user.pk)
+    if users.filter(username__iexact=username).exists():
+        raise HttpError(422, "That user name is already taken.")
+    return {
+        "username": username,
+        "first_name": payload.first_name.strip(),
+        "last_name": payload.last_name.strip(),
+        "email": email,
+    }
+
+
+def admin_user_data(user):
+    profile, _ = Profile.objects.get_or_create(user=user)
+    return {
+        "id": user.pk,
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "is_active": user.is_active,
+        "is_admin": user.is_staff,
+        "has_usable_password": user.has_usable_password(),
+        "date_joined": user.date_joined,
+        "last_login": user.last_login,
+        "leaderboard_visible": profile.leaderboard_visible,
+        "email_notifications": profile.email_notifications,
+        "progress_basis": profile.progress_basis,
+        "completed_days": DayProgress.objects.filter(
+            user=user, completed_at__isnull=False
+        ).count(),
+        "journal_entries": Note.objects.filter(user=user, kind="journal").count(),
+    }
+
+
+class CommunitySettingsIn(Schema):
+    start_date: calendar_date
+    confirm_affects_everyone: Literal[True]
+
+
+@api.put("/community-settings")
+def update_community_settings(request, payload: CommunitySettingsIn):
+    state = community_settings()
+    state.start_date = payload.start_date
+    state.save(update_fields=["start_date"])
+    return {"leaderboard_start_date": state.start_date}
+
+
+class PreferencesIn(Schema):
+    progress_basis: Literal["first-completion", "leaderboard", "january-1"] | None = None
+    leaderboard_visible: bool | None = None
+    email_notifications: bool | None = None
+
+
+@api.get("/preferences")
+def preferences(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    return {
+        "progress_basis": profile.progress_basis,
+        "leaderboard_visible": profile.leaderboard_visible,
+        "email_notifications": profile.email_notifications,
+        "leaderboard_start_date": community_settings().start_date,
+    }
+
+
+@api.patch("/preferences")
+def update_preferences(request, payload: PreferencesIn):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    changes = payload.dict(exclude_none=True)
+    for key, value in changes.items():
+        setattr(profile, key, value)
+    if changes:
+        profile.save(update_fields=list(changes))
+    return preferences(request)
+
+
+@api.get("/leaderboard")
+def leaderboard(request):
+    rows = []
+    progress = {}
+    for state in DayProgress.objects.filter(completed_at__isnull=False):
+        progress.setdefault(state.user_id, []).append(state)
+    for user in (
+        get_user_model().objects.filter(is_active=True).exclude(profile__leaderboard_visible=False)
+    ):
+        states = progress.get(user.pk, [])
+        completed = {state.day_id for state in states}
+        rows.append(
+            {
+                "id": user.pk,
+                "name": user.get_full_name() or user.username,
+                "completed": len(completed),
+                "current_day": next((day for day in range(1, 366) if day not in completed), None),
+                "first_completed": min((state.completed_at for state in states), default=None),
+            }
+        )
+    return sorted(rows, key=lambda row: (-row["completed"], row["name"].casefold(), row["id"]))
+
+
+class PasswordIn(Schema):
+    new_password: str = Field(min_length=8, max_length=256)
 
 
 @api.get("/session", auth=None)
 def session(request):
     return {
-        "user": {"username": request.user.username} if request.user.is_authenticated else None,
+        "user": (
+            {"username": request.user.username, "is_admin": request.user.is_staff}
+            if request.user.is_authenticated
+            else None
+        ),
         "csrf": get_token(request),
     }
 
@@ -61,13 +236,121 @@ def sign_in(request, payload: LoginIn):
     login(request, user)
     LoginAttempt.objects.filter(address=address).delete()
     LoginAttempt.objects.filter(attempted_at__lt=cutoff).delete()
-    return JsonResponse({"user": {"username": user.username}, "csrf": get_token(request)})
+    return JsonResponse(
+        {
+            "user": {"username": user.username, "is_admin": user.is_staff},
+            "csrf": get_token(request),
+        }
+    )
 
 
 @api.post("/logout")
 def sign_out(request):
     logout(request)
     return {"ok": True}
+
+
+@api.get("/account")
+def account(request):
+    return {
+        "username": request.user.username,
+        "first_name": request.user.first_name,
+        "last_name": request.user.last_name,
+        "email": request.user.email,
+    }
+
+
+@api.put("/account")
+def update_account(request, payload: AccountIn):
+    changes = clean_account_fields(payload, excluding_user=request.user)
+    for field, value in changes.items():
+        setattr(request.user, field, value)
+    request.user.save(update_fields=list(changes))
+    return account(request)
+
+
+@api.put("/account/password")
+def update_password(request, payload: PasswordIn):
+    try:
+        validate_password(payload.new_password, request.user)
+    except ValidationError as exc:
+        raise HttpError(422, "; ".join(exc.messages)) from exc
+    request.user.set_password(payload.new_password)
+    request.user.save(update_fields=["password"])
+    return {"ok": True}
+
+
+@api.get("/admin/users")
+def admin_users(request):
+    require_admin(request)
+    return [
+        admin_user_data(user)
+        for user in get_user_model().objects.order_by("first_name", "last_name", "username")
+    ]
+
+
+@api.post("/admin/users")
+@transaction.atomic
+def create_admin_user(request, payload: AdminUserCreateIn):
+    require_admin(request)
+    fields = clean_account_fields(payload)
+    User = get_user_model()
+    user = User(**fields, is_active=payload.is_active, is_staff=payload.is_admin)
+    try:
+        validate_password(payload.password, user)
+    except ValidationError as exc:
+        raise HttpError(422, "; ".join(exc.messages)) from exc
+    user.set_password(payload.password)
+    user.save()
+    Profile.objects.create(
+        user=user,
+        leaderboard_visible=payload.leaderboard_visible,
+        email_notifications=payload.email_notifications,
+        progress_basis=payload.progress_basis,
+    )
+    return admin_user_data(user)
+
+
+@api.get("/admin/users/{user_id}")
+def admin_user(request, user_id: int):
+    require_admin(request)
+    user = get_object_or_404(get_user_model(), pk=user_id)
+    return admin_user_data(user)
+
+
+@api.put("/admin/users/{user_id}")
+@transaction.atomic
+def update_admin_user(request, user_id: int, payload: AdminUserUpdateIn):
+    require_admin(request)
+    User = get_user_model()
+    user = get_object_or_404(User.objects.select_for_update(), pk=user_id)
+    fields = clean_account_fields(payload, excluding_user=user)
+    remains_active_admin = payload.is_active and payload.is_admin
+    if user.is_active and user.is_staff and not remains_active_admin:
+        other_admins = User.objects.filter(is_active=True, is_staff=True).exclude(pk=user.pk)
+        if not other_admins.exists():
+            raise HttpError(422, "Keep at least one active administrator.")
+    for field, value in fields.items():
+        setattr(user, field, value)
+    user.is_active = payload.is_active
+    user.is_staff = payload.is_admin
+    update_fields = [*fields, "is_active", "is_staff"]
+    if payload.password:
+        try:
+            validate_password(payload.password, user)
+        except ValidationError as exc:
+            raise HttpError(422, "; ".join(exc.messages)) from exc
+        user.set_password(payload.password)
+        update_fields.append("password")
+    user.save(update_fields=update_fields)
+    profile, _ = Profile.objects.get_or_create(user=user)
+    profile.leaderboard_visible = payload.leaderboard_visible
+    profile.email_notifications = payload.email_notifications
+    profile.progress_basis = payload.progress_basis
+    profile.save(
+        update_fields=["leaderboard_visible", "email_notifications", "progress_basis"]
+    )
+    return admin_user_data(user)
 
 
 def episode_card(ep):
@@ -138,6 +421,7 @@ def episode_detail(ep, user):
             "commentary": commentary,
             "edited_commentary": ep.edited_commentary,
             "summary": ep.summary,
+            "key_points": ep.key_points,
             "outline": ep.outline,
             "audio": f"/api/episodes/{ep.id}/audio" if ep.audio_file else None,
             "position": state.position if state else 0,
@@ -154,13 +438,23 @@ def day_detail(request, number: int):
     day = get_object_or_404(Day.objects.select_related("era"), pk=number)
     ep = Episode.objects.select_related("era").filter(day=day).first()
     progress = DayProgress.objects.filter(user=request.user, day=day).first()
+    scripture = [reading_text(ref) for ref in day.readings]
+    cues = (
+        align_scripture_audio(scripture, ep.transcript, ep.classification)
+        if ep and ep.audio_file
+        else []
+    )
+    cues_by_passage = {cue["passage_index"]: cue for cue in cues}
     return {
         "number": number,
         "readings": day.readings,
         "era": day.era.name,
         "color": day.era.color,
         "completed_at": progress.completed_at if progress else None,
-        "scripture": [reading_text(ref) for ref in day.readings],
+        "scripture": [
+            {**passage, "audio": cues_by_passage.get(index)}
+            for index, passage in enumerate(scripture)
+        ],
         "episode": episode_detail(ep, request.user) if ep else None,
     }
 
@@ -182,6 +476,21 @@ def day_completion(request, number: int, payload: CompleteIn):
     return {"completed_at": state.completed_at}
 
 
+@api.put("/days/{number}/completed-at")
+@transaction.atomic
+def day_completed_at(request, number: int, payload: CompletedAtIn):
+    day = get_object_or_404(Day, pk=number)
+    state = DayProgress.objects.filter(user=request.user, day=day).first()
+    if state is None or state.completed_at is None:
+        raise HttpError(400, "Mark this day complete before changing its date.")
+    state = DayProgress.objects.select_for_update().get(pk=state.pk)
+    state.completed_at = timezone.make_aware(
+        datetime.combine(payload.completed_on, time.min), timezone.get_current_timezone()
+    )
+    state.save(update_fields=["completed_at"])
+    return {"completed_at": state.completed_at}
+
+
 @api.put("/episodes/{episode_id}/completion")
 @transaction.atomic
 def episode_completion(request, episode_id: int, payload: CompleteIn):
@@ -191,6 +500,23 @@ def episode_completion(request, episode_id: int, payload: CompleteIn):
     state, _ = EpisodeProgress.objects.get_or_create(user=request.user, episode=ep)
     state = EpisodeProgress.objects.select_for_update().get(pk=state.pk)
     state.completed_at = (state.completed_at or timezone.now()) if payload.completed else None
+    state.save(update_fields=["completed_at"])
+    return {"completed_at": state.completed_at}
+
+
+@api.put("/episodes/{episode_id}/completed-at")
+@transaction.atomic
+def episode_completed_at(request, episode_id: int, payload: CompletedAtIn):
+    ep = get_object_or_404(Episode, pk=episode_id)
+    if ep.day_id:
+        return day_completed_at(request, ep.day_id, payload)
+    state = EpisodeProgress.objects.filter(user=request.user, episode=ep).first()
+    if state is None or state.completed_at is None:
+        raise HttpError(400, "Mark this episode complete before changing its date.")
+    state = EpisodeProgress.objects.select_for_update().get(pk=state.pk)
+    state.completed_at = timezone.make_aware(
+        datetime.combine(payload.completed_on, time.min), timezone.get_current_timezone()
+    )
     state.save(update_fields=["completed_at"])
     return {"completed_at": state.completed_at}
 
@@ -217,6 +543,8 @@ def note_target(kind, target_id):
 def note_data(n):
     return {
         "id": n.id,
+        "shared": n.shared,
+        "author": {"id": n.user_id, "name": n.user.get_full_name() or n.user.username},
         "body": n.body,
         "kind": n.kind,
         "audio_time": n.audio_time,
@@ -225,6 +553,25 @@ def note_data(n):
         "day": n.day_id,
         "episode": n.episode_id,
     }
+
+
+@api.get("/shared-notes")
+def shared_notes(
+    request, person: int | None = None, day: int | None = None, episode: int | None = None
+):
+    entries = (
+        Note.objects.filter(shared=True, user__is_active=True)
+        .exclude(user=request.user)
+        .select_related("user")
+    )
+    if person is not None:
+        entries = entries.filter(user_id=person)
+    if day is not None:
+        entries = entries.filter(day_id=day)
+    if episode is not None:
+        target = note_target("episodes", episode)
+        entries = entries.filter(**target)
+    return [note_data(n) for n in entries]
 
 
 @api.get("/notes")
@@ -243,19 +590,33 @@ def notes(request, kind: str, target_id: int):
 def add_note(request, kind: str, target_id: int, payload: NoteIn):
     if not payload.body.strip():
         raise HttpError(422, "Write something before saving.")
-    return note_data(
-        Note.objects.create(user=request.user, **note_target(kind, target_id), **payload.dict())
-    )
+    with transaction.atomic():
+        note = Note.objects.create(
+            user=request.user, **note_target(kind, target_id), **payload.dict()
+        )
+        schedule_notification(note)
+    return note_data(note)
+
+
+def schedule_notification(note):
+    if note.shared and note.shared_notified_at is None:
+        note.shared_notified_at = timezone.now()
+        note.save(update_fields=["shared_notified_at"])
+        from .notifications import notify_shared_note
+
+        transaction.on_commit(lambda: notify_shared_note(note.pk), robust=True)
 
 
 @api.put("/notes/{note_id}")
+@transaction.atomic
 def edit_note(request, note_id: int, payload: NoteIn):
-    note = get_object_or_404(Note, user=request.user, pk=note_id)
+    note = get_object_or_404(Note.objects.select_for_update(), user=request.user, pk=note_id)
     if not payload.body.strip():
         raise HttpError(422, "Write something before saving.")
     for key, value in payload.dict().items():
         setattr(note, key, value)
     note.save()
+    schedule_notification(note)
     return note_data(note)
 
 

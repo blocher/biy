@@ -22,7 +22,7 @@ Read-only preflight on 2026-09-19 found Python 3.13, PostgreSQL, Node 22, ffmpeg
 4. Install `deploy/biy.service` as `/etc/systemd/system/biy.service`, run `systemctl daemon-reload`, and install executable `deploy/post-receive` as the bare repo's hook. The hook builds and migrates BIY only. It **never imports podcasts**.
 5. Add the production Git remote and explicitly push `main`. This is a live deployment. If build/migration fails, the BIY service remains stopped for inspection. Existing deployed frontend is retained as `dist.previous`.
 6. With DNS correct, issue a Let's Encrypt certificate using the existing `/var/www/html` webroot. Install `deploy/nginx.conf` as a separate site, run `nginx -t`, then reload Nginx. Enable the `biy` service.
-7. Run `/var/www/biy-app/deploy/manage changepassword ben` in a private terminal. The seeded production account has no usable password until this step. Additional accounts: `deploy/manage create_account NAME`.
+7. Run `/var/www/biy-app/deploy/manage changepassword ben` in a private terminal. The seeded production account has no usable password until this step and is granted administrator access idempotently. Additional accounts can be managed in the app or created with `deploy/manage create_account NAME`; add `--admin` only for people who should manage other accounts.
 
 ## Transfer the single-day acceptance data
 

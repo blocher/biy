@@ -27,9 +27,14 @@ export async function api<T>(
   if (!response.ok) {
     if (response.status === 401 && path !== "/login")
       window.dispatchEvent(new Event("session-expired"));
+    const detail = Array.isArray(data.detail)
+      ? data.detail.find(
+          (item: { msg?: unknown }) => typeof item?.msg === "string",
+        )?.msg
+      : data.detail;
     throw new Error(
-      typeof data.detail === "string"
-        ? data.detail
+      typeof detail === "string"
+        ? detail
         : "Could not save this change. Please try again.",
     );
   }
@@ -45,5 +50,14 @@ export const date = (value: string) =>
     day: "numeric",
     year: "numeric",
   });
+export const shortDate = (value: string) =>
+  new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+export const dateInputValue = (value: string) => {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
 export const episodeTitle = (title: string) =>
   title.replace(/^Day\s+\d+:\s*/i, "").replace(/\s*[-–]?\s*\(?2025\)?$/, "");

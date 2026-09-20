@@ -33,6 +33,7 @@ const episode = {
   ...day.episode,
   status: "ready",
   summary: "Fixture summary for browser verification only.",
+  key_points: [{ text: "Fixture key point." }],
   transcript: segments,
   commentary: [segments[1]],
   edited_commentary: [
@@ -42,7 +43,14 @@ const episode = {
       segment_ids: [1],
     },
   ],
-  outline: [{ title: "Fixture outline item", segment_id: 1, start: 10 }],
+  outline: [
+    {
+      heading: "Commentary",
+      title: "Fixture outline item",
+      segment_id: 1,
+      start: 10,
+    },
+  ],
 };
 await page.route("**/api/days/1", (route) =>
   route.fulfill({ json: { ...day, episode } }),

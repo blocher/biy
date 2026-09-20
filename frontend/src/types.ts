@@ -29,7 +29,14 @@ export type Episode = {
     segment_ids: number[];
   }[];
   summary?: string;
-  outline?: { title: string; segment_id: number; start: number }[];
+  key_points?: { text: string }[];
+  outline?: {
+    heading: "Reading" | "Commentary";
+    title: string;
+    segment_id: number;
+    start: number;
+    speaker?: string | null;
+  }[];
   processed_at?: string;
   provenance?: Record<string, unknown>;
 };
@@ -43,6 +50,7 @@ export type PlanDay = {
 };
 export type Scripture = {
   reference: string;
+  audio?: ScriptureAudioCue | null;
   groups: {
     book: string;
     missing: boolean;
@@ -54,6 +62,13 @@ export type Scripture = {
     }[];
   }[];
 };
+export type ScriptureAudioCue = {
+  passage_index: number;
+  reference: string;
+  start: number;
+  end: number;
+  confidence: number;
+};
 export type DayDetail = PlanDay & { scripture: Scripture[] };
 export type Library = {
   days: PlanDay[];
@@ -62,6 +77,8 @@ export type Library = {
   next_day: number | null;
 };
 export type Note = {
+  shared: boolean;
+  author: { id: number; name: string };
   id: number;
   body: string;
   kind: "note" | "journal";
