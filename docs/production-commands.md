@@ -39,6 +39,15 @@ sudo /var/www/biy-app/deploy/manage import_podcasts --all --workers 2
 
 This requires `OPENAI_API_KEY` in `/etc/biy/biy.env`. Episode study-content generation uses `OPENAI_STUDY_MODEL`.
 
+To regenerate only the summary, key points, outline, and edited commentary for an
+already-transcribed episode, add `--force-study`. Existing audio and transcription
+are reused. Structured AI generation is attempted up to three times with exponential
+backoff before the episode is marked failed:
+
+```sh
+sudo /var/www/biy-app/deploy/manage import_podcasts --day 1 --force-study
+```
+
 ## Prime only the introduction and Day 1
 
 The first introductory episode has GUID `86f0557d-9354-4893-ba9f-2e76afb7ff12`.

@@ -125,7 +125,7 @@ export function Answer({ turn }: { turn: ChatTurn }) {
 export function StudyChat({ user }: { user: string }) {
   const chat = useStudyChat();
   return (
-    <div className="app-frame">
+    <div className="app-frame study-chat-frame">
       <Sidebar user={user} />
       <main className="study-chat-page">
         <ChatContent chat={chat} />

@@ -432,7 +432,7 @@ class GenerationTests(TestCase):
 
     def test_rejects_rewritten_mixed_commentary(self):
         from types import SimpleNamespace
-        from unittest.mock import Mock
+        from unittest.mock import Mock, patch
 
         from .importing import Classifications, generate_study
 
@@ -447,7 +447,152 @@ class GenerationTests(TestCase):
         )
         client = Mock()
         client.responses.parse.return_value = SimpleNamespace(output_parsed=labels)
-        with TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=Path(directory)):
+        with (
+            TemporaryDirectory() as directory,
+            override_settings(MEDIA_ROOT=Path(directory)),
+            patch("study.importing.time.sleep"),
+        ):
             Path(directory, "episodes/1").mkdir(parents=True)
             with self.assertRaisesRegex(ValueError, "exact source excerpt"):
                 generate_study(self.ep, client)
+
+    def test_retries_missing_structured_classification_with_backoff(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+
+        from .importing import Classifications, StudyContent, generate_study
+
+        labels = Classifications.model_validate(
+            {
+                "segments": [
+                    {"id": 0, "kind": "scripture", "commentary_text": None},
+                    {"id": 1, "kind": "commentary", "commentary_text": None},
+                    {"id": 2, "kind": "prayer", "commentary_text": None},
+                ]
+            }
+        )
+        content = StudyContent.model_validate(
+            {
+                "summary": "Fr. Mike reflects on creation as a gift.",
+                "key_points": [{"text": "Creation is a gift from God."}],
+                "paragraphs": [
+                    {
+                        "heading": "Creation as gift",
+                        "text": "Creation is a gift.",
+                        "segment_ids": [1],
+                    }
+                ],
+                "outline": [
+                    {
+                        "heading": "Reading",
+                        "title": "Bible reading",
+                        "segment_id": 0,
+                        "speaker": "Fr. Mike Schmitz",
+                    },
+                    {
+                        "heading": "Commentary",
+                        "title": "Creation as gift",
+                        "segment_id": 1,
+                        "speaker": "Fr. Mike Schmitz",
+                    },
+                ],
+            }
+        )
+        client = Mock()
+        client.responses.parse.side_effect = [
+            SimpleNamespace(output_parsed=None),
+            SimpleNamespace(output_parsed=None),
+            SimpleNamespace(output_parsed=labels),
+            SimpleNamespace(output_parsed=content),
+        ]
+
+        with (
+            TemporaryDirectory() as directory,
+            override_settings(MEDIA_ROOT=Path(directory)),
+            patch("study.importing.time.sleep") as sleep,
+        ):
+            Path(directory, "episodes/1").mkdir(parents=True)
+            generate_study(self.ep, client)
+
+        self.assertEqual(client.responses.parse.call_count, 4)
+        self.assertEqual([call.args for call in sleep.call_args_list], [(2,), (4,)])
+
+    def test_force_study_regenerates_content_but_reuses_classification(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+
+        from .importing import Classifications, StudyContent, generate_study
+
+        labels = Classifications.model_validate(
+            {
+                "segments": [
+                    {"id": 0, "kind": "scripture", "commentary_text": None},
+                    {"id": 1, "kind": "commentary", "commentary_text": None},
+                    {"id": 2, "kind": "prayer", "commentary_text": None},
+                ]
+            }
+        )
+
+        def content(summary):
+            return StudyContent.model_validate(
+                {
+                    "summary": summary,
+                    "key_points": [{"text": "Creation is a gift from God."}],
+                    "paragraphs": [
+                        {
+                            "heading": "Creation as gift",
+                            "text": "Creation is a gift.",
+                            "segment_ids": [1],
+                        }
+                    ],
+                    "outline": [
+                        {
+                            "heading": "Reading",
+                            "title": "Bible reading",
+                            "segment_id": 0,
+                            "speaker": "Fr. Mike Schmitz",
+                        },
+                        {
+                            "heading": "Commentary",
+                            "title": "Creation as gift",
+                            "segment_id": 1,
+                            "speaker": "Fr. Mike Schmitz",
+                        },
+                    ],
+                }
+            )
+
+        client = Mock()
+        client.responses.parse.side_effect = [
+            SimpleNamespace(output_parsed=labels),
+            SimpleNamespace(output_parsed=content("Fr. Mike reflects on creation.")),
+        ]
+        with TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=Path(directory)):
+            Path(directory, "episodes/1").mkdir(parents=True)
+            generate_study(self.ep, client)
+
+            client.responses.parse.reset_mock()
+            client.responses.parse.side_effect = [
+                SimpleNamespace(output_parsed=content("The speaker revisits creation.")),
+                SimpleNamespace(
+                    output_parsed=content("Fr. Mike revisits creation with fresh emphasis.")
+                ),
+            ]
+            with patch("study.importing.time.sleep") as sleep:
+                generate_study(self.ep, client, force_study=True)
+
+        self.assertEqual(client.responses.parse.call_count, 2)
+        sleep.assert_called_once_with(2)
+        self.assertEqual(self.ep.summary, "Fr. Mike revisits creation with fresh emphasis.")
+
+
+class ImportPodcastCommandTests(TestCase):
+    def test_force_study_flag_is_available(self):
+        from study.management.commands.import_podcasts import Command
+
+        parser = Command().create_parser("manage.py", "import_podcasts")
+
+        options = parser.parse_args(["--day", "1", "--force-study"])
+
+        self.assertEqual(options.day, 1)
+        self.assertTrue(options.force_study)

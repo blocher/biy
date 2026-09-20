@@ -1,4 +1,7 @@
 /* Companion surface derived from 12ui candidate C; fluid sizing for live conversation. */
+.study-chat-frame {
+  padding-left: 205px;
+}
 .study-chat-page {
   width: min(960px, 100%);
   min-width: 0;
@@ -244,6 +247,12 @@
   background: #4d633e;
   border-radius: 50%;
 }
+@media (max-width: 900px) {
+  .study-chat-frame {
+    padding-left: 0;
+  }
+}
+
 @media (max-width: 650px) {
   .study-chat-page {
     padding: 20px 14px 120px;

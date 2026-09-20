@@ -37,13 +37,18 @@ class Command(BaseCommand):
         stage.add_argument("--catalog-only", action="store_true")
         stage.add_argument("--download-only", action="store_true")
         parser.add_argument(
+            "--force-study",
+            action="store_true",
+            help="Regenerate study content while reusing existing audio and transcription.",
+        )
+        parser.add_argument(
             "--workers",
             type=int,
             default=1,
             help="Number of episodes to process concurrently (1-8; default: 1).",
         )
 
-    def process_episode(self, episode_id, download_only):
+    def process_episode(self, episode_id, download_only, force_study):
         """Process one independently locked episode in a worker thread."""
         close_old_connections()
         ep = None
@@ -57,7 +62,7 @@ class Command(BaseCommand):
             if not locked:
                 raise CommandError(f"Episode {ep.id} is being processed by another importer.")
             download_audio(ep)
-            if download_only or ep.status == "ready":
+            if download_only or (ep.status == "ready" and not force_study):
                 return f"Audio ready: {ep.title}"
             if not os.getenv("OPENAI_API_KEY"):
                 raise CommandError(
@@ -71,14 +76,20 @@ class Command(BaseCommand):
                 raise CommandError("OPENAI_IMPORT_TIMEOUT_SECONDS must be at least 600 seconds.")
             client = OpenAI(timeout=timeout, max_retries=2)
             if not ep.transcript:
+                if force_study:
+                    raise CommandError(
+                        "--force-study requires an existing transcript; run the episode normally first."
+                    )
                 transcribe(ep, client)
-            generate_study(ep, client)
+            generate_study(ep, client, force_study=force_study)
             return f"Ready: {ep.title}"
         except Exception as exc:
             # Avoid persisting API error payloads or credentials. Checkpoints remain resumable.
             if ep is not None:
                 ep.status = "failed"
-                ep.error = f"{type(exc).__name__}: processing did not finish; rerun the selected episode."
+                ep.error = (
+                    f"{type(exc).__name__}: processing did not finish; rerun the selected episode."
+                )
                 ep.save(update_fields=["status", "error"])
             if isinstance(exc, CommandError):
                 raise
@@ -94,6 +105,10 @@ class Command(BaseCommand):
     def handle(self, **options):
         if not 1 <= options["workers"] <= 8:
             raise CommandError("--workers must be between 1 and 8.")
+        if options["force_study"] and (options["catalog_only"] or options["download_only"]):
+            raise CommandError(
+                "--force-study cannot be combined with a catalog/download-only stage."
+            )
         if options["feed_file"]:
             xml = options["feed_file"].read_bytes()
         else:
@@ -121,7 +136,12 @@ class Command(BaseCommand):
         failures = []
         with ThreadPoolExecutor(max_workers=options["workers"]) as executor:
             futures = {
-                executor.submit(self.process_episode, ep.id, options["download_only"]): ep
+                executor.submit(
+                    self.process_episode,
+                    ep.id,
+                    options["download_only"],
+                    options["force_study"],
+                ): ep
                 for ep in episodes
             }
             for future in as_completed(futures):

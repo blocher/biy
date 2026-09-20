@@ -81,7 +81,7 @@ The `.env` also contains `OPENAI_TRANSCRIBE_MODEL=gpt-4o-transcribe-diarize` and
 
 The importer requires an explicit selector: `--day NUMBER`, `--guid FEED_GUID`, or `--all`. `--all` is the future bulk operation; it is implemented but **has not been run**. `--catalog-only` imports selected metadata without audio/AI. `--feed-file PATH` supports a cached publisher RSS feed. Supplementary episodes use the exact same pipeline and study screens, but their completion is separate from the 365-day total.
 
-For a bulk run, `--workers 2` through `--workers 8` process separate episodes concurrently; the default remains one worker. Start with two workers, then increase only if the host, publisher, and OpenAI account remain healthy. Each episode retains its own advisory lock and resumable checkpoints, so a rerun continues completed work without repeating it. For example: `.venv/bin/python backend/manage.py import_podcasts --all --workers 2`.
+For a bulk run, `--workers 2` through `--workers 8` process separate episodes concurrently; the default remains one worker. Start with two workers, then increase only if the host, publisher, and OpenAI account remain healthy. Each episode retains its own advisory lock and resumable checkpoints, so a rerun continues completed work without repeating it. For example: `.venv/bin/python backend/manage.py import_podcasts --all --workers 2`. To regenerate only the summary, key points, outline, and edited commentary for an already-transcribed episode, add `--force-study`; audio and transcription are reused, and structured AI generation is attempted up to three times with exponential backoff.
 
 ### How commentary-only extraction works
 
