@@ -1732,6 +1732,45 @@ input[type="checkbox"] {
   margin: 0;
   padding: 0;
 }
+.study-outline > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: #17443d;
+  cursor: pointer;
+  list-style: none;
+}
+.study-outline > summary::-webkit-details-marker {
+  display: none;
+}
+.study-outline > summary > span {
+  display: grid;
+  gap: 2px;
+}
+.study-outline > summary strong {
+  font-family: var(--display);
+  font-size: 24px;
+}
+.study-outline > summary small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.study-outline > summary svg {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+.study-outline[open] > summary svg {
+  transform: rotate(180deg);
+}
+.study-outline[open] > .outline {
+  margin-top: 4px;
+}
 .outline li {
   border-bottom: 1px solid var(--line);
 }
@@ -2024,9 +2063,14 @@ input[type="checkbox"] {
   padding-top: 20px;
 }
 .transcript-segment {
+  position: relative;
   padding: 19px 10px;
   border-bottom: 1px solid var(--line);
   border-radius: 7px;
+}
+.segment-anchor {
+  position: absolute;
+  top: 0;
 }
 .transcript-segment.current {
   background: #eaf0e4;
@@ -2065,9 +2109,8 @@ input[type="checkbox"] {
 .edited-text section {
   margin-bottom: 30px;
 }
-.edited-text h2 {
-  font-size: 26px;
-  margin: 25px 0 15px;
+.edited-text .segment-meta {
+  margin-bottom: 8px;
 }
 .edited-text section p {
   font-family: var(--reading);

@@ -46,9 +46,10 @@ const episode = {
   outline: [
     {
       heading: "Commentary",
-      title: "Fixture outline item",
+      title: "[Fixture outline item](#segment-1)",
       segment_id: 1,
       start: 10,
+      speaker: "Fr. Mike Schmitz",
     },
   ],
 };
@@ -63,16 +64,20 @@ await expect(page.locator("#study-panel")).toContainText(
 await expect(page.locator("#study-panel")).not.toContainText(
   "Fixture Scripture segment.",
 );
+await expect(page.locator("#study-panel")).not.toContainText("Voice A");
 await page.getByRole("tab", { name: "Edited commentary", exact: true }).click();
 await expect(page.locator("#study-panel")).toContainText(
   "Fixture edited commentary.",
 );
-await page
-  .getByRole("button", { name: "Listen to source", exact: true })
-  .click();
+await page.getByRole("button", { name: "Play from 0:10", exact: true }).click();
 await expect
   .poll(() => page.locator("audio").evaluate((a) => a.currentTime))
   .toBeGreaterThanOrEqual(10);
+await expect(
+  page.getByRole("button", { name: /Fixture outline item/ }),
+).toBeHidden();
+await page.getByText("Outline", { exact: true }).click();
+await expect(page.locator("#study-panel")).not.toContainText("#segment-1");
 await page.getByRole("button", { name: /Fixture outline item/ }).click();
 await page.route("**/api/episodes/999999", (route) =>
   route.fulfill({
@@ -96,6 +101,7 @@ await expect(
 await expect(
   page.getByRole("tab", { name: "Scripture", exact: true }),
 ).toHaveCount(0);
+await expect(page.locator("#study-panel")).toContainText("Fr. Mike Schmitz");
 await page.getByRole("tab", { name: "Edited commentary", exact: true }).click();
 await expect(page.locator("#study-panel")).toContainText(
   "Fixture edited commentary.",

@@ -43,6 +43,11 @@ import { Scripture } from "./Scripture";
 import { Sidebar } from "./navigation";
 import { useStudyChat } from "./useStudyChat";
 import { ReadingChatDialog, ReadingChatHistory } from "./ReadingChat";
+import {
+  groupTranscriptSegments,
+  plainOutlineTitle,
+  supplementarySpeakerNames,
+} from "./studyText";
 
 export function Study(props: ComponentProps<typeof StudyContent>) {
   const params = useParams();
@@ -149,6 +154,9 @@ function StudyContent({
     base = day ? `/day/${day.number}` : `/episode/${episode!.id}`;
   const title = episode ? episodeTitle(episode.title) : day!.readings[0],
     completed = data.completed_at;
+  const supplementarySpeakers = episode
+    ? supplementarySpeakerNames(episode)
+    : new Map<string, string>();
   const completionPercent = Math.round((completedDays / 365) * 1000) / 10;
   const completionPercentLabel = `${Number.isInteger(completionPercent) ? completionPercent : completionPercent.toFixed(1)}%`;
   async function complete() {
@@ -211,35 +219,42 @@ function StudyContent({
     </div>
   );
   function transcript(segments: Segment[] | undefined) {
-    return segments?.length ? (
+    const paragraphs = groupTranscriptSegments(segments, !day);
+    return paragraphs.length ? (
       <div className="transcript-list">
-        {segments.map((s) => (
+        {paragraphs.map((paragraph) => (
           <article
             className={
               "transcript-segment " +
               (audio.episode?.id === episode?.id &&
-              audio.position >= s.start &&
-              audio.position < s.end
+              audio.position >= paragraph.start &&
+              audio.position < paragraph.end
                 ? "current"
                 : "")
             }
-            id={`segment-${s.id}`}
-            key={s.id}
+            id={`segment-${paragraph.segmentIds[0]}`}
+            key={paragraph.segmentIds[0]}
           >
+            {paragraph.segmentIds.slice(1).map((id) => (
+              <span className="segment-anchor" id={`segment-${id}`} key={id} />
+            ))}
             <div className="segment-meta">
               <button
                 className="timestamp"
-                onClick={() => episode && audio.play(episode, s.start)}
+                aria-label={`Play from ${time(paragraph.start)}`}
+                onClick={() => episode && audio.play(episode, paragraph.start)}
               >
                 <Play size={12} />
-                {time(s.start)}
+                {time(paragraph.start)}
               </button>
-              <span>{s.speaker}</span>
-              {s.partial && (
+              {!day && supplementarySpeakers.get(paragraph.speaker) && (
+                <span>{supplementarySpeakers.get(paragraph.speaker)}</span>
+              )}
+              {paragraph.partial && (
                 <small>Excerpt · timestamp starts this segment</small>
               )}
             </div>
-            <p>{s.text}</p>
+            <p>{paragraph.text}</p>
           </article>
         ))}
       </div>
@@ -295,19 +310,26 @@ function StudyContent({
             </p>
             {episode.edited_commentary.map((p, i) => (
               <section key={i}>
-                {p.heading && <h2>{p.heading}</h2>}
+                {(() => {
+                  const source = episode.transcript?.find(
+                    (s) => s.id === p.segment_ids[0],
+                  );
+                  return source ? (
+                    <div className="segment-meta">
+                      <button
+                        className="timestamp"
+                        aria-label={`Play from ${time(source.start)}`}
+                        onClick={() => audio.play(episode, source.start)}
+                      >
+                        <Play size={12} /> {time(source.start)}
+                      </button>
+                      {!day && supplementarySpeakers.get(source.speaker) && (
+                        <span>{supplementarySpeakers.get(source.speaker)}</span>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
                 <p>{p.text}</p>
-                <button
-                  className="text-link"
-                  onClick={() => {
-                    const source = episode.transcript?.find(
-                      (s) => s.id === p.segment_ids[0],
-                    );
-                    if (source) audio.play(episode, source.start);
-                  }}
-                >
-                  <Headphones size={14} /> Listen to source
-                </button>
               </section>
             ))}
           </div>
@@ -594,35 +616,46 @@ function StudyContent({
     ),
     "viewport-1-a-outline": (
       <>
-        <div className="section-heading">
-          <h2>Listen & explore</h2>
-          <Headphones size={20} />
-        </div>
         {episode?.outline?.length ? (
-          <ol className="outline">
-            {episode.outline.map((item, i) => (
-              <li key={i}>
-                <button onClick={() => audio.play(episode, item.start)}>
-                  <span className="outline-number">{i + 1}</span>
-                  <span className="outline-copy">
-                    <span className="outline-label">{item.heading}</span>
-                    <strong>{item.title}</strong>
-                    {!day && item.speaker && (
-                      <span className="outline-speaker">{item.speaker}</span>
-                    )}
-                  </span>
-                  <span className="timestamp">
-                    {time(item.start)} <Play size={12} />
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ol>
+          <details className="study-outline">
+            <summary>
+              <span>
+                <strong>Outline</strong>
+                <small>Jump to a section</small>
+              </span>
+              <ChevronDown size={20} aria-hidden="true" />
+            </summary>
+            <ol className="outline">
+              {episode.outline.map((item, i) => (
+                <li key={i}>
+                  <button onClick={() => audio.play(episode, item.start)}>
+                    <span className="outline-number">{i + 1}</span>
+                    <span className="outline-copy">
+                      <span className="outline-label">{item.heading}</span>
+                      <strong>{plainOutlineTitle(item.title)}</strong>
+                      {!day && item.speaker && (
+                        <span className="outline-speaker">{item.speaker}</span>
+                      )}
+                    </span>
+                    <span className="timestamp">
+                      {time(item.start)} <Play size={12} />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </details>
         ) : (
-          <p className="quiet empty">
-            A clickable outline of the reading and commentary will appear once
-            this episode has been processed.
-          </p>
+          <>
+            <div className="section-heading">
+              <h2>Outline</h2>
+              <Headphones size={20} />
+            </div>
+            <p className="quiet empty">
+              A clickable outline of the reading and commentary will appear once
+              this episode has been processed.
+            </p>
+          </>
         )}
       </>
     ),
