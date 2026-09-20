@@ -499,7 +499,7 @@ export function DayTable({
         </div>
       )}
       <div className="pagination">
-        <span>
+        <span className="pagination-count">
           {filtered.length
             ? `${(safePage - 1) * count + 1}–${Math.min(safePage * count, filtered.length)} of ${filtered.length}`
             : "0 entries"}
@@ -543,31 +543,35 @@ export function DayTable({
             ))}
           </select>
         </label>
-        {safePage > 1 ? (
-          <Link
-            className="pagination-button"
-            to={paramsHref({ page: safePage - 1 })}
-          >
-            Previous
-          </Link>
-        ) : (
-          <span className="pagination-button disabled" aria-disabled="true">
-            Previous
+        <div className="pagination-nav">
+          {safePage > 1 ? (
+            <Link
+              className="pagination-button"
+              to={paramsHref({ page: safePage - 1 })}
+            >
+              Previous
+            </Link>
+          ) : (
+            <span className="pagination-button disabled" aria-disabled="true">
+              Previous
+            </span>
+          )}
+          <span className="pagination-range">
+            {pageOptions[safePage - 1]?.label}
           </span>
-        )}
-        <span>{pageOptions[safePage - 1]?.label}</span>
-        {safePage < pages ? (
-          <Link
-            className="pagination-button"
-            to={paramsHref({ page: safePage + 1 })}
-          >
-            Next
-          </Link>
-        ) : (
-          <span className="pagination-button disabled" aria-disabled="true">
-            Next
-          </span>
-        )}
+          {safePage < pages ? (
+            <Link
+              className="pagination-button"
+              to={paramsHref({ page: safePage + 1 })}
+            >
+              Next
+            </Link>
+          ) : (
+            <span className="pagination-button disabled" aria-disabled="true">
+              Next
+            </span>
+          )}
+        </div>
       </div>
     </section>
   );

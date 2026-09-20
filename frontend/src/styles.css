@@ -1376,9 +1376,14 @@ input[type="checkbox"] {
   font-size: 11px;
   padding-top: 18px;
 }
-.pagination > span:first-child {
+.pagination-count {
   margin-right: auto;
   color: var(--muted);
+}
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .pagination button,
 .pagination-button {
@@ -1568,6 +1573,11 @@ input[type="checkbox"] {
   flex-wrap: wrap;
   gap: 12px;
 }
+.mobile-completion,
+.mobile-action-label,
+.mobile-listen-label {
+  display: none;
+}
 .day-progress-compact {
   display: inline-flex;
   align-items: center;
@@ -1704,12 +1714,41 @@ input[type="checkbox"] {
   border-radius: 10px;
   padding: 24px;
 }
+.key-points-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: #17443d;
+  cursor: default;
+  list-style: none;
+}
+.key-points-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.key-points-disclosure > summary strong {
+  font-family: var(--display);
+  font-size: 27px;
+}
+.key-points-mobile-icon {
+  display: none;
+}
+.key-points-disclosure:not([open]) > .key-points-content {
+  display: block;
+}
+.key-points-disclosure > summary .key-points-mobile-icon {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+.key-points-disclosure[open] > summary .key-points-mobile-icon {
+  transform: rotate(180deg);
+}
 .preview-panel .serif {
   font-size: 24px;
   line-height: 1.5;
   margin: 26px 0;
 }
-.preview-panel > .quiet {
+.key-points-content > .quiet {
   line-height: 1.8;
   margin-bottom: 23px;
 }
@@ -1727,9 +1766,6 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 14px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
   color: #17443d;
   cursor: pointer;
   list-style: none;
@@ -1743,13 +1779,11 @@ input[type="checkbox"] {
 }
 .study-outline > summary strong {
   font-family: var(--display);
-  font-size: 24px;
+  font-size: 27px;
 }
 .study-outline > summary small {
   color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
 }
 .study-outline > summary svg {
   flex: 0 0 auto;
@@ -1759,7 +1793,7 @@ input[type="checkbox"] {
   transform: rotate(180deg);
 }
 .study-outline[open] > .outline {
-  margin-top: 4px;
+  margin-top: 16px;
 }
 .outline li {
   border-bottom: 1px solid var(--line);
@@ -2982,8 +3016,42 @@ input[type="checkbox"] {
     font-size: 25px;
   }
   .pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 10px;
+    width: 100%;
     font-size: 10px;
-    gap: 6px;
+  }
+  .pagination-count {
+    grid-column: 1/-1;
+    margin: 0;
+  }
+  .pagination .page-select {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+  }
+  .pagination .page-select select {
+    width: 100%;
+    min-width: 0;
+  }
+  .pagination-nav {
+    grid-column: 1/-1;
+    display: grid;
+    grid-template-columns: minmax(72px, 1fr) auto minmax(72px, 1fr);
+    align-items: center;
+    gap: 8px;
+  }
+  .pagination-nav .pagination-button {
+    display: inline-flex;
+    justify-content: center;
+    text-align: center;
+  }
+  .pagination-range {
+    min-width: 0;
+    text-align: center;
+    white-space: nowrap;
   }
   .timeline-labels {
     gap: 10px 14px;
@@ -3062,25 +3130,81 @@ input[type="checkbox"] {
     font-size: 11px;
   }
   .study-primary-actions {
-    gap: 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 7px;
   }
   .study-primary-actions > .primary {
-    flex: 1 1 155px;
-    padding: 11px 14px;
-    font-size: 13px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 8px 12px;
+    font-size: 12px;
   }
-  .study-primary-actions > .quiet {
-    flex-basis: 100%;
-    font-size: 11px;
+  .study-primary-actions .desktop-action-label,
+  .study-primary-actions .study-duration {
+    display: none;
+  }
+  .mobile-action-label {
+    display: inline;
+  }
+  .mobile-listen-label {
+    display: grid;
+    gap: 1px;
+    text-align: left;
+  }
+  .mobile-listen-label small {
+    font-size: 9px;
+    font-weight: 500;
+    opacity: 0.8;
   }
   .reading-mode-split {
-    flex: 1 1 180px;
+    min-width: 0;
+    min-height: 48px;
   }
   .reading-mode-main {
-    flex: 1;
-    gap: 7px;
-    padding: 10px 9px 10px 12px;
-    font-size: 13px;
+    width: 100%;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .reading-mode-menu,
+  .reading-mode-arrow {
+    display: none;
+  }
+  .study-ask-button {
+    min-width: 58px;
+    min-height: 48px;
+    padding: 8px 10px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .study-ask-button svg {
+    width: 16px;
+  }
+  .desktop-completion {
+    display: none;
+  }
+  .study-day-progress-row > .eyebrow {
+    flex: 1 0 100%;
+  }
+  .mobile-completion {
+    display: inline-flex;
+    margin-left: 2px;
+  }
+  .mobile-completion .primary,
+  .mobile-completion .completed-button {
+    min-height: 32px;
+    padding: 6px 10px;
+    gap: 6px;
+    border: 1px solid var(--green);
+    border-radius: 18px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .mobile-completion button svg {
+    width: 14px;
+    height: 14px;
   }
   .study-design #viewport-1-a-summary {
     padding: 23px !important;
@@ -3091,9 +3215,35 @@ input[type="checkbox"] {
   }
   .study-design #viewport-1-a-outline {
     width: 100% !important;
+    padding: 0 !important;
+  }
+  .study-outline {
+    padding: 18px 20px;
+  }
+  .study-outline > summary strong {
+    font-size: 24px;
   }
   .study-design #viewport-1-a-transcript {
-    display: none !important;
+    display: block !important;
+    width: 100% !important;
+  }
+  .key-points-disclosure {
+    padding: 18px 20px;
+  }
+  .key-points-disclosure > summary {
+    cursor: pointer;
+  }
+  .key-points-disclosure > summary strong {
+    font-size: 24px;
+  }
+  .key-points-desktop-icon {
+    display: none;
+  }
+  .key-points-mobile-icon {
+    display: block;
+  }
+  .key-points-disclosure:not([open]) > .key-points-content {
+    display: none;
   }
   .study-design #viewport-2-b {
     display: flex !important;

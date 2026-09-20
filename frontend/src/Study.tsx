@@ -87,6 +87,7 @@ function StudyContent({
       () => Number(localStorage.getItem("biy-font-size")) || 20,
     ),
     [saving, setSaving] = useState(false),
+    [keyPointsOpen, setKeyPointsOpen] = useState(true),
     [editingCompletionDate, setEditingCompletionDate] = useState(false);
   const navigate = useNavigate(),
     tab = search.get("tab") || "scripture",
@@ -536,6 +537,7 @@ function StudyContent({
               {completionPercentLabel}
             </span>
           )}
+          <span className="mobile-completion">{completion}</span>
         </span>
         <h1>{title}</h1>
       </>
@@ -545,7 +547,7 @@ function StudyContent({
         <p>
           {day?.readings.join(" · ") || "Conversation, context, and reflection"}
         </p>
-        <div className="completion-row">
+        <div className="completion-row desktop-completion">
           {completion}
           {completed && (
             <span className="quiet">Completed {date(completed)}</span>
@@ -561,7 +563,17 @@ function StudyContent({
           onClick={() => episode && audio.play(episode)}
         >
           <Play size={17} />
-          {episode?.position ? "Resume listening" : "Listen to episode"}
+          <span className="desktop-action-label">
+            {episode?.position ? "Resume listening" : "Listen to episode"}
+          </span>
+          <span className="mobile-listen-label">
+            {episode?.position ? "Resume" : "Listen"}
+            <small>
+              {episode?.has_audio
+                ? `${Math.ceil(episode.duration / 60)} min`
+                : "Unavailable"}
+            </small>
+          </span>
         </button>
         <div className="reading-mode-split">
           <Link
@@ -570,8 +582,9 @@ function StudyContent({
             title={`Open ${tabs.find(([id]) => id === selected)?.[1] || "this section"} in reading mode`}
           >
             <BookOpen size={18} />
-            <span>Reading mode</span>
-            <ArrowRight size={16} />
+            <span className="desktop-action-label">Reading mode</span>
+            <span className="mobile-action-label">Read</span>
+            <ArrowRight className="reading-mode-arrow" size={16} />
           </Link>
           <label className="reading-mode-menu">
             <span className="sr-only">Open a section in reading mode</span>
@@ -597,7 +610,7 @@ function StudyContent({
         <button className="study-ask-button" onClick={() => setChatOpen(true)}>
           <MessageCircle size={18} /> Ask
         </button>
-        <span className="quiet">
+        <span className="quiet study-duration">
           {episode?.has_audio
             ? `${Math.ceil(episode.duration / 60)} min`
             : "Audio not imported yet"}
@@ -617,7 +630,7 @@ function StudyContent({
     "viewport-1-a-outline": (
       <>
         {episode?.outline?.length ? (
-          <details className="study-outline">
+          <details className="study-outline preview-panel">
             <summary>
               <span>
                 <strong>Outline</strong>
@@ -646,7 +659,7 @@ function StudyContent({
             </ol>
           </details>
         ) : (
-          <>
+          <div className="preview-panel outline-empty">
             <div className="section-heading">
               <h2>Outline</h2>
               <Headphones size={20} />
@@ -655,45 +668,65 @@ function StudyContent({
               A clickable outline of the reading and commentary will appear once
               this episode has been processed.
             </p>
-          </>
+          </div>
         )}
       </>
     ),
     "viewport-1-a-transcript": (
-      <div className="preview-panel">
-        <div className="section-heading">
-          <h2>Key points</h2>
-          <BookOpen size={20} />
-        </div>
-        {episode?.key_points?.length ? (
-          <ul className="key-points">
-            {episode.key_points.map((point, i) => (
-              <li key={i}>{point.text}</li>
-            ))}
-          </ul>
-        ) : (
-          <>
-            <p className="serif">
-              Key points will be generated from this episode’s teaching.
-            </p>
-            <p className="quiet">
-              They will be grounded in the episode and available alongside the
-              full transcript.
-            </p>
-          </>
-        )}
-        <button
-          className="text-link"
-          onClick={() => {
-            setSearch({ tab: "transcript" });
-            document
-              .getElementById("viewport-2-b")
-              ?.scrollIntoView({ behavior: "smooth" });
+      <details
+        className="preview-panel key-points-disclosure"
+        open={keyPointsOpen}
+        onToggle={(event) => setKeyPointsOpen(event.currentTarget.open)}
+      >
+        <summary
+          onClick={(event) => {
+            if (!window.matchMedia("(max-width: 640px)").matches)
+              event.preventDefault();
           }}
         >
-          Open full transcript <ArrowRight size={16} />
-        </button>
-      </div>
+          <strong>Key points</strong>
+          <BookOpen
+            className="key-points-desktop-icon"
+            size={20}
+            aria-hidden="true"
+          />
+          <ChevronDown
+            className="key-points-mobile-icon"
+            size={20}
+            aria-hidden="true"
+          />
+        </summary>
+        <div className="key-points-content">
+          {episode?.key_points?.length ? (
+            <ul className="key-points">
+              {episode.key_points.map((point, i) => (
+                <li key={i}>{point.text}</li>
+              ))}
+            </ul>
+          ) : (
+            <>
+              <p className="serif">
+                Key points will be generated from this episode’s teaching.
+              </p>
+              <p className="quiet">
+                They will be grounded in the episode and available alongside the
+                full transcript.
+              </p>
+            </>
+          )}
+          <button
+            className="text-link"
+            onClick={() => {
+              setSearch({ tab: "transcript" });
+              document
+                .getElementById("viewport-2-b")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            Open full transcript <ArrowRight size={16} />
+          </button>
+        </div>
+      </details>
     ),
     "viewport-2-b-app": null,
     "viewport-2-b-sidebar": null,
