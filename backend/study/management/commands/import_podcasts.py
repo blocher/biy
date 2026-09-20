@@ -63,7 +63,13 @@ class Command(BaseCommand):
                 raise CommandError(
                     "Audio downloaded. Set OPENAI_API_KEY in the ignored .env, then rerun this same single-episode command. No AI requests were made."
                 )
-            client = OpenAI(timeout=180, max_retries=2)
+            try:
+                timeout = float(os.getenv("OPENAI_IMPORT_TIMEOUT_SECONDS", "900"))
+            except ValueError:
+                raise CommandError("OPENAI_IMPORT_TIMEOUT_SECONDS must be a number of seconds.")
+            if timeout < 600:
+                raise CommandError("OPENAI_IMPORT_TIMEOUT_SECONDS must be at least 600 seconds.")
+            client = OpenAI(timeout=timeout, max_retries=2)
             if not ep.transcript:
                 transcribe(ep, client)
             generate_study(ep, client)

@@ -4,4 +4,4 @@ set -eu
 set -a
 . /etc/biy/biy.env
 set +a
-exec sudo -u biy --preserve-env=DJANGO_SECRET_KEY,DJANGO_DEBUG,DJANGO_ALLOWED_HOSTS,CSRF_TRUSTED_ORIGINS,DATABASE_URL,MEDIA_ROOT,OPENAI_API_KEY,OPENAI_TRANSCRIBE_MODEL,OPENAI_STUDY_MODEL,BIBLE_SOURCE_DIR /var/www/biy-app/.venv/bin/python /var/www/biy-app/backend/manage.py "$@"
+exec sudo -u biy --preserve-env=DJANGO_SECRET_KEY,DJANGO_DEBUG,DJANGO_ALLOWED_HOSTS,CSRF_TRUSTED_ORIGINS,DATABASE_URL,MEDIA_ROOT,OPENAI_API_KEY,OPENAI_TRANSCRIBE_MODEL,OPENAI_IMPORT_TIMEOUT_SECONDS,OPENAI_STUDY_MODEL,BIBLE_SOURCE_DIR /var/www/biy-app/.venv/bin/python /var/www/biy-app/backend/manage.py "$@"
