@@ -14,6 +14,7 @@ flock -n 9 || { echo 'Another BIY deployment is running'; exit 1; }
 systemctl stop biy biy-worker || true
 git --work-tree="$APP_ROOT" --git-dir="$REPO_DIR" checkout -f "$DEPLOY_REV"
 chown -R biy:biy "$APP_ROOT"
+usermod -aG biy www-data
 if [ ! -x "$APP_ROOT/.venv/bin/python" ]; then sudo -u biy python3.13 -m venv "$APP_ROOT/.venv"; fi
 sudo -u biy "$APP_ROOT/.venv/bin/pip" install -r "$APP_ROOT/backend/requirements.txt"
 # pgvector must be installed for the server's PostgreSQL major version first.
@@ -35,6 +36,7 @@ chmod -R a+rX "$WEB_ROOT/dist"
 install -m 0644 "$APP_ROOT/deploy/biy-worker.service" /etc/systemd/system/biy-worker.service
 systemctl daemon-reload
 systemctl enable biy-worker
+systemctl restart nginx
 systemctl start biy-worker biy
 systemctl is-active --quiet biy-worker biy
 echo "BIY deployed at $DEPLOY_REV. Podcast imports are never run by this hook."

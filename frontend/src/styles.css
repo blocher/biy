@@ -3113,6 +3113,8 @@ input[type="checkbox"] {
   .reader-controls {
     gap: 8px;
     font-size: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
   .reader-mode-links {
     display: none;
@@ -3143,6 +3145,13 @@ input[type="checkbox"] {
   }
   .reader-controls > a {
     gap: 4px;
+  }
+  .reader-controls > .text-link,
+  .reader-controls > .primary,
+  .reader-controls > .completed-button {
+    flex: 1 1 130px;
+    justify-content: center;
+    text-align: center;
   }
   .reader-design #viewport-1-c-header {
     margin: 30px auto 10px !important;
