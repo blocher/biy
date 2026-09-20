@@ -4,7 +4,6 @@ import {
   BookOpen,
   MessageCircle,
   NotebookPen,
-  Headphones,
   LogOut,
   Sun,
   Settings,
@@ -52,9 +51,6 @@ export function Sidebar({
         </NavLink>
         <NavLink to="/leaderboard">
           <Users size={20} /> Leaderboard
-        </NavLink>
-        <NavLink to="/extras">
-          <Headphones size={20} /> Extra episodes
         </NavLink>
         <NavLink to="/account">
           <Settings size={20} /> Account

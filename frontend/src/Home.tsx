@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   NotebookPen,
-  Headphones,
   CheckCircle2,
   CalendarDays,
   Clock3,
@@ -165,19 +164,7 @@ export function Home({
             </Link>
           </>
         ),
-        listen: (
-          <>
-            <span className="eyebrow">BEYOND THE DAILY READING</span>
-            <h2>Listen a little deeper.</h2>
-            <p>
-              Explore the introductions and conversations that help the bigger
-              story come into focus.
-            </p>
-            <Link className="text-link" to="/extras">
-              <Headphones size={18} /> Extra episodes <ArrowRight size={16} />
-            </Link>
-          </>
-        ),
+        listen: null,
         eras: <Timeline library={library} />,
       }}
     />

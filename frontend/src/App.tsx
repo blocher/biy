@@ -14,7 +14,7 @@ import { AdminContext, Brand, LogoutContext } from "./navigation";
 import { AudioProvider } from "./Audio";
 import { Study } from "./Study";
 import { StudyChat } from "./StudyChat";
-import { LibraryPage, Journal } from "./Library";
+import { Journal } from "./Library";
 import { Home } from "./Home";
 import { Leaderboard } from "./Leaderboard";
 import { Account } from "./Account";
@@ -213,10 +213,7 @@ function AppContent() {
                 path="/plan"
                 element={<Navigate to={`/${location.search}`} replace />}
               />
-              <Route
-                path="/extras"
-                element={<LibraryPage user={user} library={library} />}
-              />
+              <Route path="/extras" element={<Navigate to="/" replace />} />
               <Route
                 path="/journal"
                 element={<Journal user={user} onError={onError} />}

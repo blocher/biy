@@ -48,10 +48,7 @@ export function DayTable({
     [editingCompletionDate, setEditingCompletionDate] = useState<string | null>(
       null,
     );
-  const entries = useMemo<PlanEntry[]>(
-    () => planEntries(library),
-    [library],
-  );
+  const entries = useMemo<PlanEntry[]>(() => planEntries(library), [library]);
   const eras = useMemo(
     () =>
       Array.from(
@@ -604,73 +601,6 @@ export function Timeline({ library }: { library: Library }) {
           </span>
         ))}
       </div>
-    </div>
-  );
-}
-export function LibraryPage({
-  library,
-  user,
-}: {
-  library: Library;
-  user: string;
-}) {
-  const [query, setQuery] = useState("");
-  return (
-    <div className="app-frame">
-      <Sidebar user={user} />
-      <main className="simple-page">
-        <span className="eyebrow">YOUR DAILY COMPANION</span>
-        <h1>A little more context.</h1>
-        <p className="page-intro">
-          Introductions, conversations, and bonus episodes from 2025.
-        </p>
-        <label className="search">
-          <Search size={17} />
-          <input
-            placeholder="Search extra episodes…"
-            aria-label="Search extra episodes"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </label>
-        {library.extras.length ? (
-          <div className="extras-grid">
-            {library.extras
-              .filter((e) =>
-                e.title.toLowerCase().includes(query.toLowerCase()),
-              )
-              .map((e) => (
-                <Link className="extra-card" to={`/episode/${e.id}`} key={e.id}>
-                  <div className="section-heading">
-                    <Headphones style={{ color: e.color }} />
-                    {e.completed_at && <Check size={18} />}
-                  </div>
-                  <h2>{episodeTitle(e.title)}</h2>
-                  <p>
-                    {date(e.published_at)} · {Math.ceil(e.duration / 60)} min
-                  </p>
-                  <span className="text-link">
-                    Open study <ArrowRight size={16} />
-                  </span>
-                </Link>
-              ))}
-          </div>
-        ) : (
-          <div className="empty-content">
-            <Headphones size={32} />
-            <h2>Room for the whole conversation.</h2>
-            <p>
-              Introductions and bonus episodes will appear here when imported.
-              Each gets transcripts, commentary, audio links, and a private
-              journal.
-            </p>
-            <p className="quiet">
-              The current test imports Day 1 only. Extra episodes don’t count
-              toward your 365 days.
-            </p>
-          </div>
-        )}
-      </main>
     </div>
   );
 }

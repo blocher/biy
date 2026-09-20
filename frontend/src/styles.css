@@ -1159,7 +1159,7 @@ input[type="checkbox"] {
   grid-row: 3;
 }
 .home-design #reflection {
-  grid-column: 1;
+  grid-column: 1/-1;
   grid-row: 4;
 }
 .home-design #listen {
@@ -1454,27 +1454,17 @@ input[type="checkbox"] {
 .empty {
   padding: 25px 0;
 }
-.extras-grid,
 .journal-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 22px;
   margin-top: 25px;
 }
-.extra-card,
 .journal-card {
   border: 1px solid var(--line);
   padding: 28px;
   border-radius: 10px;
   background: #fffdf8;
-}
-.extra-card h2 {
-  font-size: 26px;
-}
-.extra-card p {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 18px 0;
 }
 .journal-card > p {
   white-space: pre-wrap;
@@ -3410,16 +3400,22 @@ body:has(.reader-design) .player {
 }
 @media (max-width: 640px) {
   .navigation {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
     width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
   }
   .navigation a {
+    flex: 0 0 auto;
     flex-direction: column;
     justify-content: center;
     text-align: center;
-    min-width: 0;
-    padding: 9px 2px;
+    min-width: 64px;
+    padding: 9px 7px;
     font-size: 9px;
     gap: 4px;
   }
