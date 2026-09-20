@@ -103,6 +103,28 @@ class ScriptureTests(TestCase):
         self.assertEqual(Verse.objects.get(book="1 Maccabees").text, "Test Maccabees")
         self.assertFalse(reading_text("Psalm 19")["groups"][0]["missing"])
 
+    def test_poetic_hang_lines_are_preserved(self):
+        with TemporaryDirectory() as directory:
+            Path(directory, "21_psa_text_19.html").write_text(
+                '<verse id="v21019001"><verse_body><ver>1</ver>'
+                "The heavens are telling the glory of God;\n"
+                '\t\t\t<p class="hang2"><verse_body>and the firmament proclaims his handiwork.</verse_body></p>'
+                "</verse_body></verse>"
+                '<verse id="v21019002"><verse_body><ver>2</ver>'
+                "Day to day pours forth speech,"
+                '<p class="hang2"><verse_body>and night to night declares knowledge.</verse_body></p>'
+                "</verse_body></verse>"
+            )
+            call_command("import_bible", source=directory)
+        self.assertEqual(
+            Verse.objects.get(book="Psalm", chapter=19, number=1).text,
+            "The heavens are telling the glory of God;\nand the firmament proclaims his handiwork.",
+        )
+        self.assertEqual(
+            Verse.objects.get(book="Psalm", chapter=19, number=2).text,
+            "Day to day pours forth speech,\nand night to night declares knowledge.",
+        )
+
 
 class APITests(TestCase):
     def setUp(self):

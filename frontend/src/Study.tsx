@@ -17,6 +17,7 @@ import {
   Headphones,
   MessageCircle,
   Maximize2,
+  Pause,
   Play,
   BookOpen,
   ChevronDown,
@@ -33,7 +34,7 @@ import {
   shortDate,
   time,
 } from "./api";
-import type { DayDetail, Episode, Segment } from "./types";
+import type { DayDetail, Episode, ScriptureAudioCue, Segment } from "./types";
 import { Design } from "./Design";
 import studySource from "./design/study.html?raw";
 import readerSource from "./design/reader.html?raw";
@@ -44,7 +45,10 @@ import { Sidebar } from "./navigation";
 import { useStudyChat } from "./useStudyChat";
 import { ReadingChatDialog, ReadingChatHistory } from "./ReadingChat";
 import {
+  audioSpanContaining,
+  audioSpanDuration,
   groupTranscriptSegments,
+  mergeAudioSpans,
   plainOutlineTitle,
   supplementarySpeakerNames,
 } from "./studyText";
@@ -273,22 +277,26 @@ function StudyContent({
   const scriptureCues = day?.scripture.flatMap((passage) =>
     passage.audio ? [passage.audio] : [],
   );
+  const readingClips = mergeAudioSpans(scriptureCues);
+  const commentaryClips = mergeAudioSpans(episode?.commentary);
+  const scriptureAudio =
+    episode?.has_audio && readingClips.length
+      ? {
+          episodeActive: audio.episode?.id === episode.id,
+          position: audio.position,
+          playing: audio.playing,
+          playAll: () => audio.playClips(episode, readingClips),
+          playPassage: (cue: ScriptureAudioCue) =>
+            audio.playClips(episode, [cue]),
+          toggle: audio.toggle,
+        }
+      : undefined;
   const content =
     selected === "scripture" && day ? (
       <Scripture
         passages={day.scripture}
-        audio={
-          reader && episode?.has_audio && scriptureCues?.length
-            ? {
-                episodeActive: audio.episode?.id === episode.id,
-                position: audio.position,
-                playing: audio.playing,
-                playAll: () => audio.playClips(episode, scriptureCues),
-                playPassage: (cue) => audio.playClips(episode, [cue]),
-                toggle: audio.toggle,
-              }
-            : undefined
-        }
+        audio={scriptureAudio}
+        toolbar={reader}
       />
     ) : selected === "transcript" ? (
       transcript(episode?.transcript)
@@ -735,20 +743,28 @@ function StudyContent({
     "viewport-2-b-content": null,
     "viewport-2-b-sidebar-content": null,
     "viewport-2-b-tabs": (
-      <div className="study-tabs" role="tablist" aria-label="Study content">
-        {tabs.map(([id, label]) => (
-          <button
-            role="tab"
-            id={`tab-${id}`}
-            aria-selected={selected === id}
-            aria-controls="study-panel"
-            className={selected === id ? "active" : ""}
-            key={id}
-            onClick={() => setSearch({ tab: id }, { replace: true })}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="study-tabs-bar">
+        <div className="study-tabs" role="tablist" aria-label="Study content">
+          {tabs.map(([id, label]) => (
+            <button
+              role="tab"
+              id={`tab-${id}`}
+              aria-selected={selected === id}
+              aria-controls="study-panel"
+              className={selected === id ? "active" : ""}
+              key={id}
+              onClick={() => setSearch({ tab: id }, { replace: true })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <StudyTabAudio
+          selected={selected}
+          episode={episode}
+          readingClips={readingClips}
+          commentaryClips={commentaryClips}
+        />
       </div>
     ),
     "viewport-2-b-commentary": (
@@ -833,5 +849,112 @@ function StudyContent({
         className="study-design"
       />
     </>
+  );
+}
+
+function StudyTabAudio({
+  selected,
+  episode,
+  readingClips,
+  commentaryClips,
+}: {
+  selected: string;
+  episode: Episode | null;
+  readingClips: ReturnType<typeof mergeAudioSpans>;
+  commentaryClips: ReturnType<typeof mergeAudioSpans>;
+}) {
+  const audio = useAudio();
+  if (!episode?.has_audio) return null;
+  const episodeActive = audio.episode?.id === episode.id;
+  const readingActive = Boolean(
+    episodeActive && audioSpanContaining(readingClips, audio.position),
+  );
+  const commentaryActive = Boolean(
+    episodeActive && audioSpanContaining(commentaryClips, audio.position),
+  );
+  const readingDuration = audioSpanDuration(readingClips);
+  const commentaryDuration = audioSpanDuration(commentaryClips);
+
+  if (selected === "scripture") {
+    if (!readingClips.length) return null;
+    const label = readingActive
+      ? audio.playing
+        ? "Pause Scripture"
+        : "Resume Scripture"
+      : "Play Scripture";
+    return (
+      <div className="study-tab-audio">
+        <button
+          className="study-tab-audio-play"
+          aria-label={label}
+          onClick={() =>
+            readingActive
+              ? audio.toggle()
+              : audio.playClips(episode, readingClips)
+          }
+        >
+          {readingActive && audio.playing ? (
+            <Pause size={13} />
+          ) : (
+            <Play size={13} />
+          )}
+        </button>
+        <span className="study-tab-audio-copy">
+          <strong>{label.replace(" Scripture", "")}</strong>
+          <small>{time(readingDuration)}</small>
+        </span>
+      </div>
+    );
+  }
+
+  if (selected !== "transcript") return null;
+
+  return (
+    <div className="study-tab-audio">
+      <button
+        className="study-tab-audio-play"
+        aria-label={episodeActive && audio.playing ? "Pause episode" : "Play episode"}
+        onClick={() => (episodeActive ? audio.toggle() : audio.play(episode))}
+      >
+        {episodeActive && audio.playing ? (
+          <Pause size={13} />
+        ) : (
+          <Play size={13} />
+        )}
+      </button>
+      {readingClips.length || commentaryClips.length ? (
+        <span className="study-tab-audio-breakdown">
+          {readingClips.length > 0 && (
+            <button
+              className={readingActive ? "active" : ""}
+              aria-label={`${readingActive && audio.playing ? "Pause" : "Play"} reading, ${time(readingDuration)}`}
+              onClick={() =>
+                readingActive
+                  ? audio.toggle()
+                  : audio.playClips(episode, readingClips)
+              }
+            >
+              Reading {time(readingDuration)}
+            </button>
+          )}
+          {readingClips.length > 0 && commentaryClips.length > 0 && (
+            <span aria-hidden="true">·</span>
+          )}
+          {commentaryClips.length > 0 && (
+            <button
+              className={commentaryActive ? "active" : ""}
+              aria-label={`${commentaryActive && audio.playing ? "Pause" : "Play"} commentary, ${time(commentaryDuration)}`}
+              onClick={() =>
+                commentaryActive
+                  ? audio.toggle()
+                  : audio.playClips(episode, commentaryClips)
+              }
+            >
+              Commentary {time(commentaryDuration)}
+            </button>
+          )}
+        </span>
+      ) : null}
+    </div>
   );
 }

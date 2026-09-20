@@ -9,6 +9,20 @@ from django.db import transaction
 from study.models import Verse
 from study.scripture import BOOKS
 
+POETIC_LINES = {"hang1", "hang2", "hang3"}
+
+
+def verse_body_text(body):
+    for node in body.select("ver, .enote, .verse_xref_link"):
+        node.decompose()
+    for break_ in body.find_all("br"):
+        break_.replace_with("\n")
+    for paragraph in body.find_all("p"):
+        if POETIC_LINES.intersection(paragraph.get("class") or []):
+            paragraph.insert_before("\n")
+    text = re.sub(r"[^\S\n]+", " ", body.get_text(" "))
+    return re.sub(r" *(?:\n *)+", "\n", text).strip()
+
 
 class Command(BaseCommand):
     help = "Import structured verses from the supplied local RSV Catholic Study Bible HTML."
@@ -54,9 +68,7 @@ class Command(BaseCommand):
                 body = verse.find("verse_body")
                 if body is None:
                     continue
-                for node in body.select("ver, .enote, .verse_xref_link"):
-                    node.decompose()
-                content = re.sub(r"\s+", " ", body.get_text()).strip()
+                content = verse_body_text(body)
                 records.append(
                     Verse(
                         book=book,

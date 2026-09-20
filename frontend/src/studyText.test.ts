@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Episode, Segment } from "./types";
 import {
+  audioSpanContaining,
+  audioSpanDuration,
   groupTranscriptSegments,
+  mergeAudioSpans,
   plainOutlineTitle,
   supplementarySpeakerNames,
 } from "./studyText";
@@ -100,5 +103,24 @@ describe("plainOutlineTitle", () => {
 
   it("leaves an ordinary title unchanged", () => {
     expect(plainOutlineTitle("The Bible Timeline")).toBe("The Bible Timeline");
+  });
+});
+
+describe("mergeAudioSpans", () => {
+  it("joins nearly adjacent commentary spans and skips invalid ranges", () => {
+    const spans = mergeAudioSpans([
+      { start: 10, end: 20 },
+      { start: 20.2, end: 30 },
+      { start: 40, end: 50 },
+      { start: 12, end: 8 },
+    ]);
+
+    expect(spans).toEqual([
+      { start: 10, end: 30 },
+      { start: 40, end: 50 },
+    ]);
+    expect(audioSpanDuration(spans)).toBe(30);
+    expect(audioSpanContaining(spans, 22)?.start).toBe(10);
+    expect(audioSpanContaining(spans, 35)).toBeUndefined();
   });
 });

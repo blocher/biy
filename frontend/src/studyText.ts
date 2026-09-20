@@ -95,3 +95,33 @@ export function plainOutlineTitle(title: string) {
   const linkedTitle = trimmed.match(/^\[([^\]]+)\]\(#segment-\d+\)$/i);
   return linkedTitle?.[1] || trimmed;
 }
+
+export type AudioSpan = { start: number; end: number };
+
+export function mergeAudioSpans(spans: AudioSpan[] | undefined): AudioSpan[] {
+  const merged: AudioSpan[] = [];
+  for (const span of [...(spans || [])].sort((a, b) => a.start - b.start)) {
+    if (
+      !Number.isFinite(span.start) ||
+      !Number.isFinite(span.end) ||
+      span.end <= span.start
+    ) {
+      continue;
+    }
+    const previous = merged.at(-1);
+    if (previous && span.start <= previous.end + 0.35) {
+      previous.end = Math.max(previous.end, span.end);
+      continue;
+    }
+    merged.push({ start: span.start, end: span.end });
+  }
+  return merged;
+}
+
+export function audioSpanDuration(spans: AudioSpan[]) {
+  return spans.reduce((total, span) => total + (span.end - span.start), 0);
+}
+
+export function audioSpanContaining(spans: AudioSpan[], position: number) {
+  return spans.find((span) => position >= span.start && position < span.end);
+}

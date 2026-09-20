@@ -1917,10 +1917,17 @@ input[type="checkbox"] {
 .study-design #viewport-2-b-tabs {
   grid-column: 1/-1;
 }
+.study-tabs-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+}
 .study-tabs {
   display: flex;
   gap: 8px;
-  border-bottom: 1px solid var(--line);
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
 }
 .study-tabs button {
@@ -1933,6 +1940,63 @@ input[type="checkbox"] {
 .study-tabs button.active {
   border-color: var(--green);
   font-weight: 600;
+  color: var(--green);
+}
+.study-tab-audio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin: 0 0 8px;
+  padding: 4px 2px 4px 16px;
+  background: var(--paper);
+  box-shadow: -16px 0 14px var(--paper);
+}
+.study-tab-audio-play {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #fffefa;
+  background: var(--green);
+}
+.study-tab-audio-play:hover {
+  background: #0d332a;
+}
+.study-tab-audio-copy {
+  display: grid;
+  gap: 1px;
+  padding-right: 4px;
+}
+.study-tab-audio-copy strong {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.study-tab-audio-copy small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.study-tab-audio-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  padding-right: 4px;
+}
+.study-tab-audio-breakdown button {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+}
+.study-tab-audio-breakdown button:hover,
+.study-tab-audio-breakdown button.active {
   color: var(--green);
 }
 .study-design #viewport-2-b-commentary {
@@ -2070,7 +2134,7 @@ input[type="checkbox"] {
   color: #333c35;
 }
 .verse {
-  white-space: normal;
+  white-space: pre-line;
 }
 .verse sup {
   font-family: "DM Sans", sans-serif;
@@ -2842,8 +2906,16 @@ input[type="checkbox"] {
   .study-design #viewport-2-b-tabs {
     overflow: hidden;
   }
+  .study-tabs-bar {
+    flex-wrap: wrap;
+  }
   .study-tabs button {
     font-size: 12px;
+  }
+  .study-tab-audio {
+    margin-left: auto;
+    box-shadow: none;
+    padding-left: 8px;
   }
   .simple-page {
     margin-left: 0;
@@ -3267,6 +3339,13 @@ input[type="checkbox"] {
   .study-tabs button {
     font-size: 11px;
     padding: 15px 10px;
+  }
+  .study-tab-audio {
+    width: 100%;
+    justify-content: flex-end;
+    margin: 0;
+    padding: 0 8px 10px;
+    box-shadow: none;
   }
   .content-toolbar {
     margin: 0 0 25px;

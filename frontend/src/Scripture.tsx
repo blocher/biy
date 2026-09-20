@@ -14,9 +14,11 @@ type ScriptureAudio = {
 export function Scripture({
   passages,
   audio,
+  toolbar = true,
 }: {
   passages: Passage[];
   audio?: ScriptureAudio;
+  toolbar?: boolean;
 }) {
   const cues = passages.flatMap((passage) =>
     passage.audio ? [passage.audio] : [],
@@ -33,7 +35,7 @@ export function Scripture({
   );
   return (
     <div className="scripture-text">
-      {audio && cues.length > 0 && (
+      {audio && cues.length > 0 && toolbar && (
         <div className="scripture-audio-bar">
           <button
             className="scripture-audio-primary"
@@ -118,7 +120,9 @@ export function Scripture({
                           <p
                             className={
                               "verse-paragraph " +
-                              (group.book === "Psalm" ? "poetry" : "")
+                              (group.book === "Psalm" || v.text.includes("\n")
+                                ? "poetry"
+                                : "")
                             }
                             key={v.verse}
                           >
