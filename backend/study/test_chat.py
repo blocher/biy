@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from .chat import catholic_sources, context_for, process_chat, run_turn
+from .chat import catholic_sources, chat_model_for, context_for, process_chat, run_turn
 from .chat_api import turn_data
 from .models import (
     Day,
@@ -43,6 +43,13 @@ class StudyChatTests(TestCase):
         self.day = Day.objects.create(number=1, era=era, readings=["Genesis 1"])
         self.day2 = Day.objects.create(number=2, era=era, readings=["Genesis 2"])
         self.client.force_login(self.user)
+
+    def test_chat_model_routes_direct_questions_to_luna_and_summaries_to_terra(self):
+        self.assertEqual(chat_model_for("What is fiat lux?"), "gpt-5.6-luna")
+        self.assertEqual(
+            chat_model_for("Summarize the readings and explain the main themes in detail."),
+            "gpt-5.6-terra",
+        )
 
     def note(self, **kwargs):
         return Note.objects.create(

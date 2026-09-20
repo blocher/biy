@@ -141,7 +141,7 @@ export function useStudyChat(scope?: {
         timer = setTimeout(
           refresh,
           data.turns.some((t) => ["queued", "running"].includes(t.status))
-            ? 1500
+            ? 750
             : 15000,
         );
       } catch (e) {

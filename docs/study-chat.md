@@ -35,7 +35,7 @@ Selected local excerpts and conversation context are sent to OpenAI to compose a
 
 Install pgvector for the PostgreSQL major version used by BIY. On macOS the local PostgreSQL installation must list `vector` in `pg_available_extensions`; on Ubuntu use the matching `postgresql-<major>-pgvector` package. A database administrator creates the extension in the BIY database; do not grant the runtime role superuser privileges. The schema migration also uses `VectorExtension` for fresh local/test databases.
 
-Configure `OPENAI_API_KEY`, `MAGISTERIUM_API_KEY`, `STUDY_CHAT_MODEL`, `STUDY_WEB_MODEL`, and `STUDY_EMBEDDING_MODEL` in the protected environment. Defaults are gpt-4.1 for chat/web and text-embedding-3-small for 1536-dimensional embeddings. No secrets are sent to the browser.
+Configure `OPENAI_API_KEY`, `MAGISTERIUM_API_KEY`, `STUDY_CHAT_MODEL`, `STUDY_CHAT_QUALITY_MODEL`, `STUDY_WEB_MODEL`, and `STUDY_EMBEDDING_MODEL` in the protected environment. Defaults are `gpt-5.6-luna` for direct chat questions, `gpt-5.6-terra` for synthesis-heavy questions, and `text-embedding-3-small` for 1536-dimensional embeddings. `OPENAI_STUDY_MODEL` remains the Terra-class model used for episode study-content generation. No secrets are sent to the browser.
 
 Local startup: `StartBIYDev.app` opens a Study Worker pane that migrates, reconciles the index, then runs `study_worker`. PostgreSQL remains the app's existing prerequisite; no Redis/Celery daemon is required. For manual startup:
 

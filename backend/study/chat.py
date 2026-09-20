@@ -49,6 +49,19 @@ Keep answers focused. A simple question about site activity normally needs only 
 """
 
 
+def chat_model_for(question):
+    """Use the fast model for direct lookups and the quality model for synthesis."""
+    normalized = question.casefold()
+    synthesis_terms = (
+        "summarize", "summary", "overview", "explain", "compare", "contrast",
+        "how do", "how does", "what does this mean", "main themes", "in detail",
+    )
+    complex_request = len(normalized.split()) >= 28 or any(
+        term in normalized for term in synthesis_terms
+    )
+    return settings.STUDY_CHAT_QUALITY_MODEL if complex_request else settings.STUDY_CHAT_MODEL
+
+
 ANSWER_FORMAT = {
     "type": "json_schema",
     "name": "study_answer",
@@ -463,7 +476,7 @@ def run_turn(turn):
             "source_ids"
         ]["items"]["enum"] = list(sources) or [""]
         response = client().responses.create(
-            model=settings.STUDY_CHAT_MODEL,
+            model=chat_model_for(turn.question),
             store=False,
             instructions=PROMPT,
             input=messages,
