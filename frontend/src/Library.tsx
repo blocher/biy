@@ -49,7 +49,7 @@ export function DayTable({
       null,
     );
   const entries = useMemo<PlanEntry[]>(
-    () => planEntries(library).filter((entry) => entry.kind === "day"),
+    () => planEntries(library),
     [library],
   );
   const eras = useMemo(

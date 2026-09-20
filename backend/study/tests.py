@@ -9,7 +9,7 @@ from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase, override_settings
 
-from .importing import parse_feed
+from .importing import _dedupe_transcript_segments, parse_feed
 from .models import Day, Episode, Era, Verse
 from .scripture import reading_text, reference_ranges
 
@@ -49,6 +49,21 @@ class FeedTests(TestCase):
         rows = parse_feed(feed)
 
         self.assertEqual([row["guid"] for row in rows], ["correct"])
+
+
+class TranscriptionTests(TestCase):
+    def test_dedupes_identical_segments_from_overlap_window(self):
+        segments = [
+            {"start": 898.4, "end": 901.2, "speaker": "Voice A · part 1", "text": "In the beginning."},
+            {"start": 898.8, "end": 901.5, "speaker": "Voice A · part 2", "text": " in the beginning. "},
+            {"start": 902.0, "end": 904.0, "speaker": "Voice A · part 2", "text": "God created."},
+        ]
+
+        result = _dedupe_transcript_segments(segments)
+
+        self.assertEqual([segment["text"] for segment in result], ["In the beginning.", "God created."])
+        self.assertEqual(result[0]["end"], 901.5)
+        self.assertEqual([segment["id"] for segment in result], [0, 1])
 
     def test_day_plan_exact_and_idempotent(self):
         call_command("seed_plan", verbosity=0)

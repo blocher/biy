@@ -86,7 +86,7 @@ For a bulk run, `--workers 2` through `--workers 8` process separate episodes co
 ### How commentary-only extraction works
 
 1. Download the original enclosure, validate audio with ffprobe, and retain its SHA-256 hash.
-2. Transcribe three-minute audio chunks with diarized timestamps. Completed chunks are checkpointed so a retry does not transcribe them again. Speaker labels are local to each chunk; the app does not invent speaker identities.
+2. Transcribe 15-minute audio chunks with a four-second overlap and diarized timestamps. Completed chunks are checkpointed so a retry does not transcribe them again; repeated overlap segments are deduplicated. Speaker labels are local to each chunk; the app does not invent speaker identities.
 3. Classify every source segment as Scripture reading, commentary, prayer, boilerplate introduction, advertisement, or mixed. Substantive section introductions and brief Bible quotations inside commentary are retained. Mixed excerpts must be exact substrings of their source segment.
 4. Build commentary-only text from original retained segments. Keep the full transcript intact.
 5. Generate a substantial lightly edited written version, one-paragraph summary, and outline. Every edited paragraph cites retained segment IDs; outline timestamps come from those source segments, not model-invented times.
@@ -144,3 +144,5 @@ Ask questions from any reading or open **Study chat**. Answers search imported S
 The full local Bible can be imported with `import_bible` without `--day`; podcast imports remain explicit. Set `MAGISTERIUM_API_KEY` privately to enable Catholic research. The UI reports missing configuration and worker availability.
 
 Local startup now includes a PostgreSQL-backed Study Worker pane for chat and asynchronous embeddings; no Redis is required. Production has a dedicated `biy-worker` service integrated into the deployment hook. Install pgvector for your PostgreSQL version before migrating. See [study chat architecture and operations](docs/study-chat.md).
+
+See the [production command reference](docs/production-commands.md) for seeding, podcast imports, AI processing, and service checks.

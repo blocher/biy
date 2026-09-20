@@ -19,7 +19,9 @@ from pydantic import BaseModel
 from .models import Day, Episode, Era
 
 FEED_URL = "https://feeds.fireside.fm/bibleinayear/rss"
-PIPELINE_VERSION = "3"
+PIPELINE_VERSION = "4"
+TRANSCRIBE_CHUNK_SECONDS = 900
+TRANSCRIBE_OVERLAP_SECONDS = 4
 
 
 def parse_feed(xml):
@@ -169,16 +171,45 @@ def checkpoint(path, data):
     temp.replace(path)
 
 
+def _dedupe_transcript_segments(segments):
+    """Collapse identical segments returned in adjacent overlap windows."""
+    ordered = sorted(segments, key=lambda segment: (segment["start"], segment["end"]))
+    kept = []
+    for segment in ordered:
+        text = " ".join(segment["text"].split()).casefold()
+        duplicate = next(
+            (
+                previous
+                for previous in reversed(kept)
+                if segment["start"] - previous["start"] <= TRANSCRIBE_OVERLAP_SECONDS + 2
+                and text
+                == " ".join(previous["text"].split()).casefold()
+            ),
+            None,
+        )
+        if duplicate is None:
+            kept.append(segment)
+        elif segment["end"] > duplicate["end"]:
+            duplicate["end"] = segment["end"]
+    for index, segment in enumerate(kept):
+        segment["id"] = index
+    return kept
+
+
 def transcribe(ep, client):
     path = settings.MEDIA_ROOT / ep.audio_file
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     model = os.getenv("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-transcribe-diarize")
     if model != "gpt-4o-transcribe-diarize":
         raise ValueError("This timestamped speaker pipeline requires gpt-4o-transcribe-diarize.")
-    cache = path.parent / f"transcript-{digest[:12]}-{model}"
+    cache = path.parent / (
+        f"transcript-{digest[:12]}-{model}-v{PIPELINE_VERSION}-"
+        f"{TRANSCRIBE_CHUNK_SECONDS}s-{TRANSCRIBE_OVERLAP_SECONDS}s"
+    )
     cache.mkdir(mode=0o700, exist_ok=True)
     segments = []
-    for index, offset in enumerate(range(0, int(ep.duration) + 1, 180)):
+    step = TRANSCRIBE_CHUNK_SECONDS - TRANSCRIBE_OVERLAP_SECONDS
+    for index, offset in enumerate(range(0, int(ep.duration) + 1, step)):
         if ep.duration - offset < 0.1:
             break
         record = cache / f"{index:03}.json"
@@ -197,7 +228,7 @@ def transcribe(ep, client):
                     "-i",
                     str(path),
                     "-t",
-                    "180",
+                    str(TRANSCRIBE_CHUNK_SECONDS),
                     "-ac",
                     "1",
                     "-ar",
@@ -227,21 +258,22 @@ def transcribe(ep, client):
                 raise ValueError("Transcription returned invalid audio timestamps.")
             segments.append(
                 {
-                    "id": len(segments),
                     "start": start,
                     "end": min(end, ep.duration),
                     "speaker": f"Voice {segment.get('speaker', 'A')} · part {index + 1}",
                     "text": segment["text"],
                 }
             )
+    segments = _dedupe_transcript_segments(segments)
     ep.transcript = segments
     ep.status = "transcribed"
     ep.provenance = {
         **ep.provenance,
         "audio_sha256": digest,
         "transcription_model": model,
-        "chunk_seconds": 180,
-        "speaker_note": "Speaker labels are local to each three-minute chunk; identity is not inferred.",
+        "chunk_seconds": TRANSCRIBE_CHUNK_SECONDS,
+        "chunk_overlap_seconds": TRANSCRIBE_OVERLAP_SECONDS,
+        "speaker_note": "Speaker labels are local to each 15-minute chunk; identity is not inferred.",
         "pipeline_version": PIPELINE_VERSION,
     }
     ep.save(update_fields=["transcript", "status", "provenance"])
