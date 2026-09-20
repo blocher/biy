@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {
   BookOpen,
+  MessageCircle,
   NotebookPen,
   Headphones,
   LogOut,
@@ -42,6 +43,9 @@ export function Sidebar({
       <nav className="navigation" aria-label="Main navigation">
         <NavLink to="/" end>
           <BookOpen size={20} /> Reading plan
+        </NavLink>
+        <NavLink to="/chat">
+          <MessageCircle size={20} /> Ask
         </NavLink>
         <NavLink to="/journal">
           <NotebookPen size={20} /> My journal

@@ -3372,3 +3372,15 @@ body:has(.reader-design) .player {
     gap: 4px;
   }
 }
+
+.study-ask-button {
+  min-height: 45px;
+  padding: 10px 18px;
+  border: 1px solid var(--green);
+  border-radius: 28px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--paper);
+  color: var(--green);
+  white-space: nowrap;
+}

@@ -47,6 +47,16 @@ tell application "iTerm"
         set name to "BIY Frontend :5178"
         write text "cd ~/projects/biy/frontend"
         write text "npm run dev -- --strictPort"
+        set workerPane to (split horizontally with default profile)
+    end tell
+
+    -- Durable PostgreSQL queue: one worker for chat and vector indexing.
+    tell workerPane
+        set variable named "user.BIYSession" to "Worker"
+        set name to "BIY Study Worker"
+        write text "cd ~/projects/biy"
+        write text "source .venv/bin/activate"
+        write text "python backend/manage.py migrate --noinput && python backend/manage.py index_study && python backend/manage.py study_worker"
         set toolsPane to (split horizontally with default profile)
     end tell
 

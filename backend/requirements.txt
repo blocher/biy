@@ -43,10 +43,14 @@ jiter==0.17.0
     # via openai
 lxml==6.1.3
     # via -r backend/requirements.in
+numpy==2.5.3
+    # via pgvector
 openai==2.54.0
     # via -r backend/requirements.in
 packaging==26.3
     # via gunicorn
+pgvector==0.4.2
+    # via -r backend/requirements.in
 psycopg==3.3.6
     # via -r backend/requirements.in
 psycopg-binary==3.3.6

@@ -18,6 +18,7 @@ from ninja.errors import HttpError
 from ninja.security import django_auth
 from pydantic import Field
 
+from .chat_api import router as chat_router
 from .models import (
     CommunitySettings,
     Day,
@@ -675,3 +676,6 @@ def audio(request, episode_id: int):
     if status == 206:
         response["Content-Range"] = f"bytes {start}-{end}/{size}"
     return response
+
+# Auth and CSRF protection are inherited from the session-authenticated API.
+api.add_router("/chat", chat_router)

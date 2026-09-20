@@ -1,4 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type ReactNode,
+  type ComponentProps,
+} from "react";
 import {
   Link,
   useNavigate,
@@ -10,6 +15,7 @@ import {
   ArrowRight,
   Check,
   Headphones,
+  MessageCircle,
   Maximize2,
   Play,
   BookOpen,
@@ -35,7 +41,20 @@ import { useAudio } from "./Audio";
 import { Notes } from "./Notes";
 import { Scripture } from "./Scripture";
 import { Sidebar } from "./navigation";
-export function Study({
+import { useStudyChat } from "./useStudyChat";
+import { ReadingChatDialog, ReadingChatHistory } from "./ReadingChat";
+
+export function Study(props: ComponentProps<typeof StudyContent>) {
+  const params = useParams();
+  return (
+    <StudyContent
+      key={`${props.user}:${params.day || ""}:${params.episode || ""}`}
+      {...props}
+    />
+  );
+}
+
+function StudyContent({
   user,
   completedDays,
   onError,
@@ -51,6 +70,11 @@ export function Study({
   const params = useParams(),
     isDay = !!params.day,
     target = isDay ? `/days/${params.day}` : `/episodes/${params.episode}`;
+  const chat = useStudyChat({
+    day: isDay ? Number(params.day) : null,
+    episode: isDay ? null : Number(params.episode),
+  });
+  const [chatOpen, setChatOpen] = useState(false);
   const [data, setData] = useState<DayDetail | Episode | null>(null),
     [failure, setFailure] = useState(""),
     [search, setSearch] = useSearchParams(),
@@ -89,6 +113,17 @@ export function Study({
       document.title = before;
     };
   }, [data, isDay]);
+  useEffect(() => {
+    if (!data || !location.hash) return;
+    const timer = window.setTimeout(
+      () =>
+        document
+          .getElementById(location.hash.slice(1))
+          ?.scrollIntoView({ block: "center" }),
+      150,
+    );
+    return () => clearTimeout(timer);
+  }, [data, tab]);
   if (failure)
     return (
       <div className="app-frame">
@@ -188,6 +223,7 @@ export function Study({
                 ? "current"
                 : "")
             }
+            id={`segment-${s.id}`}
             key={s.id}
           >
             <div className="segment-meta">
@@ -280,6 +316,14 @@ export function Study({
         )}
       </>
     );
+  const chatDialog = (
+    <ReadingChatDialog
+      chat={chat}
+      open={chatOpen}
+      onClose={() => setChatOpen(false)}
+      readings={day?.readings.join(" · ") || title}
+    />
+  );
   const readerControls = (
     <div className="reader-controls">
       <Link to={`${base}?tab=${selected}`}>
@@ -338,12 +382,16 @@ export function Study({
           <Plus size={16} />
         </button>
       </div>
+      <button className="text-link" onClick={() => setChatOpen(true)}>
+        Ask about this reading
+      </button>
       {completion}
     </div>
   );
   if (reader)
     return (
       <div style={{ "--reading-size": `${size}px` } as React.CSSProperties}>
+        {chatDialog}
         <Design
           source={readerSource}
           className="reader-design"
@@ -524,6 +572,9 @@ export function Study({
             <ChevronDown size={17} aria-hidden="true" />
           </label>
         </div>
+        <button className="study-ask-button" onClick={() => setChatOpen(true)}>
+          <MessageCircle size={18} /> Ask
+        </button>
         <span className="quiet">
           {episode?.has_audio
             ? `${Math.ceil(episode.duration / 60)} min`
@@ -644,6 +695,9 @@ export function Study({
                 ? "WRITTEN FOR REFLECTION"
                 : "LISTEN • READ • REFLECT"}
           </span>
+          <button className="text-link" onClick={() => setChatOpen(true)}>
+            Ask about this reading
+          </button>
           <Link to={`${base}/reader?tab=${selected}`}>
             <Maximize2 size={15} /> Reader mode
           </Link>
@@ -678,7 +732,15 @@ export function Study({
       </>
     ),
     "viewport-2-b-journal": (
-      <Notes target={target} user={user} episode={episode} onError={onError} />
+      <>
+        <ReadingChatHistory chat={chat} onOpen={() => setChatOpen(true)} />
+        <Notes
+          target={target}
+          user={user}
+          episode={episode}
+          onError={onError}
+        />
+      </>
     ),
     "viewport-2-b-audio-button": (
       <div className="day-navigation">
@@ -697,6 +759,13 @@ export function Study({
     ),
   };
   return (
-    <Design source={studySource} bindings={bindings} className="study-design" />
+    <>
+      {chatDialog}
+      <Design
+        source={studySource}
+        bindings={bindings}
+        className="study-design"
+      />
+    </>
   );
 }

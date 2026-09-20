@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Check, Trash2, Edit3, Clock } from "lucide-react";
 import { api, date, time } from "./api";
 import type { Note, Episode } from "./types";
@@ -23,6 +24,7 @@ export function Notes({
     [attach, setAttach] = useState(false),
     [busy, setBusy] = useState(false),
     [saved, setSaved] = useState(false);
+  const location = useLocation();
   const audio = useAudio(),
     key = `biy-draft:${user}:${target}`;
   useEffect(() => {
@@ -49,6 +51,21 @@ export function Notes({
       live = false;
     };
   }, [target, key]);
+  useEffect(() => {
+    const entry = [...notes, ...sharedNotes].find(
+      (n) => location.hash === `#note-${n.id}`,
+    );
+    if (!entry) return;
+    setKind(entry.kind);
+    const timer = window.setTimeout(
+      () =>
+        document
+          .getElementById(`note-${entry.id}`)
+          ?.scrollIntoView({ block: "center" }),
+      100,
+    );
+    return () => clearTimeout(timer);
+  }, [notes, sharedNotes, location.hash]);
   function change(value: string) {
     setBody(value);
     setSaved(false);
@@ -175,7 +192,7 @@ export function Notes({
         {notes
           .filter((n) => n.kind === kind)
           .map((note) => (
-            <article className="note" key={note.id}>
+            <article className="note" id={`note-${note.id}`} key={note.id}>
               <div className="note-meta">
                 <span>
                   {date(note.created_at)} · {note.shared ? "Shared" : "Private"}
@@ -212,7 +229,7 @@ export function Notes({
         <h2>Community reflections</h2>
         {sharedNotes.length ? (
           sharedNotes.map((note) => (
-            <article className="note" key={note.id}>
+            <article className="note" id={`note-${note.id}`} key={note.id}>
               <div className="note-meta">
                 <strong>{note.author.name}</strong>
                 <span>

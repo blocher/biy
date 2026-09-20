@@ -1,0 +1,23 @@
+[Unit]
+Description=Bible in a Year study chat and search indexing worker
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=biy
+Group=biy
+WorkingDirectory=/var/www/biy-app/backend
+EnvironmentFile=/etc/biy/biy.env
+ExecStart=/var/www/biy-app/.venv/bin/python manage.py study_worker
+Restart=always
+RestartSec=5
+TimeoutStopSec=330
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/biy
+
+[Install]
+WantedBy=multi-user.target

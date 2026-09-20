@@ -63,7 +63,7 @@ All 365 day records come from the supplied official PDF. Reading references are 
 
 ## One-day acceptance import
 
-**Only Day 1 has been imported. Do not run the full importer yet.** The publisher feed was inspected read-only: it contains 386 episodes dated in 2025, comprising 365 daily episodes and 21 supplementary episodes. Only selected entries are persisted.
+**The original acceptance import covered Day 1. Podcast bulk imports remain explicit.** The publisher feed was inspected read-only: it contains 386 episodes dated in 2025, comprising 365 daily episodes and 21 supplementary episodes. Only selected entries are persisted.
 
 ```sh
 .venv/bin/python backend/manage.py import_bible --day 1
@@ -77,7 +77,7 @@ Set `OPENAI_API_KEY` privately in `.env`, then run the same single-day selection
 .venv/bin/python backend/manage.py audit_episode --day 1 --output data/day-1-review.json
 ```
 
-The `.env` also contains `OPENAI_TRANSCRIBE_MODEL=gpt-4o-transcribe-diarize` and `OPENAI_STUDY_MODEL=gpt-6-astra`. The diarization model provides timestamped speaker attribution; Astra is used for classification, summarization, outlining, and polished prose. The key is used only on the server/CLI and is never shipped to the frontend. No API calls occur when opening or reading the app. No key is currently bundled or committed.
+The `.env` also contains `OPENAI_TRANSCRIBE_MODEL=gpt-4o-transcribe-diarize` and `OPENAI_STUDY_MODEL=gpt-6-astra`. The diarization model provides timestamped speaker attribution; Astra is used for classification, summarization, outlining, and polished prose. The key is used only on the server/CLI and is never shipped to the frontend. No AI calls occur just from opening or reading the app. Study chat and background search indexing use the configured AI providers. No key is currently bundled or committed.
 
 The importer requires an explicit selector: `--day NUMBER`, `--guid FEED_GUID`, or `--all`. `--all` is the future bulk operation; it is implemented but **has not been run**. `--catalog-only` imports selected metadata without audio/AI. `--feed-file PATH` supports a cached publisher RSS feed. Supplementary episodes use the exact same pipeline and study screens, but their completion is separate from the 365-day total.
 
@@ -136,3 +136,11 @@ Notes and journal entries remain private by default. Authors can mark an entry *
 Optional email uses the same Django SMTP environment variable setup as Therapy2.0. Configure `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`, `DJANGO_EMAIL_USE_TLS`, `DJANGO_DEFAULT_FROM_EMAIL`, and `PUBLIC_APP_URL`. Missing host, credentials, or sender skips sending entirely. The default `BIY_EMAIL_DELIVERY_MODE=redirect` sends only to `DJANGO_EMAIL_REDIRECT_TO`; set `BIY_EMAIL_DELIVERY_MODE=production` to deliver to actual recipients. Each active member with an email address receives a separate message, unless they disable notifications in Account. Email contains a link, not the reflection's contents.
 
 Notifications are attempted after the first share commits, including when an existing private entry is first shared. Editing or re-sharing does not repeat notifications. Delivery failures are logged without failing the save; v1 does not queue retries or backfill notifications skipped while email was unconfigured. Apply database migrations before running the updated app.
+
+### Study companion
+
+Ask questions from any reading or open **Study chat**. Answers search imported Scripture, original Fr. Mike commentary and accessible journals first; optional external research consults Magisterium, then the open web. Citations open the exact excerpt and link to its reading/audio location where available. Conversations remain private to their owner.
+
+The full local Bible can be imported with `import_bible` without `--day`; podcast imports remain explicit. Set `MAGISTERIUM_API_KEY` privately to enable Catholic research. The UI reports missing configuration and worker availability.
+
+Local startup now includes a PostgreSQL-backed Study Worker pane for chat and asynchronous embeddings; no Redis is required. Production has a dedicated `biy-worker` service integrated into the deployment hook. Install pgvector for your PostgreSQL version before migrating. See [study chat architecture and operations](docs/study-chat.md).

@@ -62,3 +62,11 @@ EMAIL_USE_TLS = os.getenv("DJANGO_EMAIL_USE_TLS", "true").lower() == "true"
 EMAIL_TIMEOUT = 10
 EMAIL_DELIVERY_MODE = os.getenv("BIY_EMAIL_DELIVERY_MODE", "redirect")
 EMAIL_REDIRECT_TO = os.getenv("DJANGO_EMAIL_REDIRECT_TO", "")
+
+# Study chat and durable PostgreSQL indexing worker. No Redis broker is required.
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+MAGISTERIUM_API_KEY = os.getenv("MAGISTERIUM_API_KEY", "")
+STUDY_CHAT_MODEL = os.getenv("STUDY_CHAT_MODEL", "gpt-4.1")
+STUDY_EMBEDDING_MODEL = os.getenv("STUDY_EMBEDDING_MODEL", "text-embedding-3-small")
+STUDY_WEB_MODEL = os.getenv("STUDY_WEB_MODEL", "gpt-4.1")
+STUDY_CHAT_DAILY_LIMIT = int(os.getenv("STUDY_CHAT_DAILY_LIMIT", "100"))

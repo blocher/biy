@@ -38,15 +38,19 @@ class Command(BaseCommand):
             if not m or not 1 <= int(m[1]) <= len(BOOKS):
                 continue
             source_books = BOOKS[:19] + BOOKS[21:46] + BOOKS[19:21] + BOOKS[46:]
-            book, chapter = source_books[int(m[1]) - 1], int(m[2])
-            if wanted is not None and (book, chapter) not in wanted:
+            book = source_books[int(m[1]) - 1]
+            if wanted is not None and not any(b == book for b, _ in wanted):
                 continue
             soup = BeautifulSoup(path.read_text(), "lxml")
             for verse in soup.select("verse[id]"):
                 vid = verse.get("id", "")
                 if not re.fullmatch(r"v\d{8}", vid):
                     continue
-                number = int(vid[-3:])
+                # Esther files follow narrative order, not canonical chapter numbers.
+                # Verse IDs preserve the actual chapter even across additions in one file.
+                chapter, number = int(vid[3:6]), int(vid[-3:])
+                if wanted is not None and (book, chapter) not in wanted:
+                    continue
                 body = verse.find("verse_body")
                 if body is None:
                     continue
@@ -70,4 +74,8 @@ class Command(BaseCommand):
             unique_fields=["book", "chapter", "number"],
             update_fields=["text", "paragraph"],
         )
-        self.stdout.write(f"Imported {len(records)} verses.")
+        from study.search import index_chapter
+
+        for book, chapter in sorted({(v.book, v.chapter) for v in records}):
+            index_chapter(book, chapter)
+        self.stdout.write(f"Imported {len(records)} verses; search indexing queued.")

@@ -33,3 +33,9 @@ The one-day local dataset can be exported with `dumpdata study.era study.day stu
 Verify HTTPS certificate and redirects, anonymous `/api/library` and audio return 401, login succeeds with CSRF, byte-range audio seeking returns 206, and two accounts cannot read each other's notes. Check `systemctl is-active biy nginx`, service logs and the deployed revision. Test a completion, refresh it, and undo the test.
 
 Back up PostgreSQL with `pg_dump --format=custom biy` as `biy`, plus protected media and `/etc/biy/biy.env`. Keep backups private. Restore to a separate database first and check accounts, notes, timestamps and audio. Never run the full importer as part of deploy or rollback.
+
+## Study chat and indexing worker
+
+Install the pgvector package matching PostgreSQL's server major version before deploying these changes. The hook creates the extension in `biy` as postgres, migrates, reconciles the source index, and installs/enables/starts `biy-worker.service` alongside the web service. The worker uses PostgreSQL as its durable queue; Redis and Celery are not required. Configure `OPENAI_API_KEY` and `MAGISTERIUM_API_KEY` in `/etc/biy/biy.env`. Restart `biy-worker` after changing provider settings.
+
+For first-time manual provisioning, install both `deploy/biy.service` and `deploy/biy-worker.service`, then run `systemctl daemon-reload` and `systemctl enable --now biy biy-worker` after migration/index reconciliation. Verify `systemctl is-active biy biy-worker` and authenticated `/api/chat/status`. Never import podcasts automatically during deployment. Import the full supplied Bible explicitly with `deploy/manage import_bible` for whole-Bible coverage. See [chat operations](study-chat.md) for retries, leases, limits, and privacy.

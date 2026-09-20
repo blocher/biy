@@ -13,6 +13,7 @@ import type { Library } from "./types";
 import { AdminContext, Brand, LogoutContext } from "./navigation";
 import { AudioProvider } from "./Audio";
 import { Study } from "./Study";
+import { StudyChat } from "./StudyChat";
 import { LibraryPage, Journal } from "./Library";
 import { Home } from "./Home";
 import { Leaderboard } from "./Leaderboard";
@@ -193,6 +194,10 @@ function AppContent() {
           </a>
           <div id="main-content">
             <Routes>
+              <Route
+                path="/chat"
+                element={<StudyChat key={user} user={user} />}
+              />
               <Route
                 path="/"
                 element={

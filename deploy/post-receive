@@ -11,11 +11,14 @@ done
 [ -n "$DEPLOY_REV" ] || exit 0
 exec 9>/var/lock/biy-deploy.lock
 flock -n 9 || { echo 'Another BIY deployment is running'; exit 1; }
-systemctl stop biy || true
+systemctl stop biy biy-worker || true
 git --work-tree="$APP_ROOT" --git-dir="$REPO_DIR" checkout -f "$DEPLOY_REV"
 chown -R biy:biy "$APP_ROOT"
 if [ ! -x "$APP_ROOT/.venv/bin/python" ]; then sudo -u biy python3.13 -m venv "$APP_ROOT/.venv"; fi
 sudo -u biy "$APP_ROOT/.venv/bin/pip" install -r "$APP_ROOT/backend/requirements.txt"
+# pgvector must be installed for the server's PostgreSQL major version first.
+# Extension creation is performed by postgres, never by elevating the application role.
+sudo -u postgres psql -d biy -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
 "$APP_ROOT/deploy/manage" migrate --noinput
 "$APP_ROOT/deploy/manage" seed_plan
 "$APP_ROOT/deploy/manage" create_account ben --seed
@@ -28,5 +31,10 @@ rm -rf "$WEB_ROOT/dist.previous"
 if [ -d "$WEB_ROOT/dist" ]; then mv "$WEB_ROOT/dist" "$WEB_ROOT/dist.previous"; fi
 cp -a dist "$WEB_ROOT/dist"
 chmod -R a+rX "$WEB_ROOT/dist"
-systemctl start biy
+"$APP_ROOT/deploy/manage" index_study
+install -m 0644 "$APP_ROOT/deploy/biy-worker.service" /etc/systemd/system/biy-worker.service
+systemctl daemon-reload
+systemctl enable biy-worker
+systemctl start biy-worker biy
+systemctl is-active --quiet biy-worker biy
 echo "BIY deployed at $DEPLOY_REV. Podcast imports are never run by this hook."

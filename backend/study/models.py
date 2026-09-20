@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+from pgvector.django import VectorField
 
 
 class Era(models.Model):
@@ -150,3 +152,56 @@ class CommunitySettings(models.Model):
         constraints = [
             models.CheckConstraint(condition=models.Q(id=1), name="single_community_settings")
         ]
+
+
+class SearchChunk(models.Model):
+    """Current source excerpts; the rows themselves form the durable embedding queue."""
+
+    key = models.CharField(max_length=180, unique=True)
+    kind = models.CharField(max_length=20)
+    source = models.CharField(max_length=120, db_index=True)
+    note = models.ForeignKey(Note, null=True, on_delete=models.CASCADE)
+    episode = models.ForeignKey(Episode, null=True, on_delete=models.CASCADE)
+    title = models.CharField(max_length=600)
+    text = models.TextField()
+    metadata = models.JSONField(default=dict)
+    digest = models.CharField(max_length=64)
+    # Exact vector search is sufficient for this small corpus and preserves filtered recall.
+    embedding = VectorField(dimensions=1536, null=True)
+    embedding_model = models.CharField(max_length=100, blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    available_at = models.DateTimeField(default=timezone.now)
+    leased_until = models.DateTimeField(null=True)
+    error = models.CharField(max_length=100, blank=True)
+
+
+class StudyConversation(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    day = models.ForeignKey(Day, null=True, on_delete=models.CASCADE)
+    episode = models.ForeignKey(Episode, null=True, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class StudyTurn(models.Model):
+    conversation = models.ForeignKey(
+        StudyConversation, related_name="turns", on_delete=models.CASCADE
+    )
+    request_id = models.UUIDField(unique=True)
+    question = models.TextField()
+    external_query = models.CharField(max_length=500, blank=True)
+    web_enabled = models.BooleanField(default=True)
+    status = models.CharField(max_length=16, default="queued", db_index=True)
+    answer = models.TextField(blank=True)
+    follow_ups = models.JSONField(default=list, blank=True)
+    sources = models.JSONField(default=list)
+    notices = models.JSONField(default=list)
+    stage = models.CharField(max_length=120, default="Waiting for the study worker")
+    error = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True)
+    finished_at = models.DateTimeField(null=True)
+
+
+class StudyWorker(models.Model):
+    name = models.CharField(max_length=120, primary_key=True)
+    heartbeat_at = models.DateTimeField()
