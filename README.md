@@ -84,6 +84,10 @@ Import the official English Catechism text from Vatican pages after seeding the 
 .venv/bin/python backend/manage.py import_catechism
 ```
 
+This imports readable text without queuing embeddings or other AI work. Add
+`--index-for-ask` only when Catechism semantic indexing is intentionally
+authorized.
+
 ## One-day acceptance import
 
 **The original acceptance import covered Day 1. Podcast bulk imports remain explicit.** The publisher feed was inspected read-only: it contains 386 episodes dated in 2025, comprising 365 daily episodes and 21 supplementary episodes. Only selected entries are persisted.

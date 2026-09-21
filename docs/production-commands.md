@@ -23,6 +23,10 @@ The official English Catechism text is imported separately from Vatican pages:
 sudo /var/www/biy-app/deploy/manage import_catechism
 ```
 
+The default imports readable text without queuing embeddings or other AI work.
+Add `--index-for-ask` only when Catechism semantic indexing is intentionally
+authorized.
+
 After source, note, or episode changes, reconcile search indexing. The running worker embeds pending chunks asynchronously:
 
 ```sh

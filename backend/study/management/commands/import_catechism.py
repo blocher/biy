@@ -69,6 +69,11 @@ class Command(BaseCommand):
             type=Path,
             help="Read _INDEX.HTM and linked pages from a local mirror.",
         )
+        parser.add_argument(
+            "--index-for-ask",
+            action="store_true",
+            help="Queue Catechism search chunks for embedding after import.",
+        )
 
     def read(self, name, source, client):
         if source:
@@ -120,5 +125,11 @@ class Command(BaseCommand):
             update_fields=["text", "source_url"],
             unique_fields=["number"],
         )
-        index_catechism()
-        self.stdout.write("Imported and indexed 2,865 Catechism paragraphs from vatican.va.")
+        if options["index_for_ask"]:
+            index_catechism()
+            self.stdout.write("Imported 2,865 Catechism paragraphs and queued Ask indexing.")
+        else:
+            self.stdout.write(
+                "Imported 2,865 Catechism paragraphs from vatican.va. "
+                "No Ask indexing or AI work was queued."
+            )
