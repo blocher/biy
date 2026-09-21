@@ -32,6 +32,11 @@ TRANSCRIPT_FORMAT_CONTEXT_SEGMENTS = 2
 TRANSCRIBE_CHUNK_SECONDS = 900
 TRANSCRIBE_OVERLAP_SECONDS = 4
 TRANSCRIBE_EMPTY_TRAILING_SECONDS = 30
+SUPPLEMENT_PUBLISHED_AT_OVERRIDES = {
+    "f9086903-d1d0-4655-9ed5-d4707df1b966": (2024, 12, 19),
+    "fdc979e0-1a40-443a-8eac-3c97e02f4f56": (2024, 12, 22),
+    "1f2c7d37-4db7-4d40-953e-5988b5692e0f": (2024, 12, 26),
+}
 
 
 class EmptyTranscriptionError(ValueError):
@@ -103,6 +108,11 @@ def parse_feed(xml, edition="bible"):
 def catalog_entry(row, edition="bible"):
     row = row.copy()
     guid, number = row.pop("guid"), row.pop("day")
+    if edition == "bible" and guid in SUPPLEMENT_PUBLISHED_AT_OVERRIDES:
+        year, month, day_of_month = SUPPLEMENT_PUBLISHED_AT_OVERRIDES[guid]
+        row["published_at"] = row["published_at"].replace(
+            year=year, month=month, day=day_of_month
+        )
     day = Day.objects.get(pk=number) if number and edition == "bible" else None
     catechism_day = (
         CatechismDay.objects.get(pk=number) if number and edition == "catechism" else None

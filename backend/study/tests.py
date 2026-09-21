@@ -9,7 +9,7 @@ from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase, override_settings
 
-from .importing import _dedupe_transcript_segments, parse_feed
+from .importing import _dedupe_transcript_segments, catalog_entry, parse_feed
 from .models import Day, Episode, Era, Verse
 from .scripture import reading_text, reference_ranges
 
@@ -49,6 +49,55 @@ class FeedTests(TestCase):
         rows = parse_feed(feed)
 
         self.assertEqual([row["guid"] for row in rows], ["correct"])
+
+    def test_catalog_refresh_preserves_supplement_launch_order(self):
+        supplements = [
+            (
+                "f9086903-d1d0-4655-9ed5-d4707df1b966",
+                "Bringing the Bible Back to Catholics",
+                datetime(2025, 12, 19, 8, 15, tzinfo=dt_timezone.utc),
+            ),
+            (
+                "fdc979e0-1a40-443a-8eac-3c97e02f4f56",
+                "How to Hear God's Voice in Scripture",
+                datetime(2025, 12, 26, 8, 15, tzinfo=dt_timezone.utc),
+            ),
+            (
+                "1f2c7d37-4db7-4d40-953e-5988b5692e0f",
+                "Preparing for the Bible in a Year Journey",
+                datetime(2025, 12, 22, 8, 15, tzinfo=dt_timezone.utc),
+            ),
+        ]
+        for guid, title, published_at in supplements:
+            row = {
+                "guid": guid,
+                "day": None,
+                "title": title,
+                "published_at": published_at,
+                "source_date": published_at.date(),
+                "audio_url": "https://example.org/audio.mp3",
+                "source_url": "",
+                "description": "",
+                "duration": 60,
+            }
+            catalog_entry(row)
+            catalog_entry(row)
+
+        ordered = list(
+            Episode.objects.order_by("published_at").values_list(
+                "title", "published_at", "source_date"
+            )
+        )
+        self.assertEqual(
+            [title for title, _, _ in ordered],
+            [
+                "Bringing the Bible Back to Catholics",
+                "How to Hear God's Voice in Scripture",
+                "Preparing for the Bible in a Year Journey",
+            ],
+        )
+        self.assertEqual([published.year for _, published, _ in ordered], [2024, 2024, 2024])
+        self.assertEqual([source.year for _, _, source in ordered], [2025, 2025, 2025])
 
 
 class TranscriptionTests(TestCase):
