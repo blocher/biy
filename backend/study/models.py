@@ -1,3 +1,5 @@
+from datetime import time
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -265,6 +267,55 @@ class Profile(models.Model):
             ("january-1", "January 1"),
         ],
     )
+    notification_timezone = models.CharField(max_length=64, default="America/New_York")
+    reminder_condition = models.CharField(
+        max_length=16,
+        default="never",
+        choices=[
+            ("incomplete", "Only when today’s reading is incomplete"),
+            ("always", "Always"),
+            ("never", "Never"),
+        ],
+    )
+    morning_reminder_enabled = models.BooleanField(default=False)
+    morning_reminder_time = models.TimeField(default=time(7))
+    evening_reminder_enabled = models.BooleanField(default=False)
+    evening_reminder_time = models.TimeField(default=time(20))
+    shared_push_notifications = models.BooleanField(default=False)
+
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="push_subscriptions", on_delete=models.CASCADE
+    )
+    endpoint = models.TextField(unique=True)
+    p256dh = models.TextField()
+    auth = models.TextField()
+    device_name = models.CharField(max_length=120, default="Browser")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+
+
+class PushDelivery(models.Model):
+    subscription = models.ForeignKey(
+        PushSubscription, related_name="deliveries", on_delete=models.CASCADE
+    )
+    kind = models.CharField(max_length=24)
+    dedupe_key = models.CharField(max_length=160)
+    payload = models.JSONField(default=dict)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    available_at = models.DateTimeField(default=timezone.now, db_index=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscription", "kind", "dedupe_key"],
+                name="unique_push_delivery",
+            )
+        ]
 
 
 class CommunitySettings(models.Model):

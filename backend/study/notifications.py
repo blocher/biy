@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def notify_shared_note(note_id):
+    from .push_notifications import enqueue_shared_note
+
+    enqueue_shared_note(note_id)
     if not all(
         (
             settings.EMAIL_HOST,

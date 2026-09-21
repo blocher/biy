@@ -8,6 +8,13 @@ export type Preferences = {
   leaderboard_start_date: string;
   bible_enabled: boolean;
   catechism_enabled: boolean;
+  notification_timezone: string;
+  reminder_condition: "incomplete" | "always" | "never";
+  morning_reminder_enabled: boolean;
+  morning_reminder_time: string;
+  evening_reminder_enabled: boolean;
+  evening_reminder_time: string;
+  shared_push_notifications: boolean;
 };
 export function usePreferences(onError: (message: string) => void) {
   const [preferences, setPreferences] = useState<Preferences | null>(null);

@@ -1,16 +1,34 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
+  Bell,
   Check,
+  Download,
   Eye,
   EyeOff,
   KeyRound,
+  Moon,
   Save,
   ShieldCheck,
+  Smartphone,
+  Sunrise,
+  Trash2,
   UserRound,
 } from "lucide-react";
 import { usePreferences } from "./Preferences";
 import { api } from "./api";
 import { Sidebar } from "./navigation";
+import {
+  canPromptInstall,
+  currentPushSubscription,
+  disableCurrentPush,
+  enablePush,
+  isIOS,
+  isInstalled,
+  onInstallPromptChange,
+  promptInstall,
+  pushSupported,
+  type PushDevice,
+} from "./pwa";
 
 type AccountData = {
   username: string;
@@ -103,6 +121,93 @@ export function Account({
   const [savingDetails, setSavingDetails] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [notice, setNotice] = useState("");
+  const [devices, setDevices] = useState<PushDevice[]>([]);
+  const [currentEndpoint, setCurrentEndpoint] = useState("");
+  const [pushBusy, setPushBusy] = useState(false);
+  const [installAvailable, setInstallAvailable] = useState(canPromptInstall());
+  const [installed, setInstalled] = useState(isInstalled());
+
+  const loadPushState = useCallback(async () => {
+    try {
+      const [savedDevices, current] = await Promise.all([
+        api<PushDevice[]>("/push/subscriptions"),
+        currentPushSubscription(),
+      ]);
+      const knownCurrent =
+        current &&
+        savedDevices.some((device) => device.endpoint === current.endpoint);
+      if (knownCurrent)
+        await api("/push/subscriptions/current", "PUT", {
+          endpoint: current.endpoint,
+        });
+      setDevices(savedDevices);
+      setCurrentEndpoint(knownCurrent ? current.endpoint : "");
+    } catch (e) {
+      onError((e as Error).message);
+    }
+  }, [onError]);
+
+  useEffect(() => {
+    void loadPushState();
+    return onInstallPromptChange(() => setInstallAvailable(canPromptInstall()));
+  }, [loadPushState]);
+
+  async function turnOnPush() {
+    setPushBusy(true);
+    try {
+      await enablePush();
+      const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (
+        browserZone &&
+        prefs.preferences?.notification_timezone !== browserZone
+      )
+        await prefs.update({ notification_timezone: browserZone });
+      await loadPushState();
+      setNotice("Notifications are enabled on this device.");
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function turnOffPush() {
+    setPushBusy(true);
+    try {
+      const subscription = await currentPushSubscription();
+      if (subscription) await disableCurrentPush(subscription);
+      await loadPushState();
+      setNotice("Notifications are disabled on this device.");
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function removeDevice(device: PushDevice) {
+    setPushBusy(true);
+    try {
+      if (device.endpoint === currentEndpoint) {
+        await turnOffPush();
+        return;
+      }
+      await api(`/push/subscriptions/${device.id}`, "DELETE");
+      await loadPushState();
+      setNotice(`${device.device_name} will no longer receive notifications.`);
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function installApp() {
+    if (await promptInstall()) {
+      setInstalled(true);
+      setNotice("Bible in a Year has been installed.");
+    }
+  }
 
   useEffect(() => {
     void api<AccountData>("/account")
@@ -277,8 +382,8 @@ export function Account({
               Catechism in a Year
             </label>
             <p className="quiet">
-              Keep at least one edition enabled. Hidden editions are removed from
-              navigation, journals, and leaderboards.
+              Keep at least one edition enabled. Hidden editions are removed
+              from navigation, journals, and leaderboards.
             </p>
           </section>
           <section className="account-card collaboration-settings">
@@ -310,6 +415,270 @@ export function Account({
               Notes and journal entries are private unless you mark them Shared.
               Shared entries are visible to signed-in members.
             </p>
+          </section>
+          <section className="account-card notification-settings">
+            <div className="notification-settings-main">
+              <div className="account-card-heading">
+                <span className="account-icon">
+                  <Bell size={20} />
+                </span>
+                <div>
+                  <h2>Reading reminders</h2>
+                  <p>
+                    Gentle prompts, delivered at the times that work for you.
+                  </p>
+                </div>
+              </div>
+              <div className="reminder-time-row">
+                <span className="reminder-symbol morning">
+                  <Sunrise size={21} />
+                </span>
+                <div>
+                  <strong>Morning</strong>
+                  <small>Start the day with your reading</small>
+                </div>
+                <label className="switch-control">
+                  <input
+                    type="checkbox"
+                    aria-label="Morning reminder"
+                    disabled={!prefs.preferences || prefs.saving}
+                    checked={
+                      prefs.preferences?.morning_reminder_enabled ?? false
+                    }
+                    onChange={(e) =>
+                      void prefs.update({
+                        morning_reminder_enabled: e.target.checked,
+                      })
+                    }
+                  />
+                  <span />
+                </label>
+                <input
+                  className="reminder-time"
+                  type="time"
+                  aria-label="Morning reminder time"
+                  disabled={
+                    !prefs.preferences ||
+                    prefs.saving ||
+                    !prefs.preferences.morning_reminder_enabled
+                  }
+                  value={prefs.preferences?.morning_reminder_time || "07:00"}
+                  onChange={(e) =>
+                    void prefs.update({ morning_reminder_time: e.target.value })
+                  }
+                />
+              </div>
+              <div className="reminder-time-row">
+                <span className="reminder-symbol evening">
+                  <Moon size={20} />
+                </span>
+                <div>
+                  <strong>Evening</strong>
+                  <small>Close the day with your reading</small>
+                </div>
+                <label className="switch-control">
+                  <input
+                    type="checkbox"
+                    aria-label="Evening reminder"
+                    disabled={!prefs.preferences || prefs.saving}
+                    checked={
+                      prefs.preferences?.evening_reminder_enabled ?? false
+                    }
+                    onChange={(e) =>
+                      void prefs.update({
+                        evening_reminder_enabled: e.target.checked,
+                      })
+                    }
+                  />
+                  <span />
+                </label>
+                <input
+                  className="reminder-time"
+                  type="time"
+                  aria-label="Evening reminder time"
+                  disabled={
+                    !prefs.preferences ||
+                    prefs.saving ||
+                    !prefs.preferences.evening_reminder_enabled
+                  }
+                  value={prefs.preferences?.evening_reminder_time || "20:00"}
+                  onChange={(e) =>
+                    void prefs.update({ evening_reminder_time: e.target.value })
+                  }
+                />
+              </div>
+              <fieldset className="reminder-condition">
+                <legend>When should reminders be sent?</legend>
+                <div>
+                  {(
+                    [
+                      ["incomplete", "Only when today’s reading is incomplete"],
+                      ["always", "Always"],
+                      ["never", "Never"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label
+                      key={value}
+                      className={
+                        prefs.preferences?.reminder_condition === value
+                          ? "active"
+                          : ""
+                      }
+                    >
+                      <input
+                        type="radio"
+                        name="reminder-condition"
+                        value={value}
+                        checked={
+                          prefs.preferences?.reminder_condition === value
+                        }
+                        disabled={!prefs.preferences || prefs.saving}
+                        onChange={() =>
+                          void prefs.update({ reminder_condition: value })
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <small>
+                  Uses your selected schedule start: personal, shared, or
+                  January 1. Times use{" "}
+                  {prefs.preferences?.notification_timezone.replaceAll(
+                    "_",
+                    " ",
+                  ) || "your local time zone"}
+                  .
+                </small>
+              </fieldset>
+              <label className="shared-push-setting">
+                <span className="reminder-symbol community">
+                  <Bell size={19} />
+                </span>
+                <span>
+                  <strong>Shared notes &amp; journal entries</strong>
+                  <small>
+                    Tell me when another member shares a reflection.
+                  </small>
+                </span>
+                <span className="switch-control">
+                  <input
+                    type="checkbox"
+                    aria-label="Shared reflection notifications"
+                    disabled={!prefs.preferences || prefs.saving}
+                    checked={
+                      prefs.preferences?.shared_push_notifications ?? false
+                    }
+                    onChange={(e) =>
+                      void prefs.update({
+                        shared_push_notifications: e.target.checked,
+                      })
+                    }
+                  />
+                  <span />
+                </span>
+              </label>
+            </div>
+            <aside className="notification-device-panel">
+              <h3>App &amp; permissions</h3>
+              <div className="app-status-row">
+                <Smartphone size={20} />
+                <span>
+                  <strong>
+                    {installed ? "App installed" : "Install this app"}
+                  </strong>
+                  <small>
+                    {installed
+                      ? "Opens in its own window"
+                      : "Keep BIY close at hand"}
+                  </small>
+                </span>
+              </div>
+              {!installed && installAvailable && (
+                <button
+                  type="button"
+                  className="outline-button install-button"
+                  onClick={() => void installApp()}
+                >
+                  <Download size={15} /> Install app
+                </button>
+              )}
+              {!installed && !installAvailable && isIOS() && (
+                <p className="install-help">
+                  In Safari, tap Share, then “Add to Home Screen.” Open the
+                  installed app to enable notifications.
+                </p>
+              )}
+              {!installed && !installAvailable && !isIOS() && (
+                <p className="install-help">
+                  Use your browser’s Install option to add BIY to this device.
+                </p>
+              )}
+              <div className="app-status-row push-permission-row">
+                <Bell size={20} />
+                <span>
+                  <strong>Push notifications</strong>
+                  <small>
+                    {currentEndpoint
+                      ? "Enabled on this device"
+                      : pushSupported() && (!isIOS() || installed)
+                        ? "Not enabled here"
+                        : isIOS() && !installed
+                          ? "Install the app first"
+                          : "Not supported here"}
+                  </small>
+                </span>
+              </div>
+              {pushSupported() &&
+                (!isIOS() || installed) &&
+                (currentEndpoint ? (
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={pushBusy}
+                    onClick={() => void turnOffPush()}
+                  >
+                    Disable on this device
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="primary enable-push-button"
+                    disabled={pushBusy}
+                    onClick={() => void turnOnPush()}
+                  >
+                    <Bell size={15} />{" "}
+                    {pushBusy ? "Enabling…" : "Enable notifications"}
+                  </button>
+                ))}
+              <div className="device-list">
+                <h4>Your devices</h4>
+                {devices.length === 0 ? (
+                  <p>No devices are subscribed yet.</p>
+                ) : (
+                  devices.map((device) => (
+                    <div key={device.id}>
+                      <span>
+                        <strong>{device.device_name}</strong>
+                        <small>
+                          {device.endpoint === currentEndpoint
+                            ? "This device"
+                            : `Seen ${new Date(device.last_seen_at).toLocaleDateString()}`}
+                        </small>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={pushBusy}
+                        onClick={() => void removeDevice(device)}
+                        aria-label={`Remove ${device.device_name}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </aside>
           </section>
           <section className="account-card community-date-card">
             <h2>Leaderboard start date</h2>

@@ -1,6 +1,7 @@
 from datetime import date as calendar_date
 from datetime import datetime, time, timedelta
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
@@ -40,6 +41,7 @@ from .models import (
     LoginAttempt,
     Note,
     Profile,
+    PushSubscription,
 )
 from .scripture import reading_text
 from .scripture_audio import align_scripture_audio
@@ -189,6 +191,24 @@ class PreferencesIn(Schema):
     email_notifications: bool | None = None
     bible_enabled: bool | None = None
     catechism_enabled: bool | None = None
+    notification_timezone: str | None = Field(default=None, min_length=1, max_length=64)
+    reminder_condition: Literal["incomplete", "always", "never"] | None = None
+    morning_reminder_enabled: bool | None = None
+    morning_reminder_time: time | None = None
+    evening_reminder_enabled: bool | None = None
+    evening_reminder_time: time | None = None
+    shared_push_notifications: bool | None = None
+
+
+class PushSubscriptionIn(Schema):
+    endpoint: str = Field(min_length=1, max_length=4096)
+    p256dh: str = Field(min_length=1, max_length=1024)
+    auth: str = Field(min_length=1, max_length=1024)
+    device_name: str = Field(default="Browser", min_length=1, max_length=120)
+
+
+class PushSubscriptionDeleteIn(Schema):
+    endpoint: str = Field(min_length=1, max_length=4096)
 
 
 @api.get("/preferences")
@@ -204,6 +224,13 @@ def preferences(request):
         "email_notifications": profile.email_notifications,
         "bible_enabled": profile.bible_enabled,
         "catechism_enabled": profile.catechism_enabled,
+        "notification_timezone": profile.notification_timezone,
+        "reminder_condition": profile.reminder_condition,
+        "morning_reminder_enabled": profile.morning_reminder_enabled,
+        "morning_reminder_time": profile.morning_reminder_time.strftime("%H:%M"),
+        "evening_reminder_enabled": profile.evening_reminder_enabled,
+        "evening_reminder_time": profile.evening_reminder_time.strftime("%H:%M"),
+        "shared_push_notifications": profile.shared_push_notifications,
         "leaderboard_start_date": edition_start_date(community_settings(), edition),
     }
 
@@ -212,6 +239,11 @@ def preferences(request):
 def update_preferences(request, payload: PreferencesIn):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     changes = payload.dict(exclude_none=True)
+    if "notification_timezone" in changes:
+        try:
+            ZoneInfo(changes["notification_timezone"])
+        except ZoneInfoNotFoundError as exc:
+            raise HttpError(422, "Choose a valid time zone.") from exc
     edition = requested_edition(request)
     if "progress_basis" in changes and edition == "catechism":
         changes["catechism_progress_basis"] = changes.pop("progress_basis")
@@ -224,6 +256,66 @@ def update_preferences(request, payload: PreferencesIn):
     if changes:
         profile.save(update_fields=list(changes))
     return preferences(request)
+
+
+@api.get("/push/public-key")
+def push_public_key(request):
+    if not settings.WEB_PUSH_VAPID_PUBLIC_KEY:
+        raise HttpError(503, "Push notifications are not configured yet.")
+    return {"public_key": settings.WEB_PUSH_VAPID_PUBLIC_KEY}
+
+
+@api.post("/push/subscriptions")
+def save_push_subscription(request, payload: PushSubscriptionIn):
+    subscription, _ = PushSubscription.objects.update_or_create(
+        endpoint=payload.endpoint,
+        defaults={
+            "user": request.user,
+            "p256dh": payload.p256dh,
+            "auth": payload.auth,
+            "device_name": payload.device_name.strip(),
+            "last_seen_at": timezone.now(),
+        },
+    )
+    return {"subscribed": True, "id": subscription.pk}
+
+
+@api.get("/push/subscriptions")
+def push_subscriptions(request):
+    return [
+        {
+            "id": subscription.pk,
+            "endpoint": subscription.endpoint,
+            "device_name": subscription.device_name,
+            "created_at": subscription.created_at,
+            "last_seen_at": subscription.last_seen_at,
+        }
+        for subscription in PushSubscription.objects.filter(user=request.user).order_by(
+            "-last_seen_at"
+        )
+    ]
+
+
+@api.put("/push/subscriptions/current")
+def touch_push_subscription(request, payload: PushSubscriptionDeleteIn):
+    subscription = get_object_or_404(
+        PushSubscription, user=request.user, endpoint=payload.endpoint
+    )
+    subscription.last_seen_at = timezone.now()
+    subscription.save(update_fields=["last_seen_at"])
+    return {"last_seen_at": subscription.last_seen_at}
+
+
+@api.delete("/push/subscriptions")
+def delete_push_subscription(request, payload: PushSubscriptionDeleteIn):
+    PushSubscription.objects.filter(user=request.user, endpoint=payload.endpoint).delete()
+    return {"subscribed": False}
+
+
+@api.delete("/push/subscriptions/{subscription_id}")
+def delete_push_subscription_by_id(request, subscription_id: int):
+    get_object_or_404(PushSubscription, user=request.user, pk=subscription_id).delete()
+    return {"subscribed": False}
 
 
 @api.get("/leaderboard")

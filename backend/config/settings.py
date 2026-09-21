@@ -62,6 +62,9 @@ EMAIL_USE_TLS = os.getenv("DJANGO_EMAIL_USE_TLS", "true").lower() == "true"
 EMAIL_TIMEOUT = 10
 EMAIL_DELIVERY_MODE = os.getenv("BIY_EMAIL_DELIVERY_MODE", "redirect")
 EMAIL_REDIRECT_TO = os.getenv("DJANGO_EMAIL_REDIRECT_TO", "")
+WEB_PUSH_VAPID_SUBJECT = os.getenv("WEB_PUSH_VAPID_SUBJECT", "")
+WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv("WEB_PUSH_VAPID_PUBLIC_KEY", "")
+WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv("WEB_PUSH_VAPID_PRIVATE_KEY", "")
 
 # Study chat and durable PostgreSQL indexing worker. No Redis broker is required.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
