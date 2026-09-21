@@ -76,6 +76,40 @@ class Verse(models.Model):
         ]
 
 
+class CommentaryAuthor(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    default_year = models.IntegerField()
+    wiki_url = models.URLField(max_length=2000, blank=True)
+    category = models.CharField(max_length=80)
+    condemned_by_council = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["default_year", "name"]
+
+
+class Commentary(models.Model):
+    external_id = models.CharField(max_length=36, unique=True)
+    author = models.ForeignKey(CommentaryAuthor, on_delete=models.PROTECT, related_name="commentaries")
+    file_name = models.CharField(max_length=500)
+    append_to_author_name = models.CharField(max_length=500, blank=True)
+    year = models.IntegerField(db_index=True)
+    book_key = models.CharField(max_length=40, db_index=True)
+    location_start = models.PositiveIntegerField()
+    location_end = models.PositiveIntegerField()
+    text = models.TextField()
+    source_url = models.URLField(max_length=2000, blank=True)
+    source_title = models.CharField(max_length=1000)
+
+    class Meta:
+        ordering = ["year", "id"]
+        indexes = [
+            models.Index(
+                fields=["book_key", "location_start", "location_end"],
+                name="commentary_passage_idx",
+            ),
+        ]
+
+
 class DayProgress(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     day = models.ForeignKey(Day, on_delete=models.CASCADE)

@@ -8,6 +8,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
+from django.db.models import Min, Max, Q
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
@@ -28,6 +29,14 @@ from .models import (
     LoginAttempt,
     Note,
     Profile,
+    Commentary,
+    CommentaryAuthor,
+)
+from .commentaries import (
+    CommentaryRange,
+    commentary_ranges_for_readings,
+    matching_references,
+    year_label,
 )
 from .scripture import reading_text
 from .scripture_audio import align_scripture_audio
@@ -457,6 +466,96 @@ def day_detail(request, number: int):
             for index, passage in enumerate(scripture)
         ],
         "episode": episode_detail(ep, request.user) if ep else None,
+    }
+
+
+def commentary_author_data(author):
+    return {
+        "name": author.name,
+        "category": author.category,
+        "default_year": author.default_year,
+        "year_label": year_label(author.default_year),
+        "wiki_url": author.wiki_url,
+        "condemned_by_council": author.condemned_by_council,
+    }
+
+
+def commentary_data(commentary, ranges: list[CommentaryRange]):
+    return {
+        "id": commentary.external_id,
+        "author": commentary.author.name + commentary.append_to_author_name,
+        "author_metadata": commentary_author_data(commentary.author),
+        "year": commentary.year,
+        "year_label": year_label(commentary.year),
+        "source_title": commentary.source_title,
+        "source_url": commentary.source_url,
+        "text": commentary.text,
+        "book": commentary.book_key,
+        "location_start": commentary.location_start,
+        "location_end": commentary.location_end,
+        "matched_readings": matching_references(commentary, ranges),
+    }
+
+
+@api.get("/commentaries")
+def commentaries(
+    request,
+    day: int,
+    from_year: int | None = None,
+    to_year: int | None = None,
+    category: str | None = None,
+    page: int = 1,
+    page_size: int = 36,
+):
+    """Return historical commentary overlapping a day's RSV-2CE readings."""
+
+    if page < 1 or page_size < 1 or page_size > 100:
+        raise HttpError(422, "Invalid commentary page.")
+    if from_year is not None and to_year is not None and from_year > to_year:
+        raise HttpError(422, "The starting year must be before the ending year.")
+    day_record = get_object_or_404(Day, pk=day)
+    ranges = commentary_ranges_for_readings(day_record.readings)
+    passage_query = Q()
+    for passage_range in ranges:
+        passage_query |= Q(
+            book_key=passage_range.book_key,
+            location_end__gte=passage_range.start,
+            location_start__lte=passage_range.end,
+        )
+    entries = Commentary.objects.filter(passage_query).select_related("author")
+    if from_year is not None:
+        entries = entries.filter(year__gte=from_year)
+    if to_year is not None:
+        entries = entries.filter(year__lte=to_year)
+    if category:
+        entries = entries.filter(author__category=category)
+    entries = entries.order_by("year", "id")
+    total = entries.count()
+    offset = (page - 1) * page_size
+    rows = entries[offset : offset + page_size]
+    year_bounds = Commentary.objects.aggregate(min_year=Min("year"), max_year=Max("year"))
+    return {
+        "day": day_record.number,
+        "readings": day_record.readings,
+        "edition": "RSV-2CE",
+        "commentaries": [commentary_data(row, ranges) for row in rows],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "has_more": offset + len(rows) < total,
+        "filters": {
+            "categories": list(
+                CommentaryAuthor.objects.order_by("category")
+                .values_list("category", flat=True)
+                .distinct()
+            ),
+            "min_year": year_bounds["min_year"],
+            "max_year": year_bounds["max_year"],
+        },
+        "matching_notes": [
+            "Passages are matched by RSV-2CE book and verse span. Psalms use modern numbering in this historical index.",
+            "Some deuterocanonical source traditions use different chapter layouts; the displayed readings remain the RSV-2CE references.",
+        ],
     }
 
 

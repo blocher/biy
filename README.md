@@ -59,6 +59,22 @@ cd frontend
 npm ci
 ```
 
+The historical commentary browser imports the compiled SQLite release from
+[HistoricalChristianFaith/Commentaries-Database](https://github.com/HistoricalChristianFaith/Commentaries-Database)
+into the primary database. Keep the downloaded export outside the repository,
+then run:
+
+```sh
+.venv/bin/python backend/manage.py import_commentaries /path/to/commentaries.sqlite
+```
+
+Use `--replace` only when intentionally rebuilding the imported catalog. The
+browser matches inclusive verse-span overlap using the export's modern book
+keys, presents the app's RSV-2CE readings, sorts dated sources oldest first,
+and keeps unknown dates at the end. Its deuterocanonical matching note is
+deliberately visible in the browser because some historical sources use a
+different chapter layout for additions to Daniel and Esther.
+
 All 365 day records come from the supplied official PDF. Reading references are preserved exactly, including the repeated Ecclesiastes reading on days 150/151 and unusual Esther chapter ordering. The importer does not silently correct the source plan.
 
 ## One-day acceptance import

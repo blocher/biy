@@ -8,7 +8,14 @@ export type ChatSource = {
   title: string;
   text: string;
   url: string;
-  metadata: { audio_time?: number; is_research_summary?: boolean };
+  metadata: {
+    audio_time?: number;
+    is_research_summary?: boolean;
+    author?: string;
+    year_label?: string;
+    category?: string;
+    condemned_by_council?: boolean;
+  };
 };
 export type ChatTurn = {
   id: number;

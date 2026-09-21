@@ -9,6 +9,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  LibraryBig,
 } from "lucide-react";
 export const LogoutContext = createContext(() => {});
 export const AdminContext = createContext(false);
@@ -45,6 +46,9 @@ export function Sidebar({
         </NavLink>
         <NavLink to="/chat">
           <MessageCircle size={20} /> Ask
+        </NavLink>
+        <NavLink to="/commentaries">
+          <LibraryBig size={20} /> Commentaries
         </NavLink>
         <NavLink to="/journal">
           <NotebookPen size={20} /> My journal

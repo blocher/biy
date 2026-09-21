@@ -32,7 +32,7 @@ export function Answer({ turn }: { turn: ChatTurn }) {
   return (
     <>
       <div className="chat-answer-text">
-        {turn.answer.split(/(\[[SMW]\d+\])/g).map((part, index) => {
+        {turn.answer.split(/(\[[SMWH]\d+\])/g).map((part, index) => {
           const id = part.slice(1, -1);
           const citation = turn.sources.find((s) => s.id === id);
           return citation ? (
@@ -67,6 +67,7 @@ export function Answer({ turn }: { turn: ChatTurn }) {
                         scripture: "Scripture · RSV-2CE",
                         commentary: "Fr. Mike commentary",
                         journal: "Member reflection",
+                        historical_commentary: "Historical witness",
                         magisterium: "Via Magisterium",
                         web: "Open web",
                       } as Record<string, string>
@@ -76,6 +77,15 @@ export function Answer({ turn }: { turn: ChatTurn }) {
                   {s.metadata.audio_time != null
                     ? ` · ${time(s.metadata.audio_time)}`
                     : ""}
+                  {s.kind === "historical_commentary" && (
+                    <small>
+                      {s.metadata.year_label}
+                      {s.metadata.category ? ` · ${s.metadata.category}` : ""}
+                      {s.metadata.condemned_by_council
+                        ? " · Condemned by a council"
+                        : ""}
+                    </small>
+                  )}
                 </span>
               </summary>
               <p className="chat-excerpt">{s.text}</p>

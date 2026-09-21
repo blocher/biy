@@ -19,6 +19,7 @@ import { Home } from "./Home";
 import { Leaderboard } from "./Leaderboard";
 import { Account } from "./Account";
 import { AdminPeople } from "./AdminPeople";
+import { Commentaries } from "./Commentaries";
 function AppContent() {
   const [user, setUser] = useState<string | null>(null),
     [isAdmin, setIsAdmin] = useState(false),
@@ -197,6 +198,16 @@ function AppContent() {
               <Route
                 path="/chat"
                 element={<StudyChat key={user} user={user} />}
+              />
+              <Route
+                path="/commentaries"
+                element={
+                  <Commentaries
+                    user={user}
+                    library={library}
+                    onError={onError}
+                  />
+                }
               />
               <Route
                 path="/"

@@ -13,6 +13,8 @@ from .chat_api import turn_data
 from .models import (
     Day,
     DayProgress,
+    Commentary,
+    CommentaryAuthor,
     Episode,
     Era,
     Note,
@@ -405,6 +407,74 @@ class StudyChatTests(TestCase):
         kwargs = factory.return_value.responses.create.call_args.kwargs
         self.assertNotIn("consult_catholic_sources", str(kwargs["tools"]))
         self.assertFalse(kwargs["store"])
+
+    @patch("study.chat.client")
+    def test_historical_commentary_tool_is_citable(self, factory):
+        author = CommentaryAuthor.objects.create(
+            name="Early Witness", default_year=120, category="Early Fathers"
+        )
+        Commentary.objects.create(
+            external_id="00000000-0000-0000-0000-000000000010",
+            author=author,
+            file_name="Early.toml",
+            year=120,
+            book_key="genesis",
+            location_start=1_000_001,
+            location_end=1_000_001,
+            text="An early witness on creation.",
+            source_title="On Genesis",
+        )
+        c = StudyConversation.objects.create(user=self.user, day=self.day)
+        turn = StudyTurn.objects.create(
+            conversation=c,
+            request_id=uuid4(),
+            question="How has Genesis 1:1 been interpreted historically?",
+            web_enabled=False,
+            status="running",
+        )
+
+        class Call:
+            type = "function_call"
+            call_id = "historical"
+            name = "get_historical_commentaries"
+            arguments = json.dumps({"reference": "Genesis 1:1", "day": None, "offset": 0})
+
+            def model_dump(self, **kwargs):
+                return {
+                    "type": self.type,
+                    "name": self.name,
+                    "arguments": self.arguments,
+                    "call_id": self.call_id,
+                }
+
+        factory.return_value.responses.create.side_effect = [
+            NS(output=[Call()]),
+            NS(
+                output=[],
+                output_text=json.dumps(
+                    {
+                        "paragraphs": [
+                            {
+                                "text": "An early witness reads this as a claim about creation.",
+                                "source_ids": ["H1"],
+                            }
+                        ],
+                        "follow_ups": [
+                            "What other witnesses comment on this passage?",
+                            "How does this compare with modern interpretation?",
+                        ],
+                    }
+                ),
+            ),
+        ]
+
+        run_turn(turn)
+
+        turn.refresh_from_db()
+        self.assertEqual(turn.status, "complete")
+        self.assertIn("[H1]", turn.answer)
+        self.assertEqual(turn.sources[0]["kind"], "historical_commentary")
+        self.assertIn("get_historical_commentaries", str(factory.return_value.responses.create.call_args_list[0].kwargs["tools"]))
 
     def test_csrf_protects_chat_submission(self):
         from django.test import Client

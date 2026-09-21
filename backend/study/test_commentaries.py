@@ -1,0 +1,99 @@
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+
+from .commentaries import commentary_ranges, historical_commentaries
+from .models import Commentary, CommentaryAuthor, Day, Era
+
+
+class CommentaryMatchingTests(TestCase):
+    def test_ranges_use_export_keys_and_split_cross_chapter_passages(self):
+        psalm = commentary_ranges("Psalm 23:1")[0]
+        cross_chapter = commentary_ranges("John 7:53-8:11")
+
+        self.assertEqual(psalm.book_key, "psalms")
+        self.assertEqual(psalm.start, 23_000_001)
+        self.assertEqual(len(cross_chapter), 2)
+        self.assertEqual(cross_chapter[0].start, 7_000_053)
+        self.assertEqual(cross_chapter[1].end, 8_000_011)
+
+
+class CommentaryApiTests(TestCase):
+    def setUp(self):
+        user = get_user_model().objects.create_user("reader", password="password")
+        self.client.force_login(user)
+        era = Era.objects.create(name="Test", color="#123456", order=1)
+        self.day = Day.objects.create(number=1, era=era, readings=["John 3:16-18"])
+        orthodox = CommentaryAuthor.objects.create(
+            name="Early Witness",
+            default_year=120,
+            category="Early Fathers (Pre-Nicaea)",
+        )
+        condemned = CommentaryAuthor.objects.create(
+            name="Condemned Witness",
+            default_year=300,
+            category="Eastern & Byzantine Theology",
+            condemned_by_council=True,
+        )
+        Commentary.objects.create(
+            external_id="00000000-0000-0000-0000-000000000001",
+            author=orthodox,
+            file_name="Early.toml",
+            year=120,
+            book_key="john",
+            location_start=3_000_019,
+            location_end=3_000_020,
+            text="A later verse should not match.",
+            source_title="Later source",
+        )
+        Commentary.objects.create(
+            external_id="00000000-0000-0000-0000-000000000002",
+            author=orthodox,
+            file_name="Early.toml",
+            year=120,
+            book_key="john",
+            location_start=3_000_016,
+            location_end=3_000_017,
+            text="An early witness.",
+            source_title="Early source",
+        )
+        Commentary.objects.create(
+            external_id="00000000-0000-0000-0000-000000000003",
+            author=condemned,
+            file_name="Condemned.toml",
+            year=300,
+            book_key="john",
+            location_start=3_000_018,
+            location_end=3_000_018,
+            text="A condemned witness.",
+            source_title="Second source",
+        )
+
+    def test_returns_overlapping_rows_oldest_first_with_author_metadata(self):
+        response = self.client.get("/api/commentaries", {"day": self.day.number})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["total"], 2)
+        self.assertEqual([row["year"] for row in payload["commentaries"]], [120, 300])
+        self.assertTrue(payload["commentaries"][1]["author_metadata"]["condemned_by_council"])
+        self.assertEqual(payload["commentaries"][0]["matched_readings"], ["John 3:16-18"])
+
+    def test_category_filter_is_applied(self):
+        response = self.client.get(
+            "/api/commentaries",
+            {"day": self.day.number, "category": "Eastern & Byzantine Theology"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["total"], 1)
+
+    def test_historical_lookup_returns_citable_witness_metadata(self):
+        result = historical_commentaries(reference="John 3:16-18", limit=1)
+
+        self.assertEqual(result["total"], 2)
+        self.assertEqual(result["next_offset"], 1)
+        source = result["sources"][0]
+        self.assertTrue(source["id"].startswith("H"))
+        self.assertEqual(source["kind"], "historical_commentary")
+        self.assertEqual(source["metadata"]["author"], "Early Witness")
+        self.assertEqual(source["metadata"]["year_label"], "c. AD 120")

@@ -70,6 +70,44 @@ export type ScriptureAudioCue = {
   confidence: number;
 };
 export type DayDetail = PlanDay & { scripture: Scripture[] };
+export type CommentaryAuthor = {
+  name: string;
+  category: string;
+  default_year: number;
+  year_label: string;
+  wiki_url: string;
+  condemned_by_council: boolean;
+};
+export type CommentaryEntry = {
+  id: string;
+  author: string;
+  author_metadata: CommentaryAuthor;
+  year: number;
+  year_label: string;
+  source_title: string;
+  source_url: string;
+  text: string;
+  book: string;
+  location_start: number;
+  location_end: number;
+  matched_readings: string[];
+};
+export type CommentaryResponse = {
+  day: number;
+  readings: string[];
+  edition: string;
+  commentaries: CommentaryEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+  filters: {
+    categories: string[];
+    min_year: number | null;
+    max_year: number | null;
+  };
+  matching_notes: string[];
+};
 export type Library = {
   days: PlanDay[];
   extras: Episode[];

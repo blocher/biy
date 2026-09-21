@@ -805,12 +805,19 @@ function StudyContent({
             reflections as a daily episode.
           </p>
         )}
-        <Link
-          className="text-link"
-          to={`${base}/reader?tab=${day ? "scripture" : "edited"}`}
-        >
-          Open full-page reader <ArrowRight size={16} />
-        </Link>
+        <div className="study-card-links">
+          <Link
+            className="text-link"
+            to={`${base}/reader?tab=${day ? "scripture" : "edited"}`}
+          >
+            Open full-page reader <ArrowRight size={16} />
+          </Link>
+          {day && (
+            <Link className="text-link" to={`/commentaries?day=${day.number}`}>
+              Explore historical commentaries <ArrowRight size={16} />
+            </Link>
+          )}
+        </div>
       </>
     ),
     "viewport-2-b-journal": (
