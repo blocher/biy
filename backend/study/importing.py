@@ -31,6 +31,11 @@ TRANSCRIPT_FORMAT_BATCH_SIZE = 40
 TRANSCRIPT_FORMAT_CONTEXT_SEGMENTS = 2
 TRANSCRIBE_CHUNK_SECONDS = 900
 TRANSCRIBE_OVERLAP_SECONDS = 4
+TRANSCRIBE_EMPTY_TRAILING_SECONDS = 30
+
+
+class EmptyTranscriptionError(ValueError):
+    pass
 
 
 def parse_feed(xml, edition="bible"):
@@ -233,7 +238,8 @@ def transcribe(ep, client):
     segments = []
     step = TRANSCRIBE_CHUNK_SECONDS - TRANSCRIBE_OVERLAP_SECONDS
     for index, offset in enumerate(range(0, int(ep.duration) + 1, step)):
-        if ep.duration - offset < 0.1:
+        remaining = ep.duration - offset
+        if remaining < 0.1 or (index > 0 and remaining <= TRANSCRIBE_OVERLAP_SECONDS):
             break
         record = cache / f"{index:03}.json"
         if record.exists():
@@ -262,17 +268,29 @@ def transcribe(ep, client):
                 ],
                 check=True,
             )
-            with clip.open("rb") as source:
-                response = client.audio.transcriptions.create(
-                    model=model,
-                    file=source,
-                    response_format="diarized_json",
-                    chunking_strategy="auto",
-                    language="en",
-                )
-            data = response.model_dump()
-            if not data.get("segments"):
-                raise ValueError(f"No timestamped transcription for audio chunk {index}.")
+
+            def transcribe_chunk():
+                with clip.open("rb") as source:
+                    response = client.audio.transcriptions.create(
+                        model=model,
+                        file=source,
+                        response_format="diarized_json",
+                        chunking_strategy="auto",
+                        language="en",
+                    )
+                result = response.model_dump()
+                if not result.get("segments"):
+                    raise EmptyTranscriptionError(
+                        f"No timestamped transcription for audio chunk {index}."
+                    )
+                return result
+
+            try:
+                data = _retry_ai_generation(transcribe_chunk)
+            except EmptyTranscriptionError:
+                if index == 0 or remaining > TRANSCRIBE_EMPTY_TRAILING_SECONDS:
+                    raise
+                data = {"segments": []}
             checkpoint(record, data)
             clip.unlink(missing_ok=True)
         for segment in data["segments"]:
@@ -412,12 +430,24 @@ def _merge_formatted_segments(formatted, source):
 
 
 def _format_segment_batches(ep, client, source, name, cache, model, force):
-    formatted = []
-    for offset in range(0, len(source), TRANSCRIPT_FORMAT_BATCH_SIZE):
-        batch = source[offset : offset + TRANSCRIPT_FORMAT_BATCH_SIZE]
-        record = cache / f"{name}-{offset:04d}.json"
+    def format_batch(batch, offset, record):
+        split_record = record.with_suffix(".split")
         if record.exists() and not force:
             result = FormattedBatch.model_validate_json(record.read_text())
+        elif split_record.exists() and not force:
+            midpoint = len(batch) // 2
+            return [
+                *format_batch(
+                    batch[:midpoint],
+                    offset,
+                    cache / f"{name}-{offset:04d}-{offset + midpoint:04d}.json",
+                ),
+                *format_batch(
+                    batch[midpoint:],
+                    offset + midpoint,
+                    cache / f"{name}-{offset + midpoint:04d}-{offset + len(batch):04d}.json",
+                ),
+            ]
         else:
             context_start = max(0, offset - TRANSCRIPT_FORMAT_CONTEXT_SEGMENTS)
             context_end = offset + len(batch) + TRANSCRIPT_FORMAT_CONTEXT_SEGMENTS
@@ -461,11 +491,62 @@ def _format_segment_batches(ep, client, source, name, cache, model, force):
                 _validate_formatted_segments(parsed.segments, batch, name)
                 return parsed
 
-            result = _retry_ai_generation(create_formatted_batch)
+            try:
+                result = _retry_ai_generation(create_formatted_batch)
+            except ValueError:
+                if len(batch) == 1:
+                    result = FormattedBatch(
+                        segments=[
+                            FormattedSegment(
+                                id=batch[0]["id"],
+                                text=batch[0]["text"],
+                                paragraph_break_before=offset == 0,
+                            )
+                        ]
+                    )
+                else:
+                    checkpoint(split_record, {"split": len(batch) // 2})
+                    midpoint = len(batch) // 2
+                    return [
+                        *format_batch(
+                            batch[:midpoint],
+                            offset,
+                            cache / f"{name}-{offset:04d}-{offset + midpoint:04d}.json",
+                        ),
+                        *format_batch(
+                            batch[midpoint:],
+                            offset + midpoint,
+                            cache
+                            / f"{name}-{offset + midpoint:04d}-{offset + len(batch):04d}.json",
+                        ),
+                    ]
             checkpoint(record, result.model_dump())
         _validate_formatted_segments(result.segments, batch, name)
-        formatted.extend(result.segments)
+        return result.segments
+
+    formatted = []
+    for offset in range(0, len(source), TRANSCRIPT_FORMAT_BATCH_SIZE):
+        batch = source[offset : offset + TRANSCRIPT_FORMAT_BATCH_SIZE]
+        formatted.extend(format_batch(batch, offset, cache / f"{name}-{offset:04d}.json"))
     return formatted
+
+
+def _repair_outline_segment_ids(content, scripture, retained):
+    """Keep outline headings while repairing a link to the nearest valid source segment."""
+    all_segments = {segment["id"]: segment for segment in [*scripture, *retained]}
+    candidates = {"Reading": scripture, "Commentary": retained}
+    for item in content.outline:
+        valid_segments = candidates[item.heading]
+        valid_ids = {segment["id"] for segment in valid_segments}
+        if item.segment_id in valid_ids or not valid_segments:
+            continue
+        referenced = all_segments.get(item.segment_id)
+        reference_start = referenced["start"] if referenced else item.segment_id
+        item.segment_id = min(
+            valid_segments,
+            key=lambda segment: (abs(segment["start"] - reference_start), segment["id"]),
+        )["id"]
+    return content
 
 
 def format_transcripts(ep, client, force=False):
@@ -612,6 +693,7 @@ def generate_study(ep, client, force_study=False):
     record = cache / "content.json"
     if record.exists() and not force_study:
         content = StudyContent.model_validate_json(record.read_text())
+        content = _repair_outline_segment_ids(content, scripture, retained)
         valid = _validate_study_content(content, ep, scripture, retained)
     else:
 
@@ -644,6 +726,7 @@ def generate_study(ep, client, force_study=False):
             content = response.output_parsed
             if content is None:
                 raise ValueError("Study generation returned no structured output.")
+            content = _repair_outline_segment_ids(content, scripture, retained)
             valid = _validate_study_content(content, ep, scripture, retained)
             return content, valid
 

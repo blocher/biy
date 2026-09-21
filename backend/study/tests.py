@@ -407,6 +407,95 @@ class GenerationTests(TestCase):
             ],
         )
 
+    def test_transcription_retries_and_accepts_an_empty_trailing_chunk(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+
+        from .importing import transcribe
+
+        self.ep.duration = 21
+
+        def response(segments):
+            return SimpleNamespace(model_dump=lambda: {"segments": segments})
+
+        client = Mock()
+        client.audio.transcriptions.create.side_effect = [
+            response([{"start": 0, "end": 3, "speaker": "A", "text": "First."}]),
+            response([{"start": 0, "end": 3, "speaker": "A", "text": "Second."}]),
+            response([]),
+            response([]),
+            response([]),
+        ]
+
+        def create_clip(args, **kwargs):
+            Path(args[-1]).write_bytes(b"clip")
+
+        with (
+            TemporaryDirectory() as directory,
+            override_settings(MEDIA_ROOT=Path(directory)),
+            patch("study.importing.TRANSCRIBE_CHUNK_SECONDS", 10),
+            patch("study.importing.TRANSCRIBE_OVERLAP_SECONDS", 2),
+            patch("study.importing.subprocess.run", side_effect=create_clip),
+            patch("study.importing.time.sleep"),
+        ):
+            audio = Path(directory, self.ep.audio_file)
+            audio.parent.mkdir(parents=True)
+            audio.write_bytes(b"audio")
+            transcribe(self.ep, client)
+
+        self.assertEqual(client.audio.transcriptions.create.call_count, 5)
+        self.assertEqual([segment["text"] for segment in self.ep.transcript], ["First.", "Second."])
+
+    def test_repairs_reading_outline_link_to_an_assigned_reading_segment(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        from .importing import Classifications, StudyContent, generate_study
+
+        labels = Classifications.model_validate(
+            {
+                "segments": [
+                    {"id": 0, "kind": "scripture", "commentary_text": None},
+                    {"id": 1, "kind": "commentary", "commentary_text": None},
+                    {"id": 2, "kind": "prayer", "commentary_text": None},
+                ]
+            }
+        )
+        content = StudyContent.model_validate(
+            {
+                "summary": "Fr. Mike reflects on creation as a gift.",
+                "key_points": [{"text": "Creation is a gift from God."}],
+                "paragraphs": [
+                    {
+                        "heading": "Creation as gift",
+                        "text": "Creation is a gift.",
+                        "segment_ids": [1],
+                    }
+                ],
+                "outline": [
+                    {
+                        "heading": "Reading",
+                        "title": "Bible reading",
+                        "segment_id": 1,
+                        "speaker": "Fr. Mike Schmitz",
+                    }
+                ],
+            }
+        )
+        client = Mock()
+        client.responses.parse.side_effect = [
+            SimpleNamespace(output_parsed=labels),
+            SimpleNamespace(output_parsed=content),
+        ]
+
+        with TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=Path(directory)):
+            Path(directory, "episodes/1").mkdir(parents=True)
+            generate_study(self.ep, client)
+
+        self.assertEqual(self.ep.outline[0]["heading"], "Reading")
+        self.assertEqual(self.ep.outline[0]["segment_id"], 0)
+        self.assertEqual(self.ep.outline[0]["start"], 0)
+
     def test_commentary_is_source_preserving_and_outline_uses_real_offsets(self):
         from types import SimpleNamespace
         from unittest.mock import Mock
@@ -750,6 +839,50 @@ class GenerationTests(TestCase):
         ]
         self.assertTrue(all(len(payload["segments_to_format"]) <= 2 for payload in payloads))
 
+    def test_failed_formatting_batch_is_split_and_completed(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+
+        from .importing import FormattedBatch, FormattedSegment, _format_segment_batches
+
+        source = self.ep.transcript[:2]
+
+        def parse_response(**kwargs):
+            payload = json.loads(kwargs["input"][1]["content"])
+            items = payload["segments_to_format"]
+            if len(items) > 1:
+                items = [{**items[0], "text": f'{items[0]["text"]} changed'}, *items[1:]]
+            return SimpleNamespace(
+                output_parsed=FormattedBatch(
+                    segments=[
+                        FormattedSegment(
+                            id=item["id"],
+                            text=item["text"],
+                            paragraph_break_before=True,
+                        )
+                        for item in items
+                    ]
+                )
+            )
+
+        client = Mock()
+        client.responses.parse.side_effect = parse_response
+
+        with TemporaryDirectory() as directory, patch("study.importing.time.sleep"):
+            formatted = _format_segment_batches(
+                self.ep,
+                client,
+                source,
+                "transcript",
+                Path(directory),
+                "test-model",
+                False,
+            )
+
+        self.assertEqual([segment.id for segment in formatted], [0, 1])
+        self.assertEqual([segment.text for segment in formatted], [item["text"] for item in source])
+        self.assertEqual(client.responses.parse.call_count, 5)
+
     def test_skips_episodes_whose_transcripts_already_passed(self):
         from unittest.mock import Mock
 
@@ -782,19 +915,16 @@ class GenerationTests(TestCase):
             FormattedSegment(id=0, text=self.ep.transcript[0]["text"], paragraph_break_before=True),
             FormattedSegment(id=1, text=self.ep.transcript[1]["text"], paragraph_break_before=True),
         ]
-        invalid_last_batch = [
-            FormattedSegment(
-                id=2,
-                text="Let us now pray together.",
-                paragraph_break_before=False,
-            )
+        last_batch = [
+            FormattedSegment(id=2, text=self.ep.transcript[2]["text"], paragraph_break_before=False)
         ]
         first_client = Mock()
         first_client.responses.parse.side_effect = [
             parsed(first_batch),
-            parsed(invalid_last_batch),
-            parsed(invalid_last_batch),
-            parsed(invalid_last_batch),
+            parsed(last_batch),
+            RuntimeError("temporary API failure"),
+            RuntimeError("temporary API failure"),
+            RuntimeError("temporary API failure"),
         ]
 
         def valid_response(**kwargs):
@@ -819,12 +949,12 @@ class GenerationTests(TestCase):
             patch("study.importing.time.sleep"),
         ):
             Path(directory, "episodes/1").mkdir(parents=True)
-            with self.assertRaisesRegex(ValueError, "changed the source words"):
+            with self.assertRaisesRegex(RuntimeError, "temporary API failure"):
                 format_transcripts(self.ep, first_client)
             format_transcripts(self.ep, second_client)
 
-        self.assertEqual(first_client.responses.parse.call_count, 4)
-        self.assertEqual(second_client.responses.parse.call_count, 2)
+        self.assertEqual(first_client.responses.parse.call_count, 5)
+        self.assertEqual(second_client.responses.parse.call_count, 1)
         resumed_payloads = [
             json.loads(call.kwargs["input"][1]["content"])
             for call in second_client.responses.parse.call_args_list
@@ -834,40 +964,26 @@ class GenerationTests(TestCase):
                 [item["id"] for item in payload["segments_to_format"]]
                 for payload in resumed_payloads
             ],
-            [[2], [1, 2]],
+            [[1, 2]],
         )
         self.assertEqual(len(self.ep.formatted_transcript), 3)
         self.assertEqual(len(self.ep.formatted_commentary), 2)
 
-    def test_rejects_transcript_formatting_that_changes_words(self):
+    def test_single_segment_formatting_falls_back_to_exact_source_words(self):
         from types import SimpleNamespace
         from unittest.mock import Mock, patch
 
-        from .importing import FormattedBatch, format_transcripts
+        from .importing import FormattedBatch, _format_segment_batches
 
-        self.ep.classification = [
-            {"id": 0, "kind": "scripture", "commentary_text": None},
-            {"id": 1, "kind": "commentary", "commentary_text": None},
-            {"id": 2, "kind": "prayer", "commentary_text": None},
-        ]
+        source = self.ep.transcript[:1]
         changed = FormattedBatch.model_validate(
             {
                 "segments": [
                     {
                         "id": 0,
-                        "text": self.ep.transcript[0]["text"],
+                        "text": f'{source[0]["text"]} changed',
                         "paragraph_break_before": True,
-                    },
-                    {
-                        "id": 1,
-                        "text": "This teaches us that creation is truly a gift.",
-                        "paragraph_break_before": True,
-                    },
-                    {
-                        "id": 2,
-                        "text": self.ep.transcript[2]["text"],
-                        "paragraph_break_before": False,
-                    },
+                    }
                 ]
             }
         )
@@ -876,15 +992,20 @@ class GenerationTests(TestCase):
 
         with (
             TemporaryDirectory() as directory,
-            override_settings(MEDIA_ROOT=Path(directory)),
             patch("study.importing.time.sleep"),
         ):
-            Path(directory, "episodes/1").mkdir(parents=True)
-            with self.assertRaisesRegex(ValueError, "changed the source words"):
-                format_transcripts(self.ep, client)
+            formatted = _format_segment_batches(
+                self.ep,
+                client,
+                source,
+                "transcript",
+                Path(directory),
+                "test-model",
+                False,
+            )
 
         self.assertEqual(client.responses.parse.call_count, 3)
-        self.assertEqual(self.ep.formatted_transcript, [])
+        self.assertEqual(formatted[0].text, source[0]["text"])
 
     def test_word_parity_treats_typographic_apostrophes_as_punctuation(self):
         from .importing import _word_tokens
