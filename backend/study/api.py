@@ -8,7 +8,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
-from django.db.models import Min, Max, Q
+from django.db.models import Max, Min, Q
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
@@ -20,7 +20,18 @@ from ninja.security import django_auth
 from pydantic import Field
 
 from .chat_api import router as chat_router
+from .commentaries import (
+    CommentaryRange,
+    commentary_ranges_for_readings,
+    matching_references,
+    year_label,
+)
 from .models import (
+    CatechismDay,
+    CatechismDayProgress,
+    CatechismParagraph,
+    Commentary,
+    CommentaryAuthor,
     CommunitySettings,
     Day,
     DayProgress,
@@ -29,19 +40,22 @@ from .models import (
     LoginAttempt,
     Note,
     Profile,
-    Commentary,
-    CommentaryAuthor,
-)
-from .commentaries import (
-    CommentaryRange,
-    commentary_ranges_for_readings,
-    matching_references,
-    year_label,
 )
 from .scripture import reading_text
 from .scripture_audio import align_scripture_audio
 
 api = NinjaAPI(title="Bible in a Year", auth=django_auth, docs_url=None)
+
+
+def requested_edition(request):
+    edition = request.GET.get("edition", "bible")
+    if edition not in {"bible", "catechism"}:
+        raise HttpError(422, "Choose the Bible or Catechism edition.")
+    return edition
+
+
+def edition_enabled(profile, edition):
+    return profile.bible_enabled if edition == "bible" else profile.catechism_enabled
 
 
 class LoginIn(Schema):
@@ -81,9 +95,7 @@ class AdminUserCreateIn(AccountIn):
     is_admin: bool = False
     leaderboard_visible: bool = True
     email_notifications: bool = True
-    progress_basis: Literal["first-completion", "leaderboard", "january-1"] = (
-        "first-completion"
-    )
+    progress_basis: Literal["first-completion", "leaderboard", "january-1"] = "first-completion"
 
 
 class AdminUserUpdateIn(AccountIn):
@@ -99,6 +111,12 @@ def community_settings():
     return CommunitySettings.objects.get_or_create(
         pk=1, defaults={"start_date": calendar_date.fromisoformat(settings.LEADERBOARD_START_DATE)}
     )[0]
+
+
+def edition_start_date(state, edition):
+    return (
+        state.start_date if edition == "bible" else (state.catechism_start_date or state.start_date)
+    )
 
 
 def require_admin(request):
@@ -145,9 +163,7 @@ def admin_user_data(user):
         "leaderboard_visible": profile.leaderboard_visible,
         "email_notifications": profile.email_notifications,
         "progress_basis": profile.progress_basis,
-        "completed_days": DayProgress.objects.filter(
-            user=user, completed_at__isnull=False
-        ).count(),
+        "completed_days": DayProgress.objects.filter(user=user, completed_at__isnull=False).count(),
         "journal_entries": Note.objects.filter(user=user, kind="journal").count(),
     }
 
@@ -160,25 +176,35 @@ class CommunitySettingsIn(Schema):
 @api.put("/community-settings")
 def update_community_settings(request, payload: CommunitySettingsIn):
     state = community_settings()
-    state.start_date = payload.start_date
-    state.save(update_fields=["start_date"])
-    return {"leaderboard_start_date": state.start_date}
+    edition = requested_edition(request)
+    field = "start_date" if edition == "bible" else "catechism_start_date"
+    setattr(state, field, payload.start_date)
+    state.save(update_fields=[field])
+    return {"leaderboard_start_date": edition_start_date(state, edition)}
 
 
 class PreferencesIn(Schema):
     progress_basis: Literal["first-completion", "leaderboard", "january-1"] | None = None
     leaderboard_visible: bool | None = None
     email_notifications: bool | None = None
+    bible_enabled: bool | None = None
+    catechism_enabled: bool | None = None
 
 
 @api.get("/preferences")
 def preferences(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
+    edition = requested_edition(request)
     return {
-        "progress_basis": profile.progress_basis,
+        "edition": edition,
+        "progress_basis": (
+            profile.progress_basis if edition == "bible" else profile.catechism_progress_basis
+        ),
         "leaderboard_visible": profile.leaderboard_visible,
         "email_notifications": profile.email_notifications,
-        "leaderboard_start_date": community_settings().start_date,
+        "bible_enabled": profile.bible_enabled,
+        "catechism_enabled": profile.catechism_enabled,
+        "leaderboard_start_date": edition_start_date(community_settings(), edition),
     }
 
 
@@ -186,6 +212,13 @@ def preferences(request):
 def update_preferences(request, payload: PreferencesIn):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     changes = payload.dict(exclude_none=True)
+    edition = requested_edition(request)
+    if "progress_basis" in changes and edition == "catechism":
+        changes["catechism_progress_basis"] = changes.pop("progress_basis")
+    bible_enabled = changes.get("bible_enabled", profile.bible_enabled)
+    catechism_enabled = changes.get("catechism_enabled", profile.catechism_enabled)
+    if not bible_enabled and not catechism_enabled:
+        raise HttpError(422, "Keep at least one edition enabled.")
     for key, value in changes.items():
         setattr(profile, key, value)
     if changes:
@@ -195,13 +228,18 @@ def update_preferences(request, payload: PreferencesIn):
 
 @api.get("/leaderboard")
 def leaderboard(request):
+    edition = requested_edition(request)
     rows = []
     progress = {}
-    for state in DayProgress.objects.filter(completed_at__isnull=False):
+    progress_model = DayProgress if edition == "bible" else CatechismDayProgress
+    for state in progress_model.objects.filter(completed_at__isnull=False):
         progress.setdefault(state.user_id, []).append(state)
     for user in (
         get_user_model().objects.filter(is_active=True).exclude(profile__leaderboard_visible=False)
     ):
+        profile = getattr(user, "profile", None)
+        if profile is not None and not edition_enabled(profile, edition):
+            continue
         states = progress.get(user.pk, [])
         completed = {state.day_id for state in states}
         rows.append(
@@ -357,54 +395,78 @@ def update_admin_user(request, user_id: int, payload: AdminUserUpdateIn):
     profile.leaderboard_visible = payload.leaderboard_visible
     profile.email_notifications = payload.email_notifications
     profile.progress_basis = payload.progress_basis
-    profile.save(
-        update_fields=["leaderboard_visible", "email_notifications", "progress_basis"]
-    )
+    profile.save(update_fields=["leaderboard_visible", "email_notifications", "progress_basis"])
     return admin_user_data(user)
 
 
 def episode_card(ep):
+    catechism_day = ep.catechism_day
     return {
         "id": ep.id,
         "title": ep.title,
-        "day": ep.day_id,
+        "day": ep.day_id or ep.catechism_day_id,
+        "edition": ep.edition,
         "published_at": ep.published_at,
         "source_date": ep.source_date,
         "duration": ep.duration,
         "status": ep.status,
         "has_audio": bool(ep.audio_file),
-        "era": ep.era.name if ep.era else None,
-        "color": ep.era.color if ep.era else "#64b6bd",
+        "era": (ep.era.name if ep.era else (catechism_day.part if catechism_day else None)),
+        "color": (
+            ep.era.color if ep.era else (catechism_day.color if catechism_day else "#64b6bd")
+        ),
     }
 
 
 @api.get("/library")
 def library(request):
+    edition = requested_edition(request)
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    if not edition_enabled(profile, edition):
+        raise HttpError(404, "This edition is hidden in your account settings.")
+    progress_model = DayProgress if edition == "bible" else CatechismDayProgress
     progress = dict(
-        DayProgress.objects.filter(user=request.user).values_list("day_id", "completed_at")
+        progress_model.objects.filter(user=request.user).values_list("day_id", "completed_at")
     )
     episode_progress = dict(
         EpisodeProgress.objects.filter(user=request.user).values_list("episode_id", "completed_at")
     )
-    episodes = list(Episode.objects.select_related("era"))
-    by_day = {e.day_id: e for e in episodes if e.day_id}
-    days = [
-        {
-            "number": d.number,
-            "readings": d.readings,
-            "era": d.era.name,
-            "color": d.era.color,
-            "completed_at": progress.get(d.number),
-            "episode": episode_card(by_day[d.number]) if d.number in by_day else None,
-        }
-        for d in Day.objects.select_related("era")
-    ]
+    episodes = list(Episode.objects.filter(edition=edition).select_related("era", "catechism_day"))
+    if edition == "bible":
+        by_day = {e.day_id: e for e in episodes if e.day_id}
+        days = [
+            {
+                "number": d.number,
+                "readings": d.readings,
+                "era": d.era.name,
+                "color": d.era.color,
+                "completed_at": progress.get(d.number),
+                "episode": episode_card(by_day[d.number]) if d.number in by_day else None,
+            }
+            for d in Day.objects.select_related("era")
+        ]
+    else:
+        by_day = {e.catechism_day_id: e for e in episodes if e.catechism_day_id}
+        days = [
+            {
+                "number": d.number,
+                "readings": d.readings,
+                "era": d.part,
+                "section": d.section,
+                "chapter": d.chapter,
+                "color": d.color,
+                "completed_at": progress.get(d.number),
+                "episode": episode_card(by_day[d.number]) if d.number in by_day else None,
+            }
+            for d in CatechismDay.objects.all()
+        ]
     extras = [
         {**episode_card(ep), "completed_at": episode_progress.get(ep.id)}
         for ep in episodes
-        if not ep.day_id
+        if not ep.day_id and not ep.catechism_day_id
     ]
     return {
+        "edition": edition,
         "days": days,
         "extras": extras,
         "completed": sum(bool(v) for v in progress.values()),
@@ -445,6 +507,40 @@ def episode_detail(ep, user):
 
 @api.get("/days/{number}")
 def day_detail(request, number: int):
+    edition = requested_edition(request)
+    if edition == "catechism":
+        day = get_object_or_404(CatechismDay, pk=number)
+        ep = (
+            Episode.objects.select_related("era", "catechism_day").filter(catechism_day=day).first()
+        )
+        progress = CatechismDayProgress.objects.filter(user=request.user, day=day).first()
+        paragraphs = list(
+            CatechismParagraph.objects.filter(
+                number__range=(day.paragraph_start, day.paragraph_end)
+            )
+            if day.paragraph_start is not None
+            else []
+        )
+        return {
+            "edition": edition,
+            "number": number,
+            "readings": day.readings,
+            "era": day.part,
+            "section": day.section,
+            "chapter": day.chapter,
+            "color": day.color,
+            "completed_at": progress.completed_at if progress else None,
+            "scripture": [],
+            "catechism": [
+                {
+                    "number": paragraph.number,
+                    "text": paragraph.text,
+                    "source_url": paragraph.source_url,
+                }
+                for paragraph in paragraphs
+            ],
+            "episode": episode_detail(ep, request.user) if ep else None,
+        }
     day = get_object_or_404(Day.objects.select_related("era"), pk=number)
     ep = Episode.objects.select_related("era").filter(day=day).first()
     progress = DayProgress.objects.filter(user=request.user, day=day).first()
@@ -456,6 +552,7 @@ def day_detail(request, number: int):
     )
     cues_by_passage = {cue["passage_index"]: cue for cue in cues}
     return {
+        "edition": edition,
         "number": number,
         "readings": day.readings,
         "era": day.era.name,
@@ -538,8 +635,7 @@ def commentaries(
         focused = entries.filter(pk=focus).first()
         if focused is not None:
             position = entries.filter(
-                Q(year__lt=focused.year)
-                | Q(year=focused.year, pk__lte=focused.pk)
+                Q(year__lt=focused.year) | Q(year=focused.year, pk__lte=focused.pk)
             ).count()
             page = ((position - 1) // page_size) + 1
             focused_page = True
@@ -584,9 +680,12 @@ def extra_detail(request, episode_id: int):
 @api.put("/days/{number}/completion")
 @transaction.atomic
 def day_completion(request, number: int, payload: CompleteIn):
-    day = get_object_or_404(Day, pk=number)
-    state, _ = DayProgress.objects.get_or_create(user=request.user, day=day)
-    state = DayProgress.objects.select_for_update().get(pk=state.pk)
+    edition = requested_edition(request)
+    day_model = Day if edition == "bible" else CatechismDay
+    progress_model = DayProgress if edition == "bible" else CatechismDayProgress
+    day = get_object_or_404(day_model, pk=number)
+    state, _ = progress_model.objects.get_or_create(user=request.user, day=day)
+    state = progress_model.objects.select_for_update().get(pk=state.pk)
     state.completed_at = (state.completed_at or timezone.now()) if payload.completed else None
     state.save(update_fields=["completed_at"])
     return {"completed_at": state.completed_at}
@@ -595,11 +694,14 @@ def day_completion(request, number: int, payload: CompleteIn):
 @api.put("/days/{number}/completed-at")
 @transaction.atomic
 def day_completed_at(request, number: int, payload: CompletedAtIn):
-    day = get_object_or_404(Day, pk=number)
-    state = DayProgress.objects.filter(user=request.user, day=day).first()
+    edition = requested_edition(request)
+    day_model = Day if edition == "bible" else CatechismDay
+    progress_model = DayProgress if edition == "bible" else CatechismDayProgress
+    day = get_object_or_404(day_model, pk=number)
+    state = progress_model.objects.filter(user=request.user, day=day).first()
     if state is None or state.completed_at is None:
         raise HttpError(400, "Mark this day complete before changing its date.")
-    state = DayProgress.objects.select_for_update().get(pk=state.pk)
+    state = progress_model.objects.select_for_update().get(pk=state.pk)
     state.completed_at = timezone.make_aware(
         datetime.combine(payload.completed_on, time.min), timezone.get_current_timezone()
     )
@@ -613,6 +715,10 @@ def episode_completion(request, episode_id: int, payload: CompleteIn):
     ep = get_object_or_404(Episode, pk=episode_id)
     if ep.day_id:
         return day_completion(request, ep.day_id, payload)
+    if ep.catechism_day_id:
+        request.GET = request.GET.copy()
+        request.GET["edition"] = "catechism"
+        return day_completion(request, ep.catechism_day_id, payload)
     state, _ = EpisodeProgress.objects.get_or_create(user=request.user, episode=ep)
     state = EpisodeProgress.objects.select_for_update().get(pk=state.pk)
     state.completed_at = (state.completed_at or timezone.now()) if payload.completed else None
@@ -626,6 +732,10 @@ def episode_completed_at(request, episode_id: int, payload: CompletedAtIn):
     ep = get_object_or_404(Episode, pk=episode_id)
     if ep.day_id:
         return day_completed_at(request, ep.day_id, payload)
+    if ep.catechism_day_id:
+        request.GET = request.GET.copy()
+        request.GET["edition"] = "catechism"
+        return day_completed_at(request, ep.catechism_day_id, payload)
     state = EpisodeProgress.objects.filter(user=request.user, episode=ep).first()
     if state is None or state.completed_at is None:
         raise HttpError(400, "Mark this episode complete before changing its date.")
@@ -647,12 +757,18 @@ def position(request, episode_id: int, payload: PositionIn):
     return {"position": value}
 
 
-def note_target(kind, target_id):
+def note_target(kind, target_id, edition="bible"):
     if kind == "days":
+        if edition == "catechism":
+            return {"catechism_day": get_object_or_404(CatechismDay, pk=target_id)}
         return {"day": get_object_or_404(Day, pk=target_id)}
     if kind == "episodes":
         ep = get_object_or_404(Episode, pk=target_id)
-        return {"day": ep.day} if ep.day_id else {"episode": ep}
+        if ep.day_id:
+            return {"day": ep.day}
+        if ep.catechism_day_id:
+            return {"catechism_day": ep.catechism_day}
+        return {"episode": ep}
     raise HttpError(404, "Not found")
 
 
@@ -667,6 +783,10 @@ def note_data(n):
         "created_at": n.created_at,
         "updated_at": n.updated_at,
         "day": n.day_id,
+        "catechism_day": n.catechism_day_id,
+        "edition": "catechism"
+        if n.catechism_day_id or (n.episode_id and n.episode.edition == "catechism")
+        else "bible",
         "episode": n.episode_id,
     }
 
@@ -683,22 +803,27 @@ def shared_notes(
     if person is not None:
         entries = entries.filter(user_id=person)
     if day is not None:
-        entries = entries.filter(day_id=day)
+        target = note_target("days", day, requested_edition(request))
+        entries = entries.filter(**target)
     if episode is not None:
-        target = note_target("episodes", episode)
+        target = note_target("episodes", episode, requested_edition(request))
         entries = entries.filter(**target)
     return [note_data(n) for n in entries]
 
 
 @api.get("/notes")
 def all_notes(request):
-    return [note_data(n) for n in Note.objects.filter(user=request.user)]
+    return [note_data(n) for n in Note.objects.filter(user=request.user).select_related("episode")]
 
 
 @api.get("/{kind}/{target_id}/notes")
 def notes(request, kind: str, target_id: int):
     return [
-        note_data(n) for n in Note.objects.filter(user=request.user, **note_target(kind, target_id))
+        note_data(n)
+        for n in Note.objects.filter(
+            user=request.user,
+            **note_target(kind, target_id, requested_edition(request)),
+        ).select_related("episode")
     ]
 
 
@@ -708,7 +833,9 @@ def add_note(request, kind: str, target_id: int, payload: NoteIn):
         raise HttpError(422, "Write something before saving.")
     with transaction.atomic():
         note = Note.objects.create(
-            user=request.user, **note_target(kind, target_id), **payload.dict()
+            user=request.user,
+            **note_target(kind, target_id, requested_edition(request)),
+            **payload.dict(),
         )
         schedule_notification(note)
     return note_data(note)
@@ -791,6 +918,7 @@ def audio(request, episode_id: int):
     if status == 206:
         response["Content-Range"] = f"bytes {start}-{end}/{size}"
     return response
+
 
 # Auth and CSRF protection are inherited from the session-authenticated API.
 api.add_router("/chat", chat_router)

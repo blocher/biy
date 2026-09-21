@@ -8,7 +8,7 @@ from django.db import close_old_connections, connection
 from openai import OpenAI
 
 from study.importing import (
-    FEED_URL,
+    FEED_URLS,
     catalog_entry,
     download_audio,
     generate_study,
@@ -19,9 +19,10 @@ from study.models import Episode
 
 
 class Command(BaseCommand):
-    help = "Import only episodes dated in 2025. Selection is mandatory; --day 1 is the acceptance test."
+    help = "Import a canonical 2025 podcast edition. Selection is mandatory."
 
     def add_arguments(self, parser):
+        parser.add_argument("--edition", choices=["bible", "catechism"], default="bible")
         selection = parser.add_mutually_exclusive_group(required=True)
         selection.add_argument("--day", type=int)
         selection.add_argument("--guid")
@@ -112,10 +113,15 @@ class Command(BaseCommand):
         if options["feed_file"]:
             xml = options["feed_file"].read_bytes()
         else:
-            response = httpx.get(FEED_URL, timeout=120, follow_redirects=True)
+            response = httpx.get(
+                FEED_URLS[options["edition"]],
+                timeout=120,
+                follow_redirects=True,
+                headers={"User-Agent": "BIY-CIY private study importer"},
+            )
             response.raise_for_status()
             xml = response.content
-        rows = parse_feed(xml)
+        rows = parse_feed(xml, options["edition"])
         if options["day"] is not None:
             rows = [row for row in rows if row["day"] == options["day"]]
         if options["guid"]:
@@ -125,7 +131,7 @@ class Command(BaseCommand):
         if options["day"] is not None and len(rows) != 1:
             raise CommandError("Ambiguous day: expected exactly one 2025 episode.")
         self.stdout.write(f"Selected {len(rows)} episode(s), all published in 2025.")
-        episodes = [catalog_entry(row) for row in rows]
+        episodes = [catalog_entry(row, options["edition"]) for row in rows]
         if options["catalog_only"]:
             for ep in episodes:
                 self.stdout.write(f"Cataloged: {ep.title}")

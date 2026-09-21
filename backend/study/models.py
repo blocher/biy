@@ -3,6 +3,8 @@ from django.db import models
 from django.utils import timezone
 from pgvector.django import VectorField
 
+EDITION_CHOICES = [("bible", "Bible in a Year"), ("catechism", "Catechism in a Year")]
+
 
 class Era(models.Model):
     name = models.CharField(max_length=80, unique=True)
@@ -27,10 +29,59 @@ class Day(models.Model):
         ]
 
 
+class CatechismDay(models.Model):
+    number = models.PositiveSmallIntegerField(primary_key=True)
+    part = models.CharField(max_length=120)
+    section = models.CharField(max_length=120, blank=True)
+    chapter = models.CharField(max_length=120, blank=True)
+    paragraph_start = models.PositiveSmallIntegerField(null=True, blank=True)
+    paragraph_end = models.PositiveSmallIntegerField(null=True, blank=True)
+    color = models.CharField(max_length=7)
+
+    class Meta:
+        ordering = ["number"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(number__gte=1, number__lte=365),
+                name="catechism_day_1_to_365",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(paragraph_start__isnull=True, paragraph_end__isnull=True)
+                    | models.Q(paragraph_start__isnull=False, paragraph_end__isnull=False)
+                ),
+                name="catechism_day_complete_paragraph_range",
+            ),
+        ]
+
+    @property
+    def readings(self):
+        if self.paragraph_start is None:
+            return []
+        return [f"CCC {self.paragraph_start}-{self.paragraph_end}"]
+
+
+class CatechismParagraph(models.Model):
+    number = models.PositiveSmallIntegerField(primary_key=True)
+    text = models.TextField()
+    source_url = models.URLField(max_length=2000)
+
+    class Meta:
+        ordering = ["number"]
+
+
 class Episode(models.Model):
+    edition = models.CharField(max_length=16, choices=EDITION_CHOICES, default="bible")
     guid = models.CharField(max_length=512, unique=True)
     day = models.OneToOneField(
         Day, null=True, blank=True, on_delete=models.PROTECT, related_name="episode"
+    )
+    catechism_day = models.OneToOneField(
+        CatechismDay,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="episode",
     )
     era = models.ForeignKey(Era, null=True, blank=True, on_delete=models.PROTECT)
     title = models.CharField(max_length=500)
@@ -89,7 +140,9 @@ class CommentaryAuthor(models.Model):
 
 class Commentary(models.Model):
     external_id = models.CharField(max_length=36, unique=True)
-    author = models.ForeignKey(CommentaryAuthor, on_delete=models.PROTECT, related_name="commentaries")
+    author = models.ForeignKey(
+        CommentaryAuthor, on_delete=models.PROTECT, related_name="commentaries"
+    )
     file_name = models.CharField(max_length=500)
     append_to_author_name = models.CharField(max_length=500, blank=True)
     year = models.IntegerField(db_index=True)
@@ -119,6 +172,17 @@ class DayProgress(models.Model):
         constraints = [models.UniqueConstraint(fields=["user", "day"], name="unique_day_progress")]
 
 
+class CatechismDayProgress(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    day = models.ForeignKey(CatechismDay, on_delete=models.CASCADE)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "day"], name="unique_catechism_day_progress")
+        ]
+
+
 class EpisodeProgress(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     episode = models.ForeignKey(Episode, on_delete=models.CASCADE)
@@ -134,6 +198,7 @@ class EpisodeProgress(models.Model):
 class Note(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     day = models.ForeignKey(Day, null=True, blank=True, on_delete=models.CASCADE)
+    catechism_day = models.ForeignKey(CatechismDay, null=True, blank=True, on_delete=models.CASCADE)
     episode = models.ForeignKey(Episode, null=True, blank=True, on_delete=models.CASCADE)
     kind = models.CharField(max_length=12, choices=[("note", "Note"), ("journal", "Journal")])
     body = models.TextField()
@@ -148,8 +213,21 @@ class Note(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=(
-                    models.Q(day__isnull=False, episode__isnull=True)
-                    | models.Q(day__isnull=True, episode__isnull=False)
+                    models.Q(
+                        day__isnull=False,
+                        catechism_day__isnull=True,
+                        episode__isnull=True,
+                    )
+                    | models.Q(
+                        day__isnull=True,
+                        catechism_day__isnull=False,
+                        episode__isnull=True,
+                    )
+                    | models.Q(
+                        day__isnull=True,
+                        catechism_day__isnull=True,
+                        episode__isnull=False,
+                    )
                 ),
                 name="note_exactly_one_target",
             )
@@ -164,8 +242,19 @@ class LoginAttempt(models.Model):
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     leaderboard_visible = models.BooleanField(default=True)
+    bible_enabled = models.BooleanField(default=True)
+    catechism_enabled = models.BooleanField(default=True)
     email_notifications = models.BooleanField(default=True)
     progress_basis = models.CharField(
+        max_length=24,
+        default="first-completion",
+        choices=[
+            ("first-completion", "Personal start dates"),
+            ("leaderboard", "Leaderboard start date"),
+            ("january-1", "January 1"),
+        ],
+    )
+    catechism_progress_basis = models.CharField(
         max_length=24,
         default="first-completion",
         choices=[
@@ -181,6 +270,7 @@ class CommunitySettings(models.Model):
 
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     start_date = models.DateField()
+    catechism_start_date = models.DateField(null=True)
 
     class Meta:
         constraints = [
@@ -211,7 +301,9 @@ class SearchChunk(models.Model):
 
 class StudyConversation(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    edition = models.CharField(max_length=16, choices=EDITION_CHOICES, default="bible")
     day = models.ForeignKey(Day, null=True, on_delete=models.CASCADE)
+    catechism_day = models.ForeignKey(CatechismDay, null=True, on_delete=models.CASCADE)
     episode = models.ForeignKey(Episode, null=True, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 

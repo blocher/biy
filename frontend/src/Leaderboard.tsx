@@ -9,6 +9,7 @@ import { scheduleDelta } from "./progress";
 import source from "./design/leaderboard.html?raw";
 import "./design/leaderboard.css";
 import "./leaderboard.css";
+import { editionName, useEdition } from "./Edition";
 type Reader = {
   id: number;
   name: string;
@@ -23,6 +24,7 @@ export function Leaderboard({
   user: string;
   onError: (message: string) => void;
 }) {
+  const { edition, availability, setEdition } = useEdition();
   const prefs = usePreferences(onError);
   const [readers, setReaders] = useState<Reader[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -41,7 +43,7 @@ export function Leaderboard({
     return () => {
       live = false;
     };
-  }, [onError]);
+  }, [edition, onError]);
   const settings = prefs.preferences;
   return (
     <Design
@@ -63,6 +65,20 @@ export function Leaderboard({
         ),
         filters: (
           <>
+            {availability.bible && availability.catechism && (
+              <div className="segmented leaderboard-editions" aria-label="Leaderboard edition">
+                {(["bible", "catechism"] as const).map((value) => (
+                  <button
+                    key={value}
+                    aria-pressed={edition === value}
+                    className={edition === value ? "active" : ""}
+                    onClick={() => setEdition(value)}
+                  >
+                    {editionName(value)}
+                  </button>
+                ))}
+              </div>
+            )}
             <BasisSelect {...prefs} />
             <div className="leaderboard-date">
               <span>Leaderboard start date</span>

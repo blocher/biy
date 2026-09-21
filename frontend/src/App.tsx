@@ -20,6 +20,14 @@ import { Leaderboard } from "./Leaderboard";
 import { Account } from "./Account";
 import { AdminPeople } from "./AdminPeople";
 import { Commentaries } from "./Commentaries";
+import {
+  EditionContext,
+  editionName,
+  persistEdition,
+  storedEdition,
+  type Edition,
+  type EditionAvailability,
+} from "./Edition";
 function AppContent() {
   const [user, setUser] = useState<string | null>(null),
     [isAdmin, setIsAdmin] = useState(false),
@@ -28,7 +36,12 @@ function AppContent() {
     [error, setError] = useState(""),
     [username, setUsername] = useState("ben"),
     [password, setPassword] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [edition, setEditionState] = useState<Edition>(storedEdition),
+    [availability, setAvailability] = useState<EditionAvailability>({
+      bible: true,
+      catechism: true,
+    });
   const location = useLocation(),
     onError = useCallback((message: string) => setError(message), []);
   const refresh = useCallback(() => {
@@ -56,8 +69,69 @@ function AppContent() {
     return () => window.removeEventListener("session-expired", expired);
   }, []);
   useEffect(() => {
-    if (user) refresh();
+    if (!user) return;
+    let live = true;
+    void api<{ bible_enabled: boolean; catechism_enabled: boolean }>(
+      "/preferences",
+    )
+      .then((preferences) => {
+        if (!live) return;
+        const nextAvailability = {
+          bible: preferences.bible_enabled,
+          catechism: preferences.catechism_enabled,
+        };
+        setAvailability(nextAvailability);
+        let next = storedEdition();
+        if (!nextAvailability[next])
+          next = nextAvailability.bible ? "bible" : "catechism";
+        persistEdition(next);
+        setEditionState(next);
+        refresh();
+      })
+      .catch((e) => setError(e.message));
+    return () => {
+      live = false;
+    };
   }, [user, refresh]);
+  useEffect(() => {
+    document.documentElement.dataset.edition = edition;
+    document.title = `${editionName(edition)} · Your daily companion`;
+  }, [edition]);
+  useEffect(() => {
+    const updateAvailability = (event: Event) => {
+      const next = (event as CustomEvent<EditionAvailability>).detail;
+      setAvailability(next);
+      if (!next[edition]) {
+        const fallback: Edition = next.bible ? "bible" : "catechism";
+        persistEdition(fallback);
+        setEditionState(fallback);
+        setLibrary(null);
+        window.setTimeout(refresh, 0);
+      }
+    };
+    window.addEventListener("edition-availability", updateAvailability);
+    return () =>
+      window.removeEventListener("edition-availability", updateAvailability);
+  }, [edition, refresh]);
+  const setEdition = useCallback(
+    (next: Edition) => {
+      if (!availability[next] || next === edition) return;
+      persistEdition(next);
+      setEditionState(next);
+      setLibrary(null);
+      window.setTimeout(refresh, 0);
+    },
+    [availability, edition, refresh],
+  );
+  useEffect(() => {
+    const linked = new URLSearchParams(location.search).get("edition");
+    if (
+      (linked === "bible" || linked === "catechism") &&
+      availability[linked] &&
+      linked !== edition
+    )
+      setEdition(linked);
+  }, [availability, edition, location.search, setEdition]);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
@@ -144,7 +218,7 @@ function AppContent() {
           </div>
         </section>
         <section className="login-form">
-          <span className="eyebrow">BIBLE IN A YEAR</span>
+          <span className="eyebrow">YOUR DAILY COMPANIONS</span>
           <h2>Welcome back.</h2>
           <p>Pick up where you left off.</p>
           <form onSubmit={login}>
@@ -187,123 +261,128 @@ function AppContent() {
       </div>
     );
   return (
-    <LogoutContext.Provider value={logout}>
-      <AdminContext.Provider value={isAdmin}>
-        <AudioProvider key={user} onError={onError}>
-          <a className="skip-link" href="#main-content">
-            Skip to content
-          </a>
-          <div id="main-content">
-            <Routes>
-              <Route
-                path="/chat"
-                element={<StudyChat key={user} user={user} />}
-              />
-              <Route
-                path="/commentaries"
-                element={
-                  <Commentaries
-                    user={user}
-                    library={library}
-                    onError={onError}
-                  />
-                }
-              />
-              <Route
-                path="/"
-                element={
-                  <Home
-                    user={user}
-                    library={library}
-                    onChange={refresh}
-                    onError={onError}
-                  />
-                }
-              />
-              <Route
-                path="/plan"
-                element={<Navigate to={`/${location.search}`} replace />}
-              />
-              <Route path="/extras" element={<Navigate to="/" replace />} />
-              <Route
-                path="/journal"
-                element={<Journal user={user} onError={onError} />}
-              />
-              <Route
-                path="/leaderboard"
-                element={<Leaderboard user={user} onError={onError} />}
-              />
-              <Route
-                path="/account"
-                element={
-                  <Account
-                    user={user}
-                    onUserChange={setUser}
-                    onError={onError}
-                  />
-                }
-              />
-              <Route
-                path="/admin/people"
-                element={
-                  isAdmin ? (
-                    <AdminPeople
-                      user={user}
-                      onSessionChange={(username, admin) => {
-                        setUser(username);
-                        setIsAdmin(admin);
-                      }}
-                      onError={onError}
-                    />
-                  ) : (
-                    <Navigate to="/" replace />
-                  )
-                }
-              />
-              {["/day/:day", "/episode/:episode"].map((path) => (
+    <EditionContext.Provider value={{ edition, availability, setEdition }}>
+      <LogoutContext.Provider value={logout}>
+        <AdminContext.Provider value={isAdmin}>
+          <AudioProvider key={user} onError={onError}>
+            <a className="skip-link" href="#main-content">
+              Skip to content
+            </a>
+            <div id="main-content">
+              <Routes>
                 <Route
-                  key={path}
-                  path={path}
+                  path="/chat"
+                  element={<StudyChat key={user} user={user} />}
+                />
+                <Route
+                  path="/commentaries"
                   element={
-                    <Study
+                    <Commentaries
                       user={user}
-                      completedDays={library.completed}
+                      library={library}
                       onError={onError}
-                      onChange={refresh}
                     />
                   }
                 />
-              ))}
-              {["/day/:day/reader", "/episode/:episode/reader"].map((path) => (
                 <Route
-                  key={path}
-                  path={path}
+                  path="/"
                   element={
-                    <Study
+                    <Home
+                      key={edition}
                       user={user}
-                      completedDays={library.completed}
-                      onError={onError}
+                      library={library}
                       onChange={refresh}
-                      reader
+                      onError={onError}
                     />
                   }
                 />
-              ))}
-              <Route
-                path="*"
-                element={
-                  <div className="simple-page">
-                    <h1>Page not found</h1>
-                    <Link to="/">Return to your journey</Link>
-                  </div>
-                }
-              />
-            </Routes>
-          </div>
-          {notice}
-        </AudioProvider>
-      </AdminContext.Provider>
-    </LogoutContext.Provider>
+                <Route
+                  path="/plan"
+                  element={<Navigate to={`/${location.search}`} replace />}
+                />
+                <Route path="/extras" element={<Navigate to="/" replace />} />
+                <Route
+                  path="/journal"
+                  element={<Journal user={user} onError={onError} />}
+                />
+                <Route
+                  path="/leaderboard"
+                  element={<Leaderboard user={user} onError={onError} />}
+                />
+                <Route
+                  path="/account"
+                  element={
+                    <Account
+                      user={user}
+                      onUserChange={setUser}
+                      onError={onError}
+                    />
+                  }
+                />
+                <Route
+                  path="/admin/people"
+                  element={
+                    isAdmin ? (
+                      <AdminPeople
+                        user={user}
+                        onSessionChange={(username, admin) => {
+                          setUser(username);
+                          setIsAdmin(admin);
+                        }}
+                        onError={onError}
+                      />
+                    ) : (
+                      <Navigate to="/" replace />
+                    )
+                  }
+                />
+                {["/day/:day", "/episode/:episode"].map((path) => (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={
+                      <Study
+                        user={user}
+                        completedDays={library.completed}
+                        onError={onError}
+                        onChange={refresh}
+                      />
+                    }
+                  />
+                ))}
+                {["/day/:day/reader", "/episode/:episode/reader"].map(
+                  (path) => (
+                    <Route
+                      key={path}
+                      path={path}
+                      element={
+                        <Study
+                          user={user}
+                          completedDays={library.completed}
+                          onError={onError}
+                          onChange={refresh}
+                          reader
+                        />
+                      }
+                    />
+                  ),
+                )}
+                <Route
+                  path="*"
+                  element={
+                    <div className="simple-page">
+                      <h1>Page not found</h1>
+                      <Link to="/">Return to your journey</Link>
+                    </div>
+                  }
+                />
+              </Routes>
+            </div>
+            {notice}
+          </AudioProvider>
+        </AdminContext.Provider>
+      </LogoutContext.Provider>
+    </EditionContext.Provider>
   );
 }
 export default function App() {

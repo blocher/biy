@@ -11,7 +11,15 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 from pydantic import Field
 
-from .models import Day, Episode, SearchChunk, StudyConversation, StudyTurn, StudyWorker
+from .models import (
+    CatechismDay,
+    Day,
+    Episode,
+    SearchChunk,
+    StudyConversation,
+    StudyTurn,
+    StudyWorker,
+)
 from .search import sources_current
 
 router = Router()
@@ -24,6 +32,7 @@ class AskIn(Schema):
     day: int | None = Field(default=None, ge=1, le=365)
     episode: int | None = Field(default=None, ge=1)
     web_enabled: bool = True
+    edition: str = "bible"
 
 
 def worker_online():
@@ -43,9 +52,7 @@ def status(request):
         "public_pending": SearchChunk.objects.filter(
             note__isnull=True, embedding__isnull=True
         ).count(),
-        "public_failed": SearchChunk.objects.filter(
-            note__isnull=True, attempts__gte=8
-        ).count(),
+        "public_failed": SearchChunk.objects.filter(note__isnull=True, attempts__gte=8).count(),
     }
 
 
@@ -93,25 +100,30 @@ def turn_data(turn, user):
 
 
 @router.get("/conversations")
-def conversations(request, day: int | None = None, episode: int | None = None):
-    qs = StudyConversation.objects.filter(user=request.user)
+def conversations(
+    request,
+    day: int | None = None,
+    episode: int | None = None,
+    edition: str = "bible",
+):
+    qs = StudyConversation.objects.filter(user=request.user, edition=edition)
     if day is not None:
-        qs = qs.filter(day_id=day)
+        qs = qs.filter(day_id=day) if edition == "bible" else qs.filter(catechism_day_id=day)
     if episode is not None:
         qs = qs.filter(episode_id=episode)
     return [
         {
             "id": c.pk,
             "day": c.day_id,
+            "catechism_day": c.catechism_day_id,
+            "edition": c.edition,
             "episode": c.episode_id,
             "title": (
                 c.turns.order_by("pk").values_list("question", flat=True).first()
                 or "New conversation"
             )[:100],
         }
-        for c in qs.annotate(last_turn=Max("turns__created_at")).order_by(
-            "-last_turn", "-pk"
-        )[:30]
+        for c in qs.annotate(last_turn=Max("turns__created_at")).order_by("-last_turn", "-pk")[:30]
     ]
 
 
@@ -121,6 +133,8 @@ def conversation(request, conversation_id: int):
     return {
         "id": c.pk,
         "day": c.day_id,
+        "catechism_day": c.catechism_day_id,
+        "edition": c.edition,
         "episode": c.episode_id,
         "turns": [turn_data(t, request.user) for t in c.turns.order_by("pk")],
     }
@@ -138,6 +152,8 @@ def ask(request, payload: AskIn):
     question = payload.question.strip()
     if not question:
         raise HttpError(422, "Enter a question first.")
+    if payload.edition not in {"bible", "catechism"}:
+        raise HttpError(422, "Choose the Bible or Catechism edition.")
     # Lock per member to make request deduplication and spend limits race-safe.
     get_user_model().objects.select_for_update().get(pk=request.user.pk)
     previous = StudyTurn.objects.filter(request_id=payload.request_id).first()
@@ -146,13 +162,9 @@ def ask(request, payload: AskIn):
             raise HttpError(404, "Request not found.")
         return {"conversation_id": previous.conversation_id, "turn_id": previous.pk}
     if not settings.OPENAI_API_KEY:
-        raise HttpError(
-            503, "Study chat needs an OpenAI API key configured on the server."
-        )
+        raise HttpError(503, "Study chat needs an OpenAI API key configured on the server.")
     if not worker_online():
-        raise HttpError(
-            503, "The study worker is offline. Please try again after it restarts."
-        )
+        raise HttpError(503, "The study worker is offline. Please try again after it restarts.")
     recent = StudyTurn.objects.filter(conversation__user=request.user)
     if (
         recent.filter(created_at__gte=timezone.now() - timedelta(days=1)).count()
@@ -164,18 +176,27 @@ def ask(request, payload: AskIn):
     if recent.filter(status__in=["queued", "running"]).exists():
         raise HttpError(409, "Please wait for your current answer to finish.")
     if payload.conversation_id:
-        c = get_object_or_404(
-            StudyConversation, pk=payload.conversation_id, user=request.user
-        )
+        c = get_object_or_404(StudyConversation, pk=payload.conversation_id, user=request.user)
     else:
         if payload.day and payload.episode:
             raise HttpError(422, "Choose a day or an episode.")
-        day = get_object_or_404(Day, pk=payload.day) if payload.day else None
-        episode = (
-            get_object_or_404(Episode, pk=payload.episode) if payload.episode else None
+        day = (
+            get_object_or_404(Day, pk=payload.day)
+            if payload.day and payload.edition == "bible"
+            else None
         )
+        catechism_day = (
+            get_object_or_404(CatechismDay, pk=payload.day)
+            if payload.day and payload.edition == "catechism"
+            else None
+        )
+        episode = get_object_or_404(Episode, pk=payload.episode) if payload.episode else None
         c = StudyConversation.objects.create(
-            user=request.user, day=day, episode=episode
+            user=request.user,
+            edition=payload.edition,
+            day=day,
+            catechism_day=catechism_day,
+            episode=episode,
         )
     turn = StudyTurn.objects.create(
         conversation=c,

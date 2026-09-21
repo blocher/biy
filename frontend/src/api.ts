@@ -1,3 +1,5 @@
+import { storedEdition } from "./Edition";
+
 let csrf = "";
 export function setCSRF(value: string) {
   csrf = value;
@@ -7,7 +9,9 @@ export async function api<T>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
-  const response = await fetch("/api" + path, {
+  const separator = path.includes("?") ? "&" : "?";
+  const editionPath = `${path}${separator}edition=${storedEdition()}`;
+  const response = await fetch("/api" + editionPath, {
     method,
     credentials: "same-origin",
     headers: {

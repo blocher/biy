@@ -148,6 +148,20 @@ export function Account({
   const name =
     [details.first_name, details.last_name].filter(Boolean).join(" ") ||
     details.username;
+  async function updateEditions(
+    changes: Partial<{ bible_enabled: boolean; catechism_enabled: boolean }>,
+  ) {
+    const saved = await prefs.update(changes);
+    if (saved)
+      window.dispatchEvent(
+        new CustomEvent("edition-availability", {
+          detail: {
+            bible: saved.bible_enabled,
+            catechism: saved.catechism_enabled,
+          },
+        }),
+      );
+  }
   return (
     <div className="app-frame">
       <Sidebar user={user} />
@@ -226,6 +240,46 @@ export function Account({
                 )}
               </button>
             </form>
+          </section>
+          <section className="account-card edition-settings">
+            <h2>Your editions</h2>
+            <p>Choose the journeys that appear throughout your study space.</p>
+            <label>
+              <input
+                type="checkbox"
+                disabled={
+                  !prefs.preferences ||
+                  prefs.saving ||
+                  (prefs.preferences.bible_enabled &&
+                    !prefs.preferences.catechism_enabled)
+                }
+                checked={prefs.preferences?.bible_enabled ?? true}
+                onChange={(e) =>
+                  void updateEditions({ bible_enabled: e.target.checked })
+                }
+              />{" "}
+              Bible in a Year
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                disabled={
+                  !prefs.preferences ||
+                  prefs.saving ||
+                  (prefs.preferences.catechism_enabled &&
+                    !prefs.preferences.bible_enabled)
+                }
+                checked={prefs.preferences?.catechism_enabled ?? true}
+                onChange={(e) =>
+                  void updateEditions({ catechism_enabled: e.target.checked })
+                }
+              />{" "}
+              Catechism in a Year
+            </label>
+            <p className="quiet">
+              Keep at least one edition enabled. Hidden editions are removed from
+              navigation, journals, and leaderboards.
+            </p>
           </section>
           <section className="account-card collaboration-settings">
             <h2>Community preferences</h2>

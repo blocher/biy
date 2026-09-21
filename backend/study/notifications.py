@@ -22,13 +22,20 @@ def notify_shared_note(note_id):
         )
     ):
         return
-    note = Note.objects.select_related("user").filter(pk=note_id, shared=True).first()
+    note = Note.objects.select_related("user", "episode").filter(pk=note_id, shared=True).first()
     if note is None:
         return
-    target = f"day/{note.day_id}" if note.day_id else f"episode/{note.episode_id}"
-    url = f"{settings.PUBLIC_APP_URL}/{target}"
+    edition = (
+        "catechism"
+        if note.catechism_day_id or (note.episode_id and note.episode.edition == "catechism")
+        else "bible"
+    )
+    day_id = note.day_id or note.catechism_day_id
+    target = f"day/{day_id}" if day_id else f"episode/{note.episode_id}"
+    url = f"{settings.PUBLIC_APP_URL}/{target}?edition={edition}"
     author = note.user.get_full_name() or note.user.username
-    subject = "A new shared reflection · Bible in a Year"
+    name = "Catechism in a Year" if edition == "catechism" else "Bible in a Year"
+    subject = f"A new shared reflection · {name}"
     body = (
         f"{author} shared a {note.kind}.\n\nRead it in your study space: {url}\n\n"
         f"Manage email notifications: {settings.PUBLIC_APP_URL}/account"
@@ -38,6 +45,11 @@ def notify_shared_note(note_id):
         .objects.filter(is_active=True)
         .exclude(email="")
         .exclude(profile__email_notifications=False)
+    )
+    users = (
+        users.exclude(profile__catechism_enabled=False)
+        if edition == "catechism"
+        else users.exclude(profile__bible_enabled=False)
     )
     for user in users:
         recipients = [user.email]

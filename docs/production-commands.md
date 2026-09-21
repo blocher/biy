@@ -6,6 +6,7 @@ Run these commands on the production host (`dailyoffice`). Production commands u
 
 ```sh
 sudo /var/www/biy-app/deploy/manage seed_plan
+sudo /var/www/biy-app/deploy/manage seed_catechism_plan
 sudo /var/www/biy-app/deploy/manage create_account ben --seed
 sudo /var/www/biy-app/deploy/manage changepassword ben
 ```
@@ -14,6 +15,12 @@ The production Bible is already loaded. If the Bible source files are present un
 
 ```sh
 sudo /var/www/biy-app/deploy/manage import_bible
+```
+
+The official English Catechism text is imported separately from Vatican pages:
+
+```sh
+sudo /var/www/biy-app/deploy/manage import_catechism
 ```
 
 After source, note, or episode changes, reconcile search indexing. The running worker embeds pending chunks asynchronously:
@@ -28,6 +35,22 @@ sudo systemctl status biy-worker --no-pager
 ```sh
 sudo /var/www/biy-app/deploy/manage import_podcasts --all --download-only --workers 2
 ```
+
+Always include `--edition catechism` for the Catechism feed. The current acceptance scope is deliberately one day and manual; cataloging invokes neither audio download nor AI:
+
+```sh
+sudo /var/www/biy-app/deploy/manage import_podcasts \
+  --edition catechism --day 1 --catalog-only
+```
+
+To fetch that one episode's audio without transcription or AI:
+
+```sh
+sudo /var/www/biy-app/deploy/manage import_podcasts \
+  --edition catechism --day 1 --download-only
+```
+
+Do not run the Catechism command without `--catalog-only` or `--download-only` while the no-transcription acceptance boundary is in effect.
 
 ## Run transcription and study-content AI for every episode
 

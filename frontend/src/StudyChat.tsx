@@ -85,6 +85,7 @@ export function Answer({ turn }: { turn: ChatTurn }) {
                     {(
                       {
                         scripture: "Scripture · RSV-2CE",
+                        catechism: "Catechism · Vatican source",
                         reading_day: "Reading plan day",
                         commentary: "Fr. Mike commentary",
                         journal: "Member reflection",
@@ -188,12 +189,20 @@ export function ChatContent({
     : chat.episode
       ? `/episode/${chat.episode}`
       : "/";
-  const examples = [
-    "What was the previous reading about?",
-    "How did this person enter the story?",
-    "What did Fr. Mike say about sacrifices?",
-    "Has anyone shared a reflection about the Eucharist?",
-  ];
+  const examples =
+    chat.edition === "catechism"
+      ? [
+          "How does today’s teaching connect to Scripture?",
+          "Explain this Catechism passage in plain language.",
+          "What did Fr. Mike emphasize today?",
+          "Has anyone shared a reflection about this teaching?",
+        ]
+      : [
+          "What was the previous reading about?",
+          "How did this person enter the story?",
+          "What did Fr. Mike say about sacrifices?",
+          "Has anyone shared a reflection about the Eucharist?",
+        ];
   return (
     <>
       {!embedded && (
@@ -257,7 +266,7 @@ export function ChatContent({
             <>
               <span className="chat-context">
                 <BookOpen size={16} />
-                {context} · Whole Bible scope
+                {context} · Searches Bible and Catechism
               </span>
               <label className="chat-external">
                 <input

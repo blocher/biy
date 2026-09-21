@@ -10,6 +10,7 @@ export type Episode = {
   id: number;
   title: string;
   day: number | null;
+  edition?: "bible" | "catechism";
   era: string | null;
   color: string;
   duration: number;
@@ -45,6 +46,8 @@ export type PlanDay = {
   readings: string[];
   era: string;
   color: string;
+  section?: string;
+  chapter?: string;
   completed_at: string | null;
   episode: Episode | null;
 };
@@ -69,7 +72,16 @@ export type ScriptureAudioCue = {
   end: number;
   confidence: number;
 };
-export type DayDetail = PlanDay & { scripture: Scripture[] };
+export type CatechismParagraph = {
+  number: number;
+  text: string;
+  source_url: string;
+};
+export type DayDetail = PlanDay & {
+  edition: "bible" | "catechism";
+  scripture: Scripture[];
+  catechism?: CatechismParagraph[];
+};
 export type CommentaryAuthor = {
   name: string;
   category: string;
@@ -110,6 +122,7 @@ export type CommentaryResponse = {
   matching_notes: string[];
 };
 export type Library = {
+  edition?: "bible" | "catechism";
   days: PlanDay[];
   extras: Episode[];
   completed: number;
@@ -125,5 +138,7 @@ export type Note = {
   created_at: string;
   updated_at: string;
   day: number | null;
+  catechism_day: number | null;
+  edition: "bible" | "catechism";
   episode: number | null;
 };

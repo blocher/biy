@@ -15,6 +15,7 @@ import { Sidebar } from "./navigation";
 import { DayTable, Timeline } from "./Library";
 import { date, episodeTitle } from "./api";
 import { progressStats } from "./progress";
+import { useEdition } from "./Edition";
 
 function percent(value: number) {
   return `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
@@ -31,6 +32,8 @@ export function Home({
   onChange: () => void;
   onError: (e: string) => void;
 }) {
+  const { edition } = useEdition();
+  const catechism = edition === "catechism";
   const preferenceState = usePreferences(onError);
   const next = library.days.find((d) => d.number === library.next_day),
     stats = progressStats(
@@ -75,14 +78,18 @@ export function Home({
           <h1>
             A little each day.
             <br />
-            <em>A story that changes everything.</em>
+            <em>
+              {catechism
+                ? "A deeper understanding of the faith."
+                : "A story that changes everything."}
+            </em>
           </h1>
         ),
         "hero-day-label": (
           <span className="eyebrow" style={{ color: next?.color || "#123f34" }}>
             {next
               ? `${next.era} · DAY ${next.number}`
-              : "365 DAYS · ONE BEAUTIFUL JOURNEY"}
+              : `365 DAYS · ${catechism ? "ONE FAITH" : "ONE BEAUTIFUL JOURNEY"}`}
           </span>
         ),
         "hero-title": (
@@ -91,13 +98,15 @@ export function Home({
               ? next.episode
                 ? episodeTitle(next.episode.title)
                 : next.readings[0]
-              : "You’ve read the whole story."}
+              : catechism
+                ? "You’ve read the whole Catechism."
+                : "You’ve read the whole story."}
           </h2>
         ),
         "hero-reference": (
           <p>
             {next?.readings.join(" · ") ||
-              "Your notes and every reading are here whenever you want to return."}
+              `Your notes and every ${catechism ? "Catechism passage" : "reading"} are here whenever you want to return.`}
           </p>
         ),
         "hero-continue": next ? (

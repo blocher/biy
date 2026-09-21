@@ -1,6 +1,6 @@
-# Bible in a Year
+# Bible and Catechism in a Year
 
-A personal study companion for the **2025** Fr. Mike Schmitz podcast: Django 5.2, Django Ninja, PostgreSQL, React and TypeScript. The bright editorial interface was explored and converted with 12ui, then connected to real data and responsive reading controls.
+A personal study companion for the complete **2025** editions of Fr. Mike Schmitz's Bible in a Year and Catechism in a Year podcasts: Django 5.2, Django Ninja, PostgreSQL, React and TypeScript. Each account can show either journey or both, with independent reading progress, schedules, and leaderboards.
 
 ## Start locally
 
@@ -54,6 +54,7 @@ cp .env.example .env
 createdb biy
 .venv/bin/python backend/manage.py migrate
 .venv/bin/python backend/manage.py seed_plan
+.venv/bin/python backend/manage.py seed_catechism_plan
 .venv/bin/python backend/manage.py create_account ben
 cd frontend
 npm ci
@@ -75,7 +76,13 @@ and keeps unknown dates at the end. Its deuterocanonical matching note is
 deliberately visible in the browser because some historical sources use a
 different chapter layout for additions to Daniel and Esther.
 
-All 365 day records come from the supplied official PDF. Reading references are preserved exactly, including the repeated Ecclesiastes reading on days 150/151 and unusual Esther chapter ordering. The importer does not silently correct the source plan.
+Both 365-day plans come from their supplied official PDFs. Reading references are preserved exactly, including the Bible plan's repeated Ecclesiastes reading on days 150/151 and unusual Esther chapter ordering. The Catechism plan covers CCC 1-2865 exactly once, with its four introductory days retained as days without numbered paragraphs. The importer does not silently correct either source plan.
+
+Import the official English Catechism text from Vatican pages after seeding the plan:
+
+```sh
+.venv/bin/python backend/manage.py import_catechism
+```
 
 ## One-day acceptance import
 
@@ -97,6 +104,22 @@ The `.env` also contains `OPENAI_TRANSCRIBE_MODEL=gpt-4o-transcribe-diarize` and
 
 The importer requires an explicit selector: `--day NUMBER`, `--guid FEED_GUID`, or `--all`. `--all` is the future bulk operation; it is implemented but **has not been run**. `--catalog-only` imports selected metadata without audio/AI. `--feed-file PATH` supports a cached publisher RSS feed. Supplementary episodes use the exact same pipeline and study screens, but their completion is separate from the 365-day total.
 
+Catechism imports use the same explicit stages. For the current manual one-day test, first catalog Day 1 without downloading media or invoking AI:
+
+```sh
+.venv/bin/python backend/manage.py import_podcasts \
+  --edition catechism --day 1 --catalog-only
+```
+
+When a one-day audio download is intentionally desired, this command downloads only that episode and exits before transcription or study-content generation:
+
+```sh
+.venv/bin/python backend/manage.py import_podcasts \
+  --edition catechism --day 1 --download-only
+```
+
+Do not omit `--download-only` for the manual Catechism test: without a stage flag, the importer proceeds to transcription and AI study generation after downloading. No scheduler or deployment hook runs podcast imports automatically.
+
 For a bulk run, `--workers 2` through `--workers 8` process separate episodes concurrently; the default remains one worker. Start with two workers, then increase only if the host, publisher, and OpenAI account remain healthy. Each episode retains its own advisory lock and resumable checkpoints, so a rerun continues completed work without repeating it. For example: `.venv/bin/python backend/manage.py import_podcasts --all --workers 2`. To regenerate only the summary, key points, outline, and edited commentary for an already-transcribed episode, add `--force-study`; audio and transcription are reused, and structured AI generation is attempted up to three times with exponential backoff.
 
 ### How commentary-only extraction works
@@ -112,6 +135,7 @@ Files and checkpoints live under ignored `media/`. A PostgreSQL advisory lock pr
 
 ## Study experience
 
+- The top-level edition switch moves between Bible in a Year and Catechism in a Year. Account settings can show either one or both; both are enabled by default.
 - Home shows the day list, completion checks, progress and a prominent next-unread action.
 - Search by day/book/title, filter by period/completion, and switch between table and cards.
 - Each day includes RSV-2CE Scripture, full transcript, commentary-only transcript, lightly edited commentary, summary and clickable audio outline.
@@ -119,6 +143,8 @@ Files and checkpoints live under ignored `media/`. A PostgreSQL advisory lock pr
 - Notes and journal entries are private per account, editable and optionally linked to the current audio time. Unsaved text is kept in that browser tab until saved. The journal collects entries across the year.
 - Completion timestamps persist and repeated “complete” calls preserve the original timestamp. A day can be marked unread again.
 - Unimported days show explicit availability states and never fabricated transcripts or summaries.
+- Catechism days show the official Vatican text by numbered paragraph. Its two 2025 bonus episodes appear after Day 365 and do not count toward yearly progress.
+- Journal and leaderboard views can switch editions; Ask searches both corpora while preferring the active edition.
 
 ## Verification
 

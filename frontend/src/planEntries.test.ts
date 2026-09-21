@@ -62,4 +62,23 @@ describe("planEntries", () => {
       "episode-9",
     ]);
   });
+
+  it("places Catechism bonus episodes after all 365 days", () => {
+    const day1 = episode(1, "2025-01-01T08:00:00Z", 1);
+    const day365 = episode(365, "2025-12-31T08:00:00Z", 365);
+    const bonus = episode(366, "2025-06-01T08:00:00Z", null);
+    const library: Library = {
+      edition: "catechism",
+      days: [day(1, day1), day(365, day365)],
+      extras: [bonus],
+      completed: 0,
+      next_day: 1,
+    };
+
+    expect(planEntries(library).map((entry) => entry.key)).toEqual([
+      "day-1",
+      "day-365",
+      "episode-366",
+    ]);
+  });
 });

@@ -6,6 +6,8 @@ export type Preferences = {
   leaderboard_visible: boolean;
   email_notifications: boolean;
   leaderboard_start_date: string;
+  bible_enabled: boolean;
+  catechism_enabled: boolean;
 };
 export function usePreferences(onError: (message: string) => void) {
   const [preferences, setPreferences] = useState<Preferences | null>(null);
@@ -26,10 +28,13 @@ export function usePreferences(onError: (message: string) => void) {
     if (previous) setPreferences({ ...previous, ...changes });
     setSaving(true);
     try {
-      setPreferences(await api<Preferences>("/preferences", "PATCH", changes));
+      const saved = await api<Preferences>("/preferences", "PATCH", changes);
+      setPreferences(saved);
+      return saved;
     } catch (e) {
       setPreferences(previous);
       onError((e as Error).message);
+      return null;
     } finally {
       setSaving(false);
     }

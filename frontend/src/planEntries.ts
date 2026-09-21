@@ -21,18 +21,20 @@ function episodeId(entry: PlanEntry) {
 
 /** Combine daily and supplementary episodes in the publisher's exact order. */
 export function planEntries(library: Library): PlanEntry[] {
-  const entries: PlanEntry[] = [
-    ...library.days.map((day): PlanEntry => ({
+  const days = library.days.map((day): PlanEntry => ({
       kind: "day",
       key: `day-${day.number}`,
       day,
-    })),
-    ...library.extras.map((episode): PlanEntry => ({
+    }));
+  const extras = library.extras.map((episode): PlanEntry => ({
       kind: "extra",
       key: `episode-${episode.id}`,
       episode,
-    })),
-  ];
+    }));
+
+  if (library.edition === "catechism") return [...days, ...extras];
+
+  const entries = [...days, ...extras];
 
   return entries.sort(
     (a, b) => publishedAt(a) - publishedAt(b) || episodeId(a) - episodeId(b),

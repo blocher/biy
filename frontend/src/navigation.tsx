@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   BookOpen,
   MessageCircle,
@@ -11,17 +11,19 @@ import {
   Users,
   LibraryBig,
 } from "lucide-react";
+import { editionName, useEdition, type Edition } from "./Edition";
 export const LogoutContext = createContext(() => {});
 export const AdminContext = createContext(false);
 export function Brand() {
+  const { edition } = useEdition();
   return (
-    <Link className="brand" to="/" aria-label="Bible in a Year home">
+    <Link className="brand" to="/" aria-label={`${editionName(edition)} home`}>
       <div className="brand-art">
         <Sun />
         <BookOpen />
       </div>
       <span>
-        Bible
+        {edition === "bible" ? "Bible" : "Catechism"}
         <br />
         in a Year
       </span>
@@ -37,9 +39,33 @@ export function Sidebar({
 }) {
   const logout = useContext(LogoutContext);
   const isAdmin = useContext(AdminContext);
+  const { edition, availability, setEdition } = useEdition();
+  const location = useLocation();
+  const navigate = useNavigate();
+  function switchEdition(next: Edition) {
+    setEdition(next);
+    if (next === "catechism" && location.pathname === "/commentaries") navigate("/");
+    else if (location.pathname === "/chat") navigate("/chat");
+  }
   const body = (
     <>
       <Brand />
+      {availability.bible && availability.catechism && (
+        <div className="edition-switcher" aria-label="Study edition">
+          <button
+            aria-pressed={edition === "bible"}
+            onClick={() => switchEdition("bible")}
+          >
+            Bible
+          </button>
+          <button
+            aria-pressed={edition === "catechism"}
+            onClick={() => switchEdition("catechism")}
+          >
+            Catechism
+          </button>
+        </div>
+      )}
       <nav className="navigation" aria-label="Main navigation">
         <NavLink to="/" end>
           <BookOpen size={20} /> Reading plan
@@ -47,9 +73,11 @@ export function Sidebar({
         <NavLink to="/chat">
           <MessageCircle size={20} /> Ask
         </NavLink>
-        <NavLink to="/commentaries">
-          <LibraryBig size={20} /> Commentaries
-        </NavLink>
+        {edition === "bible" && (
+          <NavLink to="/commentaries">
+            <LibraryBig size={20} /> Commentaries
+          </NavLink>
+        )}
         <NavLink to="/journal">
           <NotebookPen size={20} /> My journal
         </NavLink>
@@ -70,7 +98,7 @@ export function Sidebar({
           <span className="avatar">{user[0].toUpperCase()}</span>
           <div>
             <strong>{user}</strong>
-            <small>One day at a time.</small>
+            <small>{editionName(edition)}</small>
           </div>
         </NavLink>
         <button onClick={logout}>

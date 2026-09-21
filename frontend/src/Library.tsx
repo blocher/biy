@@ -14,6 +14,7 @@ import type { Library, Note } from "./types";
 import { api, date, dateInputValue, episodeTitle, shortDate } from "./api";
 import { Sidebar } from "./navigation";
 import { planEntries, type PlanEntry } from "./planEntries";
+import { editionName, useEdition, type Edition } from "./Edition";
 import {
   pageContainingIndex,
   readingPlanPage,
@@ -54,9 +55,11 @@ export function DayTable({
       Array.from(
         new Map([
           ...library.days.map((d) => [d.era, d.color] as const),
-          ...library.extras
-            .filter((e) => e.era)
-            .map((e) => [e.era as string, e.color] as const),
+          ...(library.edition === "bible"
+            ? library.extras
+                .filter((e) => e.era)
+                .map((e) => [e.era as string, e.color] as const)
+            : []),
         ]),
       ),
     [library],
@@ -69,7 +72,7 @@ export function DayTable({
     const entryEra = entry.kind === "day" ? entry.day.era : entry.episode.era;
     const searchable =
       entry.kind === "day"
-        ? `${entry.day.number} day ${entry.day.number} ${entry.day.readings.join(" ")} ${entry.day.episode?.title || ""}`
+        ? `${entry.day.number} day ${entry.day.number} ${entry.day.readings.join(" ")} ${entry.day.section || ""} ${entry.day.chapter || ""} ${entry.day.episode?.title || ""}`
         : `supplement supplementary extra ${entry.episode.title} ${entry.episode.description || ""}`;
     return (
       (!era || entryEra === era) &&
@@ -395,9 +398,21 @@ export function DayTable({
                         </strong>
                         <small>
                           {day.readings.join(" · ")}
+                          {(day.section || day.chapter) && (
+                            <>
+                              {day.readings.length > 0 && <br />}
+                              <span className="day-structure">
+                                {[day.section, day.chapter]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            </>
+                          )}
                           {day.episode && (
                             <>
-                              <br />
+                              {(day.readings.length > 0 ||
+                                day.section ||
+                                day.chapter) && <br />}
                               Published {shortDate(day.episode.published_at)}
                             </>
                           )}
@@ -487,7 +502,12 @@ export function DayTable({
                       ? episodeTitle(day.episode.title)
                       : day.readings[0]}
                   </h3>
-                  <p>{day.readings.join(" · ")}</p>
+                  {day.readings.length > 0 && <p>{day.readings.join(" · ")}</p>}
+                  {(day.section || day.chapter) && (
+                    <p className="day-structure">
+                      {[day.section, day.chapter].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
                   <span className="era-label">
                     <i style={{ background: day.color }} />
                     {day.era}
@@ -585,7 +605,11 @@ export function Timeline({ library }: { library: Library }) {
   return (
     <div className="timeline">
       <div className="section-heading">
-        <h2>One story, a journey through Scripture</h2>
+        <h2>
+          {library.edition === "catechism"
+            ? "One faith, four pillars"
+            : "One story, a journey through Scripture"}
+        </h2>
       </div>
       <div className="timeline-colors">
         {eras.map(([name, e]) => (
@@ -615,8 +639,12 @@ export function Journal({
   user: string;
   onError: (e: string) => void;
 }) {
+  const { availability, edition } = useEdition();
   const [notes, setNotes] = useState<Note[] | null>(null),
     [query, setQuery] = useState("");
+  const [editionFilter, setEditionFilter] = useState<"all" | Edition>(
+    availability.bible && availability.catechism ? "all" : edition,
+  );
   const [community, setCommunity] = useState(false);
   const [person, setPerson] = useState("");
   useEffect(() => {
@@ -634,6 +662,7 @@ export function Journal({
   const filteredNotes = notes?.filter(
     (n) =>
       (!person || String(n.author.id) === person) &&
+      (editionFilter === "all" || n.edition === editionFilter) &&
       n.body.toLowerCase().includes(query.toLowerCase()),
   );
 
@@ -668,6 +697,23 @@ export function Journal({
             Community entries
           </button>
         </div>
+        {availability.bible && availability.catechism && (
+          <div
+            className="segmented edition-filter"
+            aria-label="Journal edition"
+          >
+            {(["all", "bible", "catechism"] as const).map((value) => (
+              <button
+                key={value}
+                aria-pressed={editionFilter === value}
+                className={editionFilter === value ? "active" : ""}
+                onClick={() => setEditionFilter(value)}
+              >
+                {value === "all" ? "Both editions" : editionName(value)}
+              </button>
+            ))}
+          </div>
+        )}
         {community && (
           <label className="person-filter">
             Person{" "}
@@ -704,15 +750,22 @@ export function Journal({
               <article className="journal-card" key={n.id}>
                 <span className="eyebrow">
                   {community ? `${n.author.name} · ` : ""}
-                  {n.kind} · {date(n.created_at)}
+                  {editionName(n.edition)} · {n.kind} · {date(n.created_at)}
                   {n.shared ? " · Shared" : ""}
                 </span>
                 <p>{n.body}</p>
                 <Link
                   className="text-link"
-                  to={n.day ? `/day/${n.day}` : `/episode/${n.episode}`}
+                  to={
+                    n.day || n.catechism_day
+                      ? `/day/${n.day || n.catechism_day}?edition=${n.edition}`
+                      : `/episode/${n.episode}?edition=${n.edition}`
+                  }
                 >
-                  Return to {n.day ? `Day ${n.day}` : "episode"}{" "}
+                  Return to{" "}
+                  {n.day || n.catechism_day
+                    ? `Day ${n.day || n.catechism_day}`
+                    : "episode"}{" "}
                   <ArrowRight size={15} />
                 </Link>
               </article>

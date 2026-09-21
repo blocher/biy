@@ -44,6 +44,7 @@ import { Scripture } from "./Scripture";
 import { Sidebar } from "./navigation";
 import { useStudyChat } from "./useStudyChat";
 import { ReadingChatDialog, ReadingChatHistory } from "./ReadingChat";
+import { editionName, useEdition } from "./Edition";
 import {
   audioSpanContaining,
   audioSpanDuration,
@@ -76,6 +77,7 @@ function StudyContent({
   onChange: () => void;
   reader?: boolean;
 }) {
+  const { edition } = useEdition();
   const params = useParams(),
     isDay = !!params.day,
     target = isDay ? `/days/${params.day}` : `/episodes/${params.episode}`;
@@ -94,7 +96,7 @@ function StudyContent({
     [keyPointsOpen, setKeyPointsOpen] = useState(true),
     [editingCompletionDate, setEditingCompletionDate] = useState(false);
   const navigate = useNavigate(),
-    tab = search.get("tab") || "scripture",
+    tab = search.get("tab") || (edition === "catechism" ? "catechism" : "scripture"),
     audio = useAudio();
   useEffect(() => {
     let live = true;
@@ -117,12 +119,12 @@ function StudyContent({
   useEffect(() => {
     const before = document.title;
     document.title = data
-      ? `${isDay ? `Day ${(data as DayDetail).number}` : episodeTitle((data as Episode).title)} · Bible in a Year`
-      : "Bible in a Year";
+      ? `${isDay ? `Day ${(data as DayDetail).number}` : episodeTitle((data as Episode).title)} · ${editionName(edition)}`
+      : editionName(edition);
     return () => {
       document.title = before;
     };
-  }, [data, isDay]);
+  }, [data, edition, isDay]);
   useEffect(() => {
     if (!data || !location.hash) return;
     const timer = window.setTimeout(
@@ -219,7 +221,7 @@ function StudyContent({
       <p>
         {episode?.has_audio
           ? "The audio is ready to listen to. Transcripts, commentary, and the study guide will appear after processing."
-          : "This episode has not been imported yet. You can still read available Scripture and keep notes."}
+          : `This episode has not been imported yet. You can still read the available ${edition === "catechism" ? "Catechism paragraphs" : "Scripture"} and keep notes.`}
       </p>
     </div>
   );
@@ -268,11 +270,11 @@ function StudyContent({
     );
   }
   const tabs = [
-    ["scripture", "Scripture"],
+    [edition === "catechism" ? "catechism" : "scripture", edition === "catechism" ? "Catechism" : "Scripture"],
     ["transcript", "Full transcript"],
     ["commentary", "Commentary only"],
     ["edited", "Edited commentary"],
-  ].filter(([key]) => day || key !== "scripture");
+  ].filter(([key]) => day || !["scripture", "catechism"].includes(key));
   const selected = tabs.some(([key]) => key === tab) ? tab : "transcript";
   const scriptureCues = day?.scripture.flatMap((passage) =>
     passage.audio ? [passage.audio] : [],
@@ -292,6 +294,36 @@ function StudyContent({
         }
       : undefined;
   const content =
+    selected === "catechism" && day ? (
+      day.catechism?.length ? (
+        <article className="catechism-text">
+          <header>
+            <span className="eyebrow">{day.era}</span>
+            {day.section && <p>{day.section}</p>}
+            {day.chapter && <p>{day.chapter}</p>}
+          </header>
+          {day.catechism.map((paragraph) => (
+            <p id={`ccc-${paragraph.number}`} key={paragraph.number}>
+              <strong>{paragraph.number}</strong> {paragraph.text}
+            </p>
+          ))}
+          <a
+            className="text-link"
+            href={day.catechism[0].source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Read the source on vatican.va
+          </a>
+        </article>
+      ) : (
+        <div className="empty-content">
+          <BookOpen size={28} />
+          <h3>Introductory episode</h3>
+          <p>This numbered day introduces a new part of the Catechism and has no assigned paragraphs.</p>
+        </div>
+      )
+    ) :
     selected === "scripture" && day ? (
       <Scripture
         passages={day.scripture}
@@ -434,7 +466,7 @@ function StudyContent({
                   {day ? `DAY ${day.number}` : "SUPPLEMENTARY EPISODE"} · READER
                 </span>
                 <h1>
-                  {selected === "scripture"
+                  {selected === "scripture" || selected === "catechism"
                     ? day?.readings.join(" and ")
                     : title}
                 </h1>
@@ -631,7 +663,7 @@ function StudyContent({
         <h2>Today’s study</h2>
         <p>
           {episode?.summary ||
-            "Your episode summary will appear here once the audio has been processed. Scripture and your private journal are available independently."}
+            `Your episode summary will appear here once the audio has been processed. ${edition === "catechism" ? "The Catechism text" : "Scripture"} and your private journal are available independently.`}
         </p>
       </>
     ),
@@ -773,6 +805,8 @@ function StudyContent({
           <span className="eyebrow">
             {selected === "scripture"
               ? "RSV SECOND CATHOLIC EDITION"
+              : selected === "catechism"
+                ? "CATECHISM OF THE CATHOLIC CHURCH"
               : selected === "edited"
                 ? "WRITTEN FOR REFLECTION"
                 : "LISTEN • READ • REFLECT"}
@@ -789,7 +823,13 @@ function StudyContent({
     ),
     "viewport-2-b-scripture-card": (
       <>
-        <h2>{day ? "Today’s Scripture" : "A deeper conversation"}</h2>
+        <h2>
+          {day
+            ? edition === "catechism"
+              ? "Today’s Catechism"
+              : "Today’s Scripture"
+            : "A deeper conversation"}
+        </h2>
         {day ? (
           <ul className="readings-list">
             {day.readings.map((r) => (
@@ -808,11 +848,11 @@ function StudyContent({
         <div className="study-card-links">
           <Link
             className="text-link"
-            to={`${base}/reader?tab=${day ? "scripture" : "edited"}`}
+            to={`${base}/reader?tab=${day ? (edition === "catechism" ? "catechism" : "scripture") : "edited"}`}
           >
             Open full-page reader <ArrowRight size={16} />
           </Link>
-          {day && (
+          {day && edition === "bible" && (
             <Link className="text-link" to={`/commentaries?day=${day.number}`}>
               Explore historical commentaries <ArrowRight size={16} />
             </Link>

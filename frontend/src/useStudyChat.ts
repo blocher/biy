@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "./api";
+import { useEdition } from "./Edition";
 
 export type ChatSource = {
   id: string;
@@ -41,6 +42,8 @@ export type ChatTurn = {
 type Conversation = {
   id: number;
   day: number | null;
+  catechism_day: number | null;
+  edition: "bible" | "catechism";
   episode: number | null;
   turns: ChatTurn[];
 };
@@ -58,6 +61,7 @@ export function useStudyChat(scope?: {
   day: number | null;
   episode: number | null;
 }) {
+  const { edition } = useEdition();
   const [params, setParams] = useSearchParams();
   const [localId, setLocalId] = useState<string | null>(null);
   const id = scope ? localId : params.get("conversation");
@@ -91,7 +95,7 @@ export function useStudyChat(scope?: {
   const pendingRequest = useRef<{ signature: string; id: string } | null>(null);
   const current = conversation?.id === Number(id) ? conversation : null;
   const day = current
-    ? current.day
+    ? current.day || current.catechism_day
     : scope
       ? scope.day
       : Number(params.get("day")) || null;
@@ -178,6 +182,7 @@ export function useStudyChat(scope?: {
       conversation_id: current?.id ?? null,
       day: current ? null : day,
       episode: current ? null : episode,
+      edition,
       web_enabled: external,
     };
     const signature = JSON.stringify(body);
@@ -240,6 +245,7 @@ export function useStudyChat(scope?: {
     error,
     day,
     episode,
+    edition,
     send,
     newConversation,
     remove,
