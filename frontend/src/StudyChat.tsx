@@ -39,9 +39,9 @@ export function Answer({ turn }: { turn: ChatTurn }) {
           .map((part, index) => {
             if (part.startsWith("/"))
               return (
-                <Link className="chat-inline-link" key={index} to={part}>
+                <a className="chat-inline-link" key={index} href={part}>
                   {part}
-                </Link>
+                </a>
               );
             const id = part.slice(1, -1);
             const citation = turn.sources.find((s) => s.id === id);
@@ -62,10 +62,10 @@ export function Answer({ turn }: { turn: ChatTurn }) {
       {!!turn.links?.length && (
         <nav className="chat-answer-links" aria-label="Related pages">
           {turn.links.map((link) => (
-            <Link key={link.path} to={link.path}>
+            <a key={link.path} href={link.path}>
               {link.label}
               <ArrowUpRight size={15} />
-            </Link>
+            </a>
           ))}
         </nav>
       )}
@@ -117,13 +117,13 @@ export function Answer({ turn }: { turn: ChatTurn }) {
               )}
               {s.url &&
                 (s.url.startsWith("/") ? (
-                  <Link className="text-link" to={s.url}>
+                  <a className="text-link" href={s.url}>
                     Open in study{" "}
                     {s.metadata.audio_time != null
                       ? `· ${time(s.metadata.audio_time)}`
                       : ""}{" "}
                     <ArrowUpRight size={14} />
-                  </Link>
+                  </a>
                 ) : (
                   <a
                     className="text-link"
@@ -373,10 +373,10 @@ export function ChatContent({
                           >
                             {t.progress_sources.map((source) =>
                               source.url.startsWith("/") ? (
-                                <Link key={source.id} to={source.url}>
+                                <a key={source.id} href={source.url}>
                                   {source.title}
                                   <ArrowUpRight size={13} />
-                                </Link>
+                                </a>
                               ) : (
                                 <span key={source.id}>{source.title}</span>
                               ),

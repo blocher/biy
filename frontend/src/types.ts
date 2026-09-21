@@ -80,6 +80,7 @@ export type CommentaryAuthor = {
 };
 export type CommentaryEntry = {
   id: string;
+  database_id: number;
   author: string;
   author_metadata: CommentaryAuthor;
   year: number;

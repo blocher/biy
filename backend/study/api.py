@@ -483,6 +483,7 @@ def commentary_author_data(author):
 def commentary_data(commentary, ranges: list[CommentaryRange]):
     return {
         "id": commentary.external_id,
+        "database_id": commentary.pk,
         "author": commentary.author.name + commentary.append_to_author_name,
         "author_metadata": commentary_author_data(commentary.author),
         "year": commentary.year,
@@ -506,6 +507,7 @@ def commentaries(
     category: str | None = None,
     page: int = 1,
     page_size: int = 36,
+    focus: int | None = None,
 ):
     """Return historical commentary overlapping a day's RSV-2CE readings."""
 
@@ -531,8 +533,22 @@ def commentaries(
         entries = entries.filter(author__category=category)
     entries = entries.order_by("year", "id")
     total = entries.count()
-    offset = (page - 1) * page_size
-    rows = entries[offset : offset + page_size]
+    focused_page = False
+    if focus is not None and page == 1:
+        focused = entries.filter(pk=focus).first()
+        if focused is not None:
+            position = entries.filter(
+                Q(year__lt=focused.year)
+                | Q(year=focused.year, pk__lte=focused.pk)
+            ).count()
+            page = ((position - 1) // page_size) + 1
+            focused_page = True
+    if focused_page:
+        offset = 0
+        rows = entries[: page * page_size]
+    else:
+        offset = (page - 1) * page_size
+        rows = entries[offset : offset + page_size]
     year_bounds = Commentary.objects.aggregate(min_year=Min("year"), max_year=Max("year"))
     return {
         "day": day_record.number,

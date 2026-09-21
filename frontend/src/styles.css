@@ -3849,6 +3849,11 @@ body:has(.reader-design) .player {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 6px 24px #19382d08;
+  scroll-margin-top: 24px;
+}
+.commentary-card:target {
+  outline: 3px solid #c7a94b;
+  outline-offset: 3px;
 }
 .commentary-card.featured {
   background: #173f32;
@@ -3889,7 +3894,7 @@ body:has(.reader-design) .player {
   color: #996226;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .3px;
+  letter-spacing: 0.3px;
 }
 .commentary-card.featured .commentary-condemned {
   color: #f2d490;

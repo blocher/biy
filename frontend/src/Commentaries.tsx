@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,11 +20,13 @@ function commentaryQuery(
   toYear: string,
   category: string,
   page: number,
+  focus: number | null,
 ) {
   const params = new URLSearchParams({ day: String(day), page: String(page) });
   if (fromYear) params.set("from_year", fromYear);
   if (toYear) params.set("to_year", toYear);
   if (category) params.set("category", category);
+  if (focus) params.set("focus", String(focus));
   return `/commentaries?${params.toString()}`;
 }
 
@@ -42,6 +44,11 @@ export function Commentaries({
   onError: (message: string) => void;
 }) {
   const [search, setSearch] = useSearchParams();
+  const location = useLocation();
+  const focusedCommentary = useMemo(() => {
+    const match = location.hash.match(/^#commentary-(\d+)$/);
+    return match ? Number(match[1]) : null;
+  }, [location.hash]);
   const fallbackDay = library.next_day || 1;
   const dayNumber = Math.min(
     365,
@@ -56,8 +63,16 @@ export function Commentaries({
 
   const selectedDay = library.days.find((day) => day.number === dayNumber);
   const query = useMemo(
-    () => commentaryQuery(dayNumber, fromYear, toYear, category, page),
-    [dayNumber, fromYear, toYear, category, page],
+    () =>
+      commentaryQuery(
+        dayNumber,
+        fromYear,
+        toYear,
+        category,
+        page,
+        focusedCommentary,
+      ),
+    [dayNumber, fromYear, toYear, category, page, focusedCommentary],
   );
 
   useEffect(() => {
@@ -91,6 +106,16 @@ export function Commentaries({
   }, [query, onError]);
 
   useEffect(() => {
+    if (!data || focusedCommentary === null) return;
+    const frame = requestAnimationFrame(() => {
+      document
+        .getElementById(`commentary-${focusedCommentary}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [data, focusedCommentary]);
+
+  useEffect(() => {
     setPage(1);
   }, [dayNumber, fromYear, toYear, category]);
 
@@ -113,7 +138,7 @@ export function Commentaries({
 
   function loadMore() {
     if (!data) return;
-    setPage((current) => current + 1);
+    setPage(data.page + 1);
   }
 
   const visibleRows = data?.commentaries || [];
@@ -257,7 +282,7 @@ export function Commentaries({
             <div className="commentary-list">
               {visibleRows.map((entry, index) => (
                 <article
-                  id={`commentary-${entry.id}`}
+                  id={`commentary-${entry.database_id}`}
                   className={`commentary-card ${index === 0 ? "featured" : ""}`}
                   key={entry.id}
                 >

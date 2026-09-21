@@ -45,7 +45,7 @@ class CommentaryApiTests(TestCase):
             text="A later verse should not match.",
             source_title="Later source",
         )
-        Commentary.objects.create(
+        self.early = Commentary.objects.create(
             external_id="00000000-0000-0000-0000-000000000002",
             author=orthodox,
             file_name="Early.toml",
@@ -56,7 +56,7 @@ class CommentaryApiTests(TestCase):
             text="An early witness.",
             source_title="Early source",
         )
-        Commentary.objects.create(
+        self.condemned = Commentary.objects.create(
             external_id="00000000-0000-0000-0000-000000000003",
             author=condemned,
             file_name="Condemned.toml",
@@ -87,6 +87,24 @@ class CommentaryApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["total"], 1)
 
+    def test_focus_opens_the_page_containing_a_linked_commentary(self):
+        response = self.client.get(
+            "/api/commentaries",
+            {
+                "day": self.day.number,
+                "page_size": 1,
+                "focus": self.condemned.pk,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["page"], 2)
+        self.assertEqual(len(payload["commentaries"]), 2)
+        self.assertEqual(
+            payload["commentaries"][-1]["database_id"], self.condemned.pk
+        )
+
     def test_historical_lookup_returns_citable_witness_metadata(self):
         result = historical_commentaries(reference="John 3:16-18", limit=1)
 
@@ -97,3 +115,11 @@ class CommentaryApiTests(TestCase):
         self.assertEqual(source["kind"], "historical_commentary")
         self.assertEqual(source["metadata"]["author"], "Early Witness")
         self.assertEqual(source["metadata"]["year_label"], "c. AD 120")
+
+    def test_day_lookup_links_to_the_commentary_browser_anchor(self):
+        result = historical_commentaries(day=self.day.number, limit=1)
+
+        self.assertEqual(
+            result["sources"][0]["url"],
+            f"/commentaries?day={self.day.number}#commentary-{self.early.pk}",
+        )
