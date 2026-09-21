@@ -476,20 +476,23 @@ def library(request):
 
 def episode_detail(ep, user):
     data = episode_card(ep)
-    labels = {item["id"]: item for item in ep.classification}
-    commentary = []
-    for seg in ep.transcript:
-        label = labels.get(seg["id"], {})
-        if label.get("kind") in ("commentary", "prayer"):
-            commentary.append(seg)
-        elif label.get("kind") == "mixed" and label.get("commentary_text"):
-            commentary.append({**seg, "text": label["commentary_text"], "partial": True})
+    if ep.formatted_commentary:
+        commentary = ep.formatted_commentary
+    else:
+        labels = {item["id"]: item for item in ep.classification}
+        commentary = []
+        for seg in ep.transcript:
+            label = labels.get(seg["id"], {})
+            if label.get("kind") in ("commentary", "prayer"):
+                commentary.append(seg)
+            elif label.get("kind") == "mixed" and label.get("commentary_text"):
+                commentary.append({**seg, "text": label["commentary_text"], "partial": True})
     state = EpisodeProgress.objects.filter(user=user, episode=ep).first()
     data.update(
         {
             "description": ep.description,
             "source_url": ep.source_url,
-            "transcript": ep.transcript,
+            "transcript": ep.formatted_transcript or ep.transcript,
             "commentary": commentary,
             "edited_commentary": ep.edited_commentary,
             "summary": ep.summary,

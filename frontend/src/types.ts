@@ -5,6 +5,7 @@ export type Segment = {
   speaker: string;
   text: string;
   partial?: boolean;
+  paragraph_break_before?: boolean;
 };
 export type Episode = {
   id: number;

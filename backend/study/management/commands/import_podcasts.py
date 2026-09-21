@@ -1,4 +1,7 @@
 import os
+import re
+import shlex
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -11,11 +14,35 @@ from study.importing import (
     FEED_URLS,
     catalog_entry,
     download_audio,
+    format_transcripts,
     generate_study,
     parse_feed,
     transcribe,
 )
 from study.models import Episode
+
+
+def _safe_error_detail(exc):
+    """Retain actionable diagnostics without printing credentials or signed URLs."""
+    detail = " ".join(str(exc).split()) or "No additional error detail was provided."
+    detail = re.sub(r"\bsk-[A-Za-z0-9_-]+", "sk-<REDACTED>", detail)
+    detail = re.sub(r"(?i)\bBearer\s+\S+", "Bearer <REDACTED>", detail)
+    detail = re.sub(
+        r"(?i)\b(api[_ -]?key|authorization|password|access[_ -]?token)\b(\s*[:=]\s*)\S+",
+        r"\1\2<REDACTED>",
+        detail,
+    )
+    detail = re.sub(r"(https?://[^?\s]+)\?\S+", r"\1?<REDACTED>", detail)
+    detail = re.sub(r"(://[^:/\s]+:)[^@\s]+(@)", r"\1<REDACTED>\2", detail)
+    if len(detail) > 800:
+        detail = detail[:797] + "..."
+    return detail
+
+
+def _retry_command(ep):
+    day = ep.catechism_day_id if ep.edition == "catechism" else ep.day_id
+    selector = f"--day {day}" if day else f"--guid {shlex.quote(ep.guid)}"
+    return f"{shlex.quote(sys.argv[0])} import_podcasts --edition {ep.edition} {selector}"
 
 
 class Command(BaseCommand):
@@ -54,17 +81,26 @@ class Command(BaseCommand):
         close_old_connections()
         ep = None
         locked = False
+        stage = "loading the episode record"
         try:
             ep = Episode.objects.get(pk=episode_id)
+            stage = "acquiring the episode import lock"
             # This lock is session-scoped, so acquisition and release must stay on this thread.
             with connection.cursor() as cursor:
                 cursor.execute("SELECT pg_try_advisory_lock(2025, %s)", [ep.id])
                 locked = cursor.fetchone()[0]
             if not locked:
                 raise CommandError(f"Episode {ep.id} is being processed by another importer.")
+            stage = "downloading or validating audio"
             download_audio(ep)
-            if download_only or (ep.status == "ready" and not force_study):
+            if download_only or (
+                ep.status == "ready"
+                and ep.formatted_transcript
+                and ep.formatted_commentary
+                and not force_study
+            ):
                 return f"Audio ready: {ep.title}"
+            stage = "validating AI configuration"
             if not os.getenv("OPENAI_API_KEY"):
                 raise CommandError(
                     "Audio downloaded. Set OPENAI_API_KEY in the ignored .env, then rerun this same single-episode command. No AI requests were made."
@@ -81,22 +117,22 @@ class Command(BaseCommand):
                     raise CommandError(
                         "--force-study requires an existing transcript; run the episode normally first."
                     )
+                stage = "transcribing audio"
                 transcribe(ep, client)
+            stage = "generating study content"
             generate_study(ep, client, force_study=force_study)
+            stage = "formatting source-faithful transcripts"
+            format_transcripts(ep, client)
             return f"Ready: {ep.title}"
         except Exception as exc:
-            # Avoid persisting API error payloads or credentials. Checkpoints remain resumable.
+            detail = _safe_error_detail(exc)
+            failure = f"Failed while {stage}: {type(exc).__name__}: {detail}"
+            # Persist only redacted diagnostics. Checkpoints remain resumable.
             if ep is not None:
                 ep.status = "failed"
-                ep.error = (
-                    f"{type(exc).__name__}: processing did not finish; rerun the selected episode."
-                )
+                ep.error = failure
                 ep.save(update_fields=["status", "error"])
-            if isinstance(exc, CommandError):
-                raise
-            raise CommandError(
-                f"{type(exc).__name__}: episode {episode_id} failed. Check local configuration and resume; completed checkpoints were preserved."
-            ) from None
+            raise CommandError(failure) from None
         finally:
             if locked:
                 with connection.cursor() as cursor:
@@ -151,11 +187,22 @@ class Command(BaseCommand):
                 for ep in episodes
             }
             for future in as_completed(futures):
+                ep = futures[future]
                 try:
                     self.stdout.write(future.result())
                 except CommandError as exc:
-                    failures.append(str(exc))
+                    failures.append((ep, str(exc)))
         if failures:
-            raise CommandError(
-                f"{len(failures)} episode(s) did not finish; completed checkpoints were preserved. First failure: {failures[0]}"
-            )
+            lines = [
+                f"{len(failures)} episode(s) did not finish; completed checkpoints were preserved.",
+                "Failed episodes:",
+            ]
+            for ep, error in sorted(failures, key=lambda item: item[0].id):
+                lines.extend(
+                    [
+                        f"- Episode {ep.id} — {ep.title}",
+                        f"  {error}",
+                        f"  Retry: {_retry_command(ep)}",
+                    ]
+                )
+            raise CommandError("\n".join(lines))

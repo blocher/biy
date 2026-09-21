@@ -211,6 +211,32 @@ class APITests(TestCase):
             },
         )
 
+    def test_episode_detail_prefers_word_faithful_formatted_transcripts(self):
+        self.episode.transcript = [
+            {"id": 1, "start": 0, "end": 3, "speaker": "Voice A", "text": "hello there"}
+        ]
+        self.episode.classification = [
+            {"id": 1, "kind": "commentary", "commentary_text": None}
+        ]
+        formatted = [
+            {
+                "id": 1,
+                "start": 0,
+                "end": 3,
+                "speaker": "Voice A",
+                "text": "Hello there.",
+                "paragraph_break_before": True,
+            }
+        ]
+        self.episode.formatted_transcript = formatted
+        self.episode.formatted_commentary = formatted
+        self.episode.save()
+
+        episode = self.client.get("/api/days/1").json()["episode"]
+
+        self.assertEqual(episode["transcript"], formatted)
+        self.assertEqual(episode["commentary"], formatted)
+
     def test_completion_date_can_be_overridden_after_completion(self):
         self.assertEqual(
             self.put("/api/days/1/completed-at", {"completed_on": "2025-01-02"}).status_code,
@@ -607,6 +633,114 @@ class GenerationTests(TestCase):
         sleep.assert_called_once_with(2)
         self.assertEqual(self.ep.summary, "Fr. Mike revisits creation with fresh emphasis.")
 
+    def test_formats_both_transcripts_in_one_pass_with_exact_word_parity(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        from .importing import FormattedTranscripts, format_transcripts
+
+        self.ep.classification = [
+            {"id": 0, "kind": "scripture", "commentary_text": None},
+            {"id": 1, "kind": "commentary", "commentary_text": None},
+            {"id": 2, "kind": "prayer", "commentary_text": None},
+        ]
+        output = FormattedTranscripts.model_validate(
+            {
+                "transcript": [
+                    {
+                        "id": 0,
+                        "text": "In the beginning, God created the heavens and the earth.",
+                        "paragraph_break_before": True,
+                    },
+                    {
+                        "id": 1,
+                        "text": "This teaches us that creation is a gift.",
+                        "paragraph_break_before": True,
+                    },
+                    {
+                        "id": 2,
+                        "text": "Let us pray together.",
+                        "paragraph_break_before": False,
+                    },
+                ],
+                "commentary": [
+                    {
+                        "id": 1,
+                        "text": "This teaches us that creation is a gift.",
+                        "paragraph_break_before": True,
+                    },
+                    {
+                        "id": 2,
+                        "text": "Let us pray together.",
+                        "paragraph_break_before": True,
+                    },
+                ],
+            }
+        )
+        client = Mock()
+        client.responses.parse.return_value = SimpleNamespace(output_parsed=output)
+
+        with TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=Path(directory)):
+            Path(directory, "episodes/1").mkdir(parents=True)
+            format_transcripts(self.ep, client)
+
+        client.responses.parse.assert_called_once()
+        self.assertEqual(self.ep.formatted_transcript[0]["text"], output.transcript[0].text)
+        self.assertTrue(self.ep.formatted_transcript[1]["paragraph_break_before"])
+        self.assertEqual([item["id"] for item in self.ep.formatted_commentary], [1, 2])
+        self.assertIn("source-word parity validated", self.ep.provenance["transcript_formatting"])
+
+    def test_rejects_transcript_formatting_that_changes_words(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+
+        from .importing import FormattedTranscripts, format_transcripts
+
+        self.ep.classification = [
+            {"id": 0, "kind": "scripture", "commentary_text": None},
+            {"id": 1, "kind": "commentary", "commentary_text": None},
+            {"id": 2, "kind": "prayer", "commentary_text": None},
+        ]
+        changed = FormattedTranscripts.model_validate(
+            {
+                "transcript": [
+                    {"id": item["id"], "text": item["text"], "paragraph_break_before": True}
+                    for item in self.ep.transcript
+                ],
+                "commentary": [
+                    {
+                        "id": 1,
+                        "text": "This teaches us that creation is truly a gift.",
+                        "paragraph_break_before": True,
+                    },
+                    {
+                        "id": 2,
+                        "text": self.ep.transcript[2]["text"],
+                        "paragraph_break_before": False,
+                    },
+                ],
+            }
+        )
+        client = Mock()
+        client.responses.parse.return_value = SimpleNamespace(output_parsed=changed)
+
+        with (
+            TemporaryDirectory() as directory,
+            override_settings(MEDIA_ROOT=Path(directory)),
+            patch("study.importing.time.sleep"),
+        ):
+            Path(directory, "episodes/1").mkdir(parents=True)
+            with self.assertRaisesRegex(ValueError, "changed the source words"):
+                format_transcripts(self.ep, client)
+
+        self.assertEqual(client.responses.parse.call_count, 3)
+        self.assertEqual(self.ep.formatted_transcript, [])
+
+    def test_word_parity_treats_typographic_apostrophes_as_punctuation(self):
+        from .importing import _word_tokens
+
+        self.assertEqual(_word_tokens("Don’t change words."), _word_tokens("don't change words"))
+
 
 class ImportPodcastCommandTests(TestCase):
     def test_force_study_flag_is_available(self):
@@ -618,3 +752,118 @@ class ImportPodcastCommandTests(TestCase):
 
         self.assertEqual(options.day, 1)
         self.assertTrue(options.force_study)
+
+    def test_retroactive_format_command_requires_explicit_selection(self):
+        from study.management.commands.format_transcripts import Command
+
+        parser = Command().create_parser("manage.py", "format_transcripts")
+        options = parser.parse_args(["--edition", "catechism", "--all"])
+
+        self.assertEqual(options.edition, "catechism")
+        self.assertTrue(options.all)
+
+    def test_bulk_import_reports_every_failed_episode_with_retry_commands(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from django.core.management.base import CommandError
+
+        from study.management.commands.import_podcasts import Command
+
+        episodes = [
+            SimpleNamespace(
+                id=279,
+                title="Day 279: The New Covenant (2025)",
+                day_id=279,
+                catechism_day_id=None,
+                guid="day-279",
+                edition="bible",
+            ),
+            SimpleNamespace(
+                id=301,
+                title="Day 301: Faithful Witness (2025)",
+                day_id=301,
+                catechism_day_id=None,
+                guid="day-301",
+                edition="bible",
+            ),
+        ]
+        failures = [
+            CommandError("ValueError: summary omitted Fr. Mike"),
+            CommandError("APITimeoutError: request timed out"),
+        ]
+        command = Command()
+
+        with (
+            patch("study.management.commands.import_podcasts.parse_feed", return_value=[{}, {}]),
+            patch(
+                "study.management.commands.import_podcasts.catalog_entry",
+                side_effect=episodes,
+            ),
+            patch.object(command, "process_episode", side_effect=failures),
+            self.assertRaises(CommandError) as raised,
+        ):
+            command.handle(
+                edition="bible",
+                day=None,
+                guid=None,
+                all=True,
+                feed_file=SimpleNamespace(read_bytes=lambda: b"feed"),
+                catalog_only=False,
+                download_only=False,
+                force_study=False,
+                workers=1,
+            )
+
+        message = str(raised.exception)
+        self.assertIn("2 episode(s) did not finish", message)
+        self.assertIn("Episode 279 — Day 279: The New Covenant (2025)", message)
+        self.assertIn("Episode 301 — Day 301: Faithful Witness (2025)", message)
+        self.assertIn("summary omitted Fr. Mike", message)
+        self.assertIn("request timed out", message)
+        self.assertIn("import_podcasts --edition bible --day 279", message)
+        self.assertIn("import_podcasts --edition bible --day 301", message)
+
+    def test_episode_failure_reports_stage_and_persists_redacted_cause(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock, patch
+
+        from django.core.management.base import CommandError
+
+        from study.management.commands.import_podcasts import Command
+
+        episode = SimpleNamespace(id=279, title="Day 279", status="ready", error="")
+        episode.save = MagicMock()
+        cursor = MagicMock()
+        cursor.fetchone.return_value = [True]
+        cursor_context = MagicMock()
+        cursor_context.__enter__.return_value = cursor
+        database = MagicMock()
+        database.cursor.return_value = cursor_context
+
+        with (
+            patch(
+                "study.management.commands.import_podcasts.Episode.objects.get",
+                return_value=episode,
+            ),
+            patch("study.management.commands.import_podcasts.connection", database),
+            patch(
+                "study.management.commands.import_podcasts.download_audio",
+                side_effect=ValueError(
+                    "ffprobe rejected https://media.example/audio?token=private-value "
+                    "with api_key=sk-secret-value"
+                ),
+            ),
+            self.assertRaises(CommandError) as raised,
+        ):
+            Command().process_episode(279, download_only=False, force_study=False)
+
+        message = str(raised.exception)
+        self.assertIn("Failed while downloading or validating audio", message)
+        self.assertIn("ValueError: ffprobe rejected", message)
+        self.assertIn("?<REDACTED>", message)
+        self.assertNotIn("private-value", message)
+        self.assertNotIn("secret-value", message)
+        self.assertEqual(episode.error, message)
+        self.assertEqual(episode.status, "failed")
+        episode.save.assert_called_once_with(update_fields=["status", "error"])

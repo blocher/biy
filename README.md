@@ -122,7 +122,7 @@ When a one-day audio download is intentionally desired, this command downloads o
   --edition catechism --day 1 --download-only
 ```
 
-Do not omit `--download-only` for the manual Catechism test: without a stage flag, the importer proceeds to transcription and AI study generation after downloading. No scheduler or deployment hook runs podcast imports automatically.
+Do not omit `--download-only` for the local manual Catechism test unless local AI spend is intentional: without a stage flag, the importer proceeds to transcription and AI study generation after downloading. A full, explicitly selected Catechism import is permitted in production; see the production command reference. No scheduler or deployment hook runs podcast imports automatically.
 
 For a bulk run, `--workers 2` through `--workers 8` process separate episodes concurrently; the default remains one worker. Start with two workers, then increase only if the host, publisher, and OpenAI account remain healthy. Each episode retains its own advisory lock and resumable checkpoints, so a rerun continues completed work without repeating it. For example: `.venv/bin/python backend/manage.py import_podcasts --all --workers 2`. To regenerate only the summary, key points, outline, and edited commentary for an already-transcribed episode, add `--force-study`; audio and transcription are reused, and structured AI generation is attempted up to three times with exponential backoff.
 

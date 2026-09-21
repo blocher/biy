@@ -34,6 +34,7 @@ export function groupTranscriptSegments(
       supplementary && previous?.speaker !== segment.speaker;
     const meaningfulPause =
       previous && segment.start - previous.end >= MEANINGFUL_PAUSE_SECONDS;
+    const requestedParagraph = previous && segment.paragraph_break_before;
     const currentWords = previous ? wordCount(previous.text) : 0;
     const combinedWords = currentWords + wordCount(segment.text);
     const sizeBoundary =
@@ -41,7 +42,13 @@ export function groupTranscriptSegments(
       (combinedWords > MAX_PARAGRAPH_WORDS ||
         (currentWords >= TARGET_PARAGRAPH_WORDS && endsThought(previous.text)));
 
-    if (!previous || differentSpeaker || meaningfulPause || sizeBoundary) {
+    if (
+      !previous ||
+      requestedParagraph ||
+      differentSpeaker ||
+      meaningfulPause ||
+      sizeBoundary
+    ) {
       paragraphs.push({
         segmentIds: [segment.id],
         start: segment.start,

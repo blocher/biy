@@ -40,7 +40,7 @@ sudo systemctl status biy-worker --no-pager
 sudo /var/www/biy-app/deploy/manage import_podcasts --all --download-only --workers 2
 ```
 
-Always include `--edition catechism` for the Catechism feed. The current acceptance scope is deliberately one day and manual; cataloging invokes neither audio download nor AI:
+Always include `--edition catechism` for the Catechism feed. To catalog Day 1 without downloading audio or invoking AI:
 
 ```sh
 sudo /var/www/biy-app/deploy/manage import_podcasts \
@@ -54,7 +54,17 @@ sudo /var/www/biy-app/deploy/manage import_podcasts \
   --edition catechism --day 1 --download-only
 ```
 
-Do not run the Catechism command without `--catalog-only` or `--download-only` while the no-transcription acceptance boundary is in effect.
+To fully import Catechism Day 1 in production—including audio download,
+transcription, classification, and study-content generation—omit the stage flag:
+
+```sh
+sudo /var/www/biy-app/deploy/manage import_podcasts \
+  --edition catechism --day 1
+```
+
+This full import is permitted in production and requires `OPENAI_API_KEY` in
+`/etc/biy/biy.env`. Keep local development runs on `--catalog-only` or
+`--download-only` unless local AI usage is intentional.
 
 ## Run transcription and study-content AI for every episode
 

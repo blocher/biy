@@ -60,6 +60,21 @@ describe("groupTranscriptSegments", () => {
 
     expect(paragraphs).toHaveLength(2);
   });
+
+  it("honors AI-selected paragraph boundaries", () => {
+    const second = segment(1, "Voice A", "A new thought begins here.");
+    second.paragraph_break_before = true;
+
+    const paragraphs = groupTranscriptSegments(
+      [segment(0, "Voice A", "The first thought ends here."), second],
+      false,
+    );
+
+    expect(paragraphs.map(({ text }) => text)).toEqual([
+      "The first thought ends here.",
+      "A new thought begins here.",
+    ]);
+  });
 });
 
 describe("supplementarySpeakerNames", () => {
