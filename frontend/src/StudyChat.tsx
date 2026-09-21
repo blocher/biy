@@ -32,23 +32,43 @@ export function Answer({ turn }: { turn: ChatTurn }) {
   return (
     <>
       <div className="chat-answer-text">
-        {turn.answer.split(/(\[[SMWH]\d+\])/g).map((part, index) => {
-          const id = part.slice(1, -1);
-          const citation = turn.sources.find((s) => s.id === id);
-          return citation ? (
-            <button
-              className="chat-citation"
-              key={index}
-              onClick={() => openSource(id)}
-              aria-label={`Read source: ${citation.title}`}
-            >
-              [{turn.sources.indexOf(citation) + 1}]
-            </button>
-          ) : (
-            part
-          );
-        })}
+        {turn.answer
+          .split(
+            /(\[[DSMWH]\d+\]|\/(?:(?:day\/[1-9]\d{0,2}|episode\/[1-9]\d*)(?:\/reader)?|commentaries|journal|chat|leaderboard|account)(?:\?[A-Za-z0-9_=&%.-]+)?(?:#[A-Za-z0-9_-]+)?)/g,
+          )
+          .map((part, index) => {
+            if (part.startsWith("/"))
+              return (
+                <Link className="chat-inline-link" key={index} to={part}>
+                  {part}
+                </Link>
+              );
+            const id = part.slice(1, -1);
+            const citation = turn.sources.find((s) => s.id === id);
+            return citation ? (
+              <button
+                className="chat-citation"
+                key={index}
+                onClick={() => openSource(id)}
+                aria-label={`Read source: ${citation.title}`}
+              >
+                [{turn.sources.indexOf(citation) + 1}]
+              </button>
+            ) : (
+              part
+            );
+          })}
       </div>
+      {!!turn.links?.length && (
+        <nav className="chat-answer-links" aria-label="Related pages">
+          {turn.links.map((link) => (
+            <Link key={link.path} to={link.path}>
+              {link.label}
+              <ArrowUpRight size={15} />
+            </Link>
+          ))}
+        </nav>
+      )}
       {!!turn.sources.length && (
         <details className="chat-sources" aria-label="Answer sources">
           <summary>View {turn.sources.length} cited sources</summary>
@@ -65,6 +85,7 @@ export function Answer({ turn }: { turn: ChatTurn }) {
                     {(
                       {
                         scripture: "Scripture · RSV-2CE",
+                        reading_day: "Reading plan day",
                         commentary: "Fr. Mike commentary",
                         journal: "Member reflection",
                         historical_commentary: "Historical witness",
@@ -340,10 +361,29 @@ export function ChatContent({
                         {t.error}
                       </p>
                     ) : (
-                      <p role="status" className="chat-working">
-                        <span />
-                        {t.stage}…
-                      </p>
+                      <div className="chat-working">
+                        <p role="status">
+                          <span />
+                          {t.stage}…
+                        </p>
+                        {!!t.progress_sources?.length && (
+                          <div
+                            className="chat-progress-sources"
+                            aria-label="Sources found so far"
+                          >
+                            {t.progress_sources.map((source) =>
+                              source.url.startsWith("/") ? (
+                                <Link key={source.id} to={source.url}>
+                                  {source.title}
+                                  <ArrowUpRight size={13} />
+                                </Link>
+                              ) : (
+                                <span key={source.id}>{source.title}</span>
+                              ),
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </article>
                 ))}

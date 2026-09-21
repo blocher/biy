@@ -12,7 +12,7 @@ from django.utils import timezone
 from openai import OpenAI
 from pgvector.django import CosineDistance
 
-from .models import Day, Note, SearchChunk, Verse
+from .models import Day, Episode, Note, SearchChunk, Verse
 
 
 def client():
@@ -182,6 +182,45 @@ def evidence(chunk):
     }
 
 
+def find_reading_days(query, limit=6):
+    """Find reading-plan days directly from episode titles and descriptions."""
+
+    vector = SearchVector("title", weight="A", config="english") + SearchVector(
+        "description", weight="B", config="english"
+    )
+    query_obj = SearchQuery(query, search_type="websearch", config="english")
+    episodes = (
+        Episode.objects.filter(day__isnull=False)
+        .select_related("day")
+        .annotate(document=vector, rank=SearchRank(vector, query_obj))
+        .filter(document=query_obj)
+        .order_by("-rank", "day_id")[:limit]
+    )
+    return {
+        "sources": [
+            {
+                "id": f"D{episode.day_id}",
+                "kind": "reading_day",
+                "title": episode.title,
+                "text": (
+                    f"Day {episode.day_id} readings: "
+                    + " · ".join(episode.day.readings)
+                ),
+                "url": f"/day/{episode.day_id}?tab=commentary",
+                "metadata": {
+                    "day": episode.day_id,
+                    "readings": episode.day.readings,
+                    "historical_commentaries_url": (
+                        f"/commentaries?day={episode.day_id}"
+                    ),
+                },
+            }
+            for episode in episodes
+        ],
+        "notice": None,
+    }
+
+
 def reading_notes(
     user, reference=None, day=None, episode=None, audience="all", offset=0
 ):
@@ -236,7 +275,7 @@ def reading_notes(
     }
 
 
-def search_site(user, query, kind="all", day=None, limit=8):
+def search_site(user, query, kind="all", day=None, limit=8, semantic=True):
     qs = accessible_chunks(user)
     if kind in {"scripture", "commentary", "journal"}:
         qs = qs.filter(kind=kind)
@@ -280,7 +319,8 @@ def search_site(user, query, kind="all", day=None, limit=8):
     rankings = [lexical]
     warning = None
     if (
-        settings.OPENAI_API_KEY
+        semantic
+        and settings.OPENAI_API_KEY
         and qs.filter(
             embedding__isnull=False, embedding_model=settings.STUDY_EMBEDDING_MODEL
         ).exists()
@@ -308,7 +348,7 @@ def search_site(user, query, kind="all", day=None, limit=8):
             )
         except Exception:
             warning = "Semantic search is unavailable; keyword search was used."
-    else:
+    elif semantic:
         warning = "Semantic indexing is pending; keyword search was used."
     scores, chunks = {}, {}
     for ranked in rankings:

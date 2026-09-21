@@ -124,13 +124,16 @@ def historical_commentaries(
     sources = []
     for row in rows:
         author = row.author
+        source_url = (
+            f"/commentaries?day={day}#commentary-{row.pk}" if day else row.source_url
+        )
         sources.append(
             {
                 "id": f"H{row.pk}",
                 "kind": "historical_commentary",
                 "title": f"{author.name} · {row.source_title}",
                 "text": row.text[:5000],
-                "url": row.source_url,
+                "url": source_url,
                 "metadata": {
                     "author": author.name,
                     "year": row.year,

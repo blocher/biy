@@ -227,6 +227,7 @@ class StudyTurn(models.Model):
     status = models.CharField(max_length=16, default="queued", db_index=True)
     answer = models.TextField(blank=True)
     follow_ups = models.JSONField(default=list, blank=True)
+    links = models.JSONField(default=list, blank=True)
     sources = models.JSONField(default=list)
     notices = models.JSONField(default=list)
     stage = models.CharField(max_length=120, default="Waiting for the study worker")

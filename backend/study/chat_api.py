@@ -51,6 +51,18 @@ def status(request):
 
 def turn_data(turn, user):
     current = sources_current(user, turn.sources)
+    progress_sources = []
+    if current and turn.status in {"queued", "running"}:
+        progress_sources = [
+            {
+                "id": source.get("id", ""),
+                "kind": source.get("kind", ""),
+                "title": source.get("title", "Source"),
+                "url": source.get("url", ""),
+                "day": source.get("metadata", {}).get("day"),
+            }
+            for source in turn.sources[:6]
+        ]
     return {
         "id": turn.pk,
         "question": turn.question,
@@ -70,6 +82,8 @@ def turn_data(turn, user):
         ),
         "notices": turn.notices if current else [],
         "follow_ups": turn.follow_ups if current else [],
+        "links": turn.links if current else [],
+        "progress_sources": progress_sources,
         "stage": turn.stage,
         "error": turn.error,
         "created_at": turn.created_at.isoformat(),

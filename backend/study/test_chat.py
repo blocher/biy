@@ -8,7 +8,17 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from .chat import catholic_sources, chat_model_for, context_for, process_chat, run_turn
+from .chat import (
+    catholic_sources,
+    chat_model_for,
+    context_for,
+    local_fast_path,
+    local_lookup_query,
+    navigation_fast_path,
+    process_chat,
+    run_turn,
+    safe_internal_path,
+)
 from .chat_api import turn_data
 from .models import (
     Day,
@@ -27,6 +37,7 @@ from .models import (
 from .search import (
     accessible_chunks,
     embed_batch,
+    find_reading_days,
     index_chapter,
     index_note,
     reading_notes,
@@ -52,6 +63,52 @@ class StudyChatTests(TestCase):
             chat_model_for("Summarize the readings and explain the main themes in detail."),
             "gpt-5.6-terra",
         )
+
+    def test_internal_navigation_paths_are_allowlisted(self):
+        self.assertEqual(
+            safe_internal_path("/day/3?tab=commentary#note-8"),
+            "/day/3?tab=commentary#note-8",
+        )
+        self.assertEqual(
+            safe_internal_path("/commentaries?day=3#commentary-12"),
+            "/commentaries?day=3#commentary-12",
+        )
+        self.assertEqual(safe_internal_path("https://example.com/day/3"), "")
+        self.assertEqual(safe_internal_path("//example.com/day/3"), "")
+        self.assertEqual(safe_internal_path("/admin/people"), "")
+
+    def test_local_navigation_and_member_lookups_use_the_fast_path(self):
+        self.assertTrue(
+            local_fast_path("Can you link me to whatever day Noah's ark is covered?")
+        )
+        self.assertTrue(
+            navigation_fast_path("Can you link me to whatever day Noah's ark is covered?")
+        )
+        self.assertTrue(local_fast_path("Has anyone shared a reflection on this?"))
+        self.assertFalse(navigation_fast_path("Has anyone shared a reflection on this?"))
+        self.assertTrue(local_fast_path("What did Fr. Mike say about sacrifice?"))
+        self.assertFalse(local_fast_path("How does Catholic teaching understand grace?"))
+        self.assertEqual(
+            local_lookup_query("Can you link me to whatever day Noah's ark is covered?"),
+            "noah ark",
+        )
+
+    def test_reading_day_lookup_returns_direct_navigation_sources(self):
+        day = Day.objects.create(number=3, era=self.day.era, readings=["Genesis 5-6"])
+        Episode.objects.create(
+            guid="noah-ark",
+            day=day,
+            title="Day 3: Noah's Ark",
+            description="Noah builds the ark before the flood.",
+            published_at=timezone.now(),
+            source_date="2025-01-03",
+        )
+
+        result = find_reading_days("noah ark")
+
+        self.assertEqual([source["id"] for source in result["sources"]], ["D3"])
+        self.assertEqual(result["sources"][0]["url"], "/day/3?tab=commentary")
+        self.assertEqual(result["sources"][0]["metadata"]["day"], 3)
 
     def note(self, **kwargs):
         return Note.objects.create(
@@ -143,6 +200,22 @@ class StudyChatTests(TestCase):
         self.assertEqual(
             search_site(self.user, "unrelated zebra", "community")["sources"], []
         )
+
+    @override_settings(OPENAI_API_KEY="test", STUDY_EMBEDDING_MODEL="test")
+    @patch("study.search.client")
+    def test_keyword_only_search_skips_the_embedding_request(self, factory):
+        self.note(shared=True)
+        SearchChunk.objects.update(
+            embedding=[0.1] * 1536, embedding_model="test"
+        )
+
+        result = search_site(
+            self.user, "Eucharist", kind="community", semantic=False
+        )
+
+        self.assertEqual(len(result["sources"]), 1)
+        self.assertIsNone(result["notice"])
+        factory.assert_not_called()
 
     def test_episode_note_inherits_its_days_readings(self):
         ep = Episode.objects.create(
@@ -396,17 +469,85 @@ class StudyChatTests(TestCase):
         factory.return_value.responses.create.return_value = NS(
             output=[],
             output_text=json.dumps(
-                {"paragraphs": [{"text": "Answer", "source_ids": ["S999999"]}], "follow_ups": ["How does this relate to the Mass?", "What did Fr. Mike say?"]}
+                {
+                    "paragraphs": [
+                        {"text": "Answer", "source_ids": ["S999999"]}
+                    ],
+                    "follow_ups": [
+                        "How does this relate to the Mass?",
+                        "What did Fr. Mike say?",
+                    ],
+                    "links": [
+                        {"label": "Open Day 1", "path": "/day/1"},
+                        {"label": "Unsafe", "path": "https://example.com"},
+                    ],
+                }
             ),
         )
         run_turn(turn)
         turn.refresh_from_db()
         self.assertEqual(turn.status, "complete")
         self.assertIn("[source unavailable]", turn.answer)
+        self.assertEqual(turn.links, [{"label": "Open Day 1", "path": "/day/1"}])
+        self.assertEqual(turn_data(turn, self.user)["links"], turn.links)
         self.assertEqual(turn_data(turn, self.user)["follow_ups"], ["How does this relate to the Mass?", "What did Fr. Mike say?"])
         kwargs = factory.return_value.responses.create.call_args.kwargs
         self.assertNotIn("consult_catholic_sources", str(kwargs["tools"]))
         self.assertFalse(kwargs["store"])
+
+    @patch("study.chat.public_topic")
+    @patch("study.chat.get_day")
+    @patch("study.chat.client")
+    def test_local_fast_path_does_not_prepare_outside_research(
+        self, factory, get_day, topic
+    ):
+        c = StudyConversation.objects.create(user=self.user, day=self.day)
+        turn = StudyTurn.objects.create(
+            conversation=c,
+            request_id=uuid4(),
+            question="Can you link me to the day that covers Noah's ark?",
+            web_enabled=True,
+            status="running",
+        )
+        factory.return_value.responses.create.return_value = NS(
+            output=[],
+            output_text=json.dumps(
+                {
+                    "paragraphs": [{"text": "Open the reading day.", "source_ids": []}],
+                    "follow_ups": ["What happens next?", "What is the covenant?"],
+                    "links": [{"label": "Open Day 3", "path": "/day/3"}],
+                }
+            ),
+        )
+
+        run_turn(turn)
+
+        topic.assert_not_called()
+        get_day.assert_not_called()
+        tools = factory.return_value.responses.create.call_args.kwargs["tools"]
+        self.assertNotIn("prepare_outside_research", str(tools))
+        turn.refresh_from_db()
+        self.assertEqual(turn.links, [{"label": "Open Day 3", "path": "/day/3"}])
+
+    def test_running_turn_exposes_source_titles_without_source_text(self):
+        note = self.note(shared=True)
+        source = search_site(
+            self.user, "Eucharist", kind="community", semantic=False
+        )["sources"][0]
+        turn = StudyTurn.objects.create(
+            conversation=StudyConversation.objects.create(user=self.user),
+            request_id=uuid4(),
+            question="Has anyone reflected on the Eucharist?",
+            status="running",
+            sources=[source],
+        )
+
+        data = turn_data(turn, self.user)
+
+        self.assertEqual(data["sources"], [])
+        self.assertEqual(data["progress_sources"][0]["title"], source["title"])
+        self.assertNotIn("text", data["progress_sources"][0])
+        self.assertEqual(data["progress_sources"][0]["day"], note.day_id)
 
     @patch("study.chat.client")
     def test_historical_commentary_tool_is_citable(self, factory):
@@ -528,6 +669,7 @@ class StudyChatTests(TestCase):
                 }
 
         factory.return_value.responses.create.side_effect = [
+            NS(output=[Call("prepare_outside_research")]),
             NS(output=[Call("consult_catholic_sources")]),
             NS(output=[Call("search_open_web")]),
             NS(
@@ -550,7 +692,9 @@ class StudyChatTests(TestCase):
         run_turn(turn)
         calls = factory.return_value.responses.create.call_args_list
         self.assertNotIn("search_open_web", str(calls[0].kwargs["tools"]))
-        self.assertIn("search_open_web", str(calls[1].kwargs["tools"]))
+        self.assertNotIn("consult_catholic_sources", str(calls[0].kwargs["tools"]))
+        self.assertIn("consult_catholic_sources", str(calls[1].kwargs["tools"]))
+        self.assertIn("search_open_web", str(calls[2].kwargs["tools"]))
         catholic.assert_called_once_with("Eucharist")
         web.assert_called_once_with("Eucharist")
         topic.assert_called_once_with("Eucharist?")

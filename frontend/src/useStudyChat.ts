@@ -22,6 +22,14 @@ export type ChatTurn = {
   question: string;
   answer: string;
   follow_ups: string[];
+  links: { label: string; path: string }[];
+  progress_sources: {
+    id: string;
+    kind: string;
+    title: string;
+    url: string;
+    day?: number;
+  }[];
   status: string;
   sources: ChatSource[];
   notices: string[];

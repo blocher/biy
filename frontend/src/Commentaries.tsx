@@ -71,7 +71,10 @@ export function Commentaries({
               ? result
               : {
                   ...result,
-                  commentaries: [...current.commentaries, ...result.commentaries],
+                  commentaries: [
+                    ...current.commentaries,
+                    ...result.commentaries,
+                  ],
                 },
           );
         }
@@ -135,17 +138,24 @@ export function Commentaries({
           </div>
         </header>
 
-        <section className="commentary-reading-picker" aria-labelledby="reading-heading">
+        <section
+          className="commentary-reading-picker"
+          aria-labelledby="reading-heading"
+        >
           <div>
             <span className="eyebrow">DAILY READING</span>
             <h2 id="reading-heading">
-              Day {dayNumber} <span>·</span> {selectedDay?.era || "Reading plan"}
+              Day {dayNumber} <span>·</span>{" "}
+              {selectedDay?.era || "Reading plan"}
             </h2>
             <p>{selectedDay?.readings.join(" · ")}</p>
           </div>
           <label>
             <span className="sr-only">Choose a day</span>
-            <select value={dayNumber} onChange={(event) => updateDay(event.target.value)}>
+            <select
+              value={dayNumber}
+              onChange={(event) => updateDay(event.target.value)}
+            >
               {library.days.map((day) => (
                 <option value={day.number} key={day.number}>
                   Day {day.number} · {day.readings.join(" · ")}
@@ -155,14 +165,19 @@ export function Commentaries({
           </label>
         </section>
 
-        <section className="commentary-browser" aria-labelledby="browser-heading">
+        <section
+          className="commentary-browser"
+          aria-labelledby="browser-heading"
+        >
           <div className="commentary-browser-heading">
             <div>
               <span className="eyebrow">{data?.edition || "RSV-2CE"}</span>
               <h2 id="browser-heading">Wisdom for today’s passage.</h2>
             </div>
             <span className="commentary-count">
-              {data ? `${data.total.toLocaleString()} commentaries` : "Loading commentaries…"}
+              {data
+                ? `${data.total.toLocaleString()} commentaries`
+                : "Loading commentaries…"}
             </span>
           </div>
 
@@ -179,7 +194,11 @@ export function Commentaries({
               <span>From year</span>
               <input
                 inputMode="numeric"
-                placeholder={data?.filters.min_year ? String(data.filters.min_year) : "e.g. 300"}
+                placeholder={
+                  data?.filters.min_year
+                    ? String(data.filters.min_year)
+                    : "e.g. 300"
+                }
                 value={fromYear}
                 onChange={(event) => setFromYear(event.target.value)}
               />
@@ -188,14 +207,21 @@ export function Commentaries({
               <span>To year</span>
               <input
                 inputMode="numeric"
-                placeholder={data?.filters.max_year ? String(data.filters.max_year) : "e.g. 1900"}
+                placeholder={
+                  data?.filters.max_year
+                    ? String(data.filters.max_year)
+                    : "e.g. 1900"
+                }
                 value={toYear}
                 onChange={(event) => setToYear(event.target.value)}
               />
             </label>
             <label className="commentary-category-filter">
               <span>Tradition</span>
-              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+              >
                 <option value="">All traditions</option>
                 {data?.filters.categories.map((value) => (
                   <option key={value} value={value}>
@@ -208,31 +234,47 @@ export function Commentaries({
               Filter <ArrowRight size={15} />
             </button>
             {(fromYear || toYear || category) && (
-              <button className="commentary-reset" type="button" onClick={resetFilters}>
+              <button
+                className="commentary-reset"
+                type="button"
+                onClick={resetFilters}
+              >
                 <RotateCcw size={14} /> Reset
               </button>
             )}
           </form>
 
           <p className="commentary-sort-note">
-            <Info size={15} /> Sorted oldest to newest. Sources without a known date remain at the end.
+            <Info size={15} /> Sorted oldest to newest. Sources without a known
+            date remain at the end.
           </p>
 
           {loading && !data ? (
-            <p className="commentary-loading" role="status">Gathering the witnesses…</p>
+            <p className="commentary-loading" role="status">
+              Gathering the witnesses…
+            </p>
           ) : visibleRows.length ? (
             <div className="commentary-list">
               {visibleRows.map((entry, index) => (
-                <article className={`commentary-card ${index === 0 ? "featured" : ""}`} key={entry.id}>
+                <article
+                  id={`commentary-${entry.id}`}
+                  className={`commentary-card ${index === 0 ? "featured" : ""}`}
+                  key={entry.id}
+                >
                   <div className="commentary-card-topline">
                     <span className="commentary-year">{entry.year_label}</span>
-                    <span className="commentary-tradition">{entry.author_metadata.category}</span>
+                    <span className="commentary-tradition">
+                      {entry.author_metadata.category}
+                    </span>
                   </div>
                   <div className="commentary-card-body">
                     <div className="commentary-card-heading">
                       <h3>{entry.author}</h3>
                       {entry.author_metadata.condemned_by_council && (
-                        <span className="commentary-condemned" title="This author was condemned as a heretic by an ecumenical council.">
+                        <span
+                          className="commentary-condemned"
+                          title="This author was condemned as a heretic by an ecumenical council."
+                        >
                           <TriangleAlert size={14} /> Condemned at a council
                         </span>
                       )}
@@ -242,7 +284,11 @@ export function Commentaries({
                     <div className="commentary-card-footer">
                       <span>{entry.matched_readings.join(" · ")}</span>
                       {entry.source_url && (
-                        <a href={entry.source_url} target="_blank" rel="noreferrer">
+                        <a
+                          href={entry.source_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           Source <ExternalLink size={14} />
                         </a>
                       )}
@@ -260,14 +306,21 @@ export function Commentaries({
           )}
 
           {data?.has_more && (
-            <button className="commentary-load-more" onClick={loadMore} disabled={loading}>
-              {loading ? "Loading…" : "Show more commentaries"} <ArrowRight size={16} />
+            <button
+              className="commentary-load-more"
+              onClick={loadMore}
+              disabled={loading}
+            >
+              {loading ? "Loading…" : "Show more commentaries"}{" "}
+              <ArrowRight size={16} />
             </button>
           )}
 
           {data?.matching_notes.length && (
             <details className="commentary-notes">
-              <summary>About RSV-2CE matching and deuterocanonical books</summary>
+              <summary>
+                About RSV-2CE matching and deuterocanonical books
+              </summary>
               <ul>
                 {data.matching_notes.map((note) => (
                   <li key={note}>{note}</li>
