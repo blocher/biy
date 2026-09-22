@@ -13,6 +13,9 @@ import {
 import { api } from "./api";
 import type { CommentaryResponse, Library } from "./types";
 import { Sidebar } from "./navigation";
+import { useStudyChat } from "./useStudyChat";
+import { ReadingChatDialog } from "./ReadingChat";
+import { ReadingCapture } from "./ReadingCapture";
 
 function commentaryQuery(
   day: number,
@@ -54,6 +57,8 @@ export function Commentaries({
     365,
     Math.max(1, Number(search.get("day")) || fallbackDay),
   );
+  const chat = useStudyChat({ day: dayNumber, episode: null });
+  const [chatOpen, setChatOpen] = useState(false);
   const [fromYear, setFromYear] = useState(search.get("from_year") || "");
   const [toYear, setToYear] = useState(search.get("to_year") || "");
   const [category, setCategory] = useState(search.get("category") || "");
@@ -119,6 +124,11 @@ export function Commentaries({
     setPage(1);
   }, [dayNumber, fromYear, toYear, category]);
 
+  useEffect(() => {
+    chat.select(null);
+    setChatOpen(false);
+  }, [dayNumber]);
+
   function updateDay(value: string) {
     const next = new URLSearchParams(search);
     next.set("day", value);
@@ -145,6 +155,12 @@ export function Commentaries({
   return (
     <div className="app-frame commentary-page">
       <Sidebar user={user} />
+      <ReadingChatDialog
+        chat={chat}
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        readings={`Day ${dayNumber} · Historical commentary`}
+      />
       <main className="commentary-main">
         <header className="commentary-header">
           <Link className="back-link" to="/">
@@ -274,61 +290,73 @@ export function Commentaries({
             date remain at the end.
           </p>
 
-          {loading && !data ? (
-            <p className="commentary-loading" role="status">
-              Gathering the witnesses…
-            </p>
-          ) : visibleRows.length ? (
-            <div className="commentary-list">
-              {visibleRows.map((entry, index) => (
-                <article
-                  id={`commentary-${entry.database_id}`}
-                  className={`commentary-card ${index === 0 ? "featured" : ""}`}
-                  key={entry.id}
-                >
-                  <div className="commentary-card-topline">
-                    <span className="commentary-year">{entry.year_label}</span>
-                    <span className="commentary-tradition">
-                      {entry.author_metadata.category}
-                    </span>
-                  </div>
-                  <div className="commentary-card-body">
-                    <div className="commentary-card-heading">
-                      <h3>{entry.author}</h3>
-                      {entry.author_metadata.condemned_by_council && (
-                        <span
-                          className="commentary-condemned"
-                          title="This author was condemned as a heretic by an ecumenical council."
-                        >
-                          <TriangleAlert size={14} /> Condemned at a council
-                        </span>
-                      )}
+          <ReadingCapture
+            target={`/days/${dayNumber}`}
+            contextLabel={`Day ${dayNumber} · Historical commentary`}
+            chat={chat}
+            onOpenAsk={() => setChatOpen(true)}
+            onError={onError}
+          >
+            {loading && !data ? (
+              <p className="commentary-loading" role="status">
+                Gathering the witnesses…
+              </p>
+            ) : visibleRows.length ? (
+              <div className="commentary-list">
+                {visibleRows.map((entry, index) => (
+                  <article
+                    id={`commentary-${entry.database_id}`}
+                    className={`commentary-card ${index === 0 ? "featured" : ""}`}
+                    key={entry.id}
+                    data-reading-citation={`${entry.author} · ${entry.source_title}`}
+                    data-reading-url={`#commentary-${entry.database_id}`}
+                  >
+                    <div className="commentary-card-topline">
+                      <span className="commentary-year">
+                        {entry.year_label}
+                      </span>
+                      <span className="commentary-tradition">
+                        {entry.author_metadata.category}
+                      </span>
                     </div>
-                    <p className="commentary-source">{entry.source_title}</p>
-                    <p className="commentary-text">{entry.text}</p>
-                    <div className="commentary-card-footer">
-                      <span>{entry.matched_readings.join(" · ")}</span>
-                      {entry.source_url && (
-                        <a
-                          href={entry.source_url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Source <ExternalLink size={14} />
-                        </a>
-                      )}
+                    <div className="commentary-card-body">
+                      <div className="commentary-card-heading">
+                        <h3>{entry.author}</h3>
+                        {entry.author_metadata.condemned_by_council && (
+                          <span
+                            className="commentary-condemned"
+                            title="This author was condemned as a heretic by an ecumenical council."
+                          >
+                            <TriangleAlert size={14} /> Condemned at a council
+                          </span>
+                        )}
+                      </div>
+                      <p className="commentary-source">{entry.source_title}</p>
+                      <p className="commentary-text">{entry.text}</p>
+                      <div className="commentary-card-footer">
+                        <span>{entry.matched_readings.join(" · ")}</span>
+                        {entry.source_url && (
+                          <a
+                            href={entry.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Source <ExternalLink size={14} />
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="commentary-empty">
-              <BookOpen size={28} />
-              <h3>No commentaries match these filters.</h3>
-              <p>Try widening the year range or choosing all traditions.</p>
-            </div>
-          )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="commentary-empty">
+                <BookOpen size={28} />
+                <h3>No commentaries match these filters.</h3>
+                <p>Try widening the year range or choosing all traditions.</p>
+              </div>
+            )}
+          </ReadingCapture>
 
           {data?.has_more && (
             <button

@@ -134,6 +134,9 @@ export type Note = {
   author: { id: number; name: string };
   id: number;
   body: string;
+  quote: string;
+  citation: string;
+  source_url: string;
   kind: "note" | "journal";
   audio_time: number | null;
   created_at: string;

@@ -44,6 +44,7 @@ import { Scripture } from "./Scripture";
 import { Sidebar } from "./navigation";
 import { useStudyChat } from "./useStudyChat";
 import { ReadingChatDialog, ReadingChatHistory } from "./ReadingChat";
+import { ReadingCapture } from "./ReadingCapture";
 import { editionName, useEdition } from "./Edition";
 import {
   audioSpanContaining,
@@ -227,7 +228,7 @@ function StudyContent({
       </p>
     </div>
   );
-  function transcript(segments: Segment[] | undefined) {
+  function transcript(segments: Segment[] | undefined, label: string) {
     const paragraphs = groupTranscriptSegments(segments, !day);
     return paragraphs.length ? (
       <div className="transcript-list">
@@ -243,6 +244,8 @@ function StudyContent({
             }
             id={`segment-${paragraph.segmentIds[0]}`}
             key={paragraph.segmentIds[0]}
+            data-reading-citation={`${label} · ${time(paragraph.start)}`}
+            data-reading-url={`#segment-${paragraph.segmentIds[0]}`}
           >
             {paragraph.segmentIds.slice(1).map((id) => (
               <span className="segment-anchor" id={`segment-${id}`} key={id} />
@@ -308,7 +311,12 @@ function StudyContent({
             {day.chapter && <p>{day.chapter}</p>}
           </header>
           {day.catechism.map((paragraph) => (
-            <p id={`ccc-${paragraph.number}`} key={paragraph.number}>
+            <p
+              id={`ccc-${paragraph.number}`}
+              key={paragraph.number}
+              data-reading-citation={`Catechism § ${paragraph.number}`}
+              data-reading-url={`#ccc-${paragraph.number}`}
+            >
               <strong>{paragraph.number}</strong> {paragraph.text}
             </p>
           ))}
@@ -338,7 +346,7 @@ function StudyContent({
         toolbar={reader}
       />
     ) : selected === "transcript" ? (
-      transcript(episode?.transcript)
+      transcript(episode?.transcript, "Full transcript")
     ) : selected === "commentary" ? (
       <>
         <p className="view-note">
@@ -346,7 +354,7 @@ function StudyContent({
           promotional material removed. Brief Scripture quotations within the
           teaching are retained.
         </p>
-        {transcript(episode?.commentary)}
+        {transcript(episode?.commentary, "Commentary")}
       </>
     ) : (
       <>
@@ -357,7 +365,20 @@ function StudyContent({
               audio for exact wording.
             </p>
             {episode.edited_commentary.map((p, i) => (
-              <section key={i}>
+              <section
+                id={`edited-segment-${p.segment_ids[0]}`}
+                key={i}
+                data-reading-citation={`Edited commentary${
+                  episode.transcript?.find((s) => s.id === p.segment_ids[0])
+                    ? ` · ${time(
+                        episode.transcript.find(
+                          (s) => s.id === p.segment_ids[0],
+                        )!.start,
+                      )}`
+                    : ""
+                }`}
+                data-reading-url={`#edited-segment-${p.segment_ids[0]}`}
+              >
                 {(() => {
                   const source = episode.transcript?.find(
                     (s) => s.id === p.segment_ids[0],
@@ -393,6 +414,19 @@ function StudyContent({
       onClose={() => setChatOpen(false)}
       readings={day?.readings.join(" · ") || title}
     />
+  );
+  const capturedContent = (
+    <ReadingCapture
+      target={target}
+      contextLabel={`${day ? `Day ${day.number}` : title} · ${
+        tabs.find(([id]) => id === selected)?.[1] || "Reading"
+      }`}
+      chat={chat}
+      onOpenAsk={() => setChatOpen(true)}
+      onError={onError}
+    >
+      {content}
+    </ReadingCapture>
   );
   const readerControls = (
     <div className="reader-controls">
@@ -490,7 +524,7 @@ function StudyContent({
                   ))}
               </nav>
             ),
-            "viewport-1-c-reader": content,
+            "viewport-1-c-reader": capturedContent,
             "viewport-1-c-footer-nav": (
               <div className="reader-footer-links">
                 <Link className="text-link" to={`${base}?tab=${selected}`}>
@@ -835,7 +869,7 @@ function StudyContent({
             <Maximize2 size={15} /> Reader mode
           </Link>
         </div>
-        {content}
+        {capturedContent}
       </div>
     ),
     "viewport-2-b-scripture-card": (

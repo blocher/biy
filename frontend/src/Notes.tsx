@@ -52,6 +52,23 @@ export function Notes({
     };
   }, [target, key]);
   useEffect(() => {
+    const noteSaved = (event: Event) => {
+      const note = (event as CustomEvent<Note>).detail;
+      const belongsHere = target.startsWith("/days/")
+        ? note.day === Number(target.split("/").at(-1)) ||
+          note.catechism_day === Number(target.split("/").at(-1))
+        : note.episode === Number(target.split("/").at(-1));
+      if (belongsHere)
+        setNotes((current) =>
+          current.some((entry) => entry.id === note.id)
+            ? current
+            : [note, ...current],
+        );
+    };
+    window.addEventListener("biy-note-saved", noteSaved);
+    return () => window.removeEventListener("biy-note-saved", noteSaved);
+  }, [target]);
+  useEffect(() => {
     const entry = [...notes, ...sharedNotes].find(
       (n) => location.hash === `#note-${n.id}`,
     );
@@ -74,6 +91,7 @@ export function Notes({
   async function save() {
     setBusy(true);
     try {
+      const original = notes.find((note) => note.id === editing);
       const note = await api<Note>(
         editing ? `/notes/${editing}` : target + "/notes",
         editing ? "PUT" : "POST",
@@ -83,6 +101,9 @@ export function Notes({
           shared,
           audio_time:
             attach && audio.episode?.id === episode?.id ? audio.position : null,
+          quote: original?.quote || "",
+          citation: original?.citation || "",
+          source_url: original?.source_url || "",
         },
       );
       setNotes((current) =>
@@ -219,6 +240,17 @@ export function Notes({
                 </button>
               </div>
               <p>{note.body}</p>
+              {(note.quote || note.citation) && (
+                <blockquote className="note-quote">
+                  {note.citation && <cite>{note.citation}</cite>}
+                  {note.quote && <p>“{note.quote}”</p>}
+                  {note.source_url && (
+                    <a className="text-link" href={note.source_url}>
+                      Return to highlighted text
+                    </a>
+                  )}
+                </blockquote>
+              )}
             </article>
           ))}
       </div>
@@ -237,6 +269,17 @@ export function Notes({
                 </span>
               </div>
               <p>{note.body}</p>
+              {(note.quote || note.citation) && (
+                <blockquote className="note-quote">
+                  {note.citation && <cite>{note.citation}</cite>}
+                  {note.quote && <p>“{note.quote}”</p>}
+                  {note.source_url && (
+                    <a className="text-link" href={note.source_url}>
+                      Return to highlighted text
+                    </a>
+                  )}
+                </blockquote>
+              )}
             </article>
           ))
         ) : (

@@ -2,6 +2,10 @@ import { Pause, Play } from "lucide-react";
 import { time } from "./api";
 import type { Scripture as Passage, ScriptureAudioCue } from "./types";
 
+function verseAnchor(book: string, chapter: number, verse: number) {
+  return `verse-${book.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${chapter}-${verse}`;
+}
+
 type ScriptureAudio = {
   episodeActive: boolean;
   position: number;
@@ -118,6 +122,9 @@ export function Scripture({
                         .filter((v) => v.chapter === ch)
                         .map((v) => (
                           <p
+                            id={verseAnchor(group.book, v.chapter, v.verse)}
+                            data-reading-citation={`${group.book} ${v.chapter}:${v.verse}`}
+                            data-reading-url={`#${verseAnchor(group.book, v.chapter, v.verse)}`}
                             className={
                               "verse-paragraph " +
                               (group.book === "Psalm" || v.text.includes("\n")

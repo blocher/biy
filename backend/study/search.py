@@ -88,6 +88,10 @@ def index_note(note):
         )
     )
     context = f"Day {day.pk} · {', '.join(day.readings)}" if day else note.episode.title
+    indexed_text = note.body
+    if note.quote:
+        quote_heading = f"Quoted from {note.citation}" if note.citation else "Quoted text"
+        indexed_text += f"\n\n{quote_heading}:\n{note.quote}"
     replace_source(
         f"note:{note.pk}",
         [
@@ -98,7 +102,7 @@ def index_note(note):
                 "title": f"{note.user.username} · {note.get_kind_display()} · {context}"[:600],
                 "text": text,
                 "metadata": {
-                    "url": f"{target}#note-{note.pk}",
+                    "url": note.source_url or f"{target}#note-{note.pk}",
                     "day": day.pk if day else None,
                     "readings": day.readings if day else [],
                     "attachment": "reading day" if day else "episode",
@@ -106,9 +110,10 @@ def index_note(note):
                     "audio_time": note.audio_time,
                     "updated_at": note.updated_at.isoformat(),
                     "edition": edition,
+                    "citation": note.citation,
                 },
             }
-            for text in pieces(note.body)
+            for text in pieces(indexed_text)
         ],
     )
 

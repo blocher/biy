@@ -82,6 +82,9 @@ class NoteIn(Schema):
     kind: Literal["note", "journal"] = "note"
     shared: bool = False
     audio_time: float | None = Field(default=None, ge=0, le=86400, allow_inf_nan=False)
+    quote: str = Field(default="", max_length=10000)
+    citation: str = Field(default="", max_length=500)
+    source_url: str = Field(default="", max_length=1000)
 
 
 class AccountIn(Schema):
@@ -895,6 +898,9 @@ def note_data(n):
         "shared": n.shared,
         "author": {"id": n.user_id, "name": n.user.get_full_name() or n.user.username},
         "body": n.body,
+        "quote": n.quote,
+        "citation": n.citation,
+        "source_url": n.source_url,
         "kind": n.kind,
         "audio_time": n.audio_time,
         "created_at": n.created_at,
@@ -948,6 +954,12 @@ def notes(request, kind: str, target_id: int):
 def add_note(request, kind: str, target_id: int, payload: NoteIn):
     if not payload.body.strip():
         raise HttpError(422, "Write something before saving.")
+    if payload.source_url and (
+        not payload.source_url.startswith("/")
+        or payload.source_url.startswith("//")
+        or "\\" in payload.source_url
+    ):
+        raise HttpError(422, "Note links must point inside this site.")
     with transaction.atomic():
         note = Note.objects.create(
             user=request.user,
@@ -973,6 +985,12 @@ def edit_note(request, note_id: int, payload: NoteIn):
     note = get_object_or_404(Note.objects.select_for_update(), user=request.user, pk=note_id)
     if not payload.body.strip():
         raise HttpError(422, "Write something before saving.")
+    if payload.source_url and (
+        not payload.source_url.startswith("/")
+        or payload.source_url.startswith("//")
+        or "\\" in payload.source_url
+    ):
+        raise HttpError(422, "Note links must point inside this site.")
     for key, value in payload.dict().items():
         setattr(note, key, value)
     note.save()

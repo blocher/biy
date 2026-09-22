@@ -10,7 +10,7 @@ from django.db import IntegrityError, transaction
 from django.test import Client, TestCase, override_settings
 
 from .importing import _dedupe_transcript_segments, catalog_entry, parse_feed
-from .models import Day, Episode, Era, Verse
+from .models import Day, Episode, Era, SearchChunk, Verse
 from .scripture import reading_text, reference_ranges
 
 
@@ -320,6 +320,43 @@ class APITests(TestCase):
         self.assertEqual(self.client.get("/api/days/1/notes").json(), [])
         self.assertEqual(self.put(f"/api/notes/{note['id']}", {"body": "steal"}).status_code, 404)
         self.assertEqual(self.client.delete(f"/api/notes/{note['id']}").status_code, 404)
+
+    def test_note_can_link_a_quote_to_an_internal_reading_section(self):
+        response = self.client.post(
+            "/api/days/1/notes",
+            data=json.dumps(
+                {
+                    "body": "The light is active, not abstract.",
+                    "quote": "The light shines in the darkness.",
+                    "citation": "John 1:5",
+                    "source_url": "/day/1/reader?tab=scripture#verse-john-1-5",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        note = response.json()
+        self.assertEqual(note["quote"], "The light shines in the darkness.")
+        self.assertEqual(note["citation"], "John 1:5")
+        self.assertEqual(
+            note["source_url"],
+            "/day/1/reader?tab=scripture#verse-john-1-5",
+        )
+        indexed = SearchChunk.objects.get(note_id=note["id"])
+        self.assertIn(note["quote"], indexed.text)
+        self.assertEqual(indexed.metadata["citation"], "John 1:5")
+        self.assertEqual(indexed.metadata["url"], note["source_url"])
+
+        response = self.put(
+            f"/api/notes/{note['id']}",
+            {
+                "body": "Updated",
+                "quote": note["quote"],
+                "citation": note["citation"],
+                "source_url": "https://example.com/not-local",
+            },
+        )
+        self.assertEqual(response.status_code, 422)
 
     def test_auth_and_csrf_required(self):
         c = Client(enforce_csrf_checks=True)

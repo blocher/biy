@@ -663,7 +663,10 @@ export function Journal({
     (n) =>
       (!person || String(n.author.id) === person) &&
       (editionFilter === "all" || n.edition === editionFilter) &&
-      n.body.toLowerCase().includes(query.toLowerCase()),
+      [n.body, n.quote, n.citation]
+        .join(" ")
+        .toLowerCase()
+        .includes(query.toLowerCase()),
   );
 
   return (
@@ -754,18 +757,28 @@ export function Journal({
                   {n.shared ? " · Shared" : ""}
                 </span>
                 <p>{n.body}</p>
+                {(n.quote || n.citation) && (
+                  <blockquote className="note-quote">
+                    {n.citation && <cite>{n.citation}</cite>}
+                    {n.quote && <p>“{n.quote}”</p>}
+                  </blockquote>
+                )}
                 <Link
                   className="text-link"
                   to={
-                    n.day || n.catechism_day
+                    n.source_url ||
+                    (n.day || n.catechism_day
                       ? `/day/${n.day || n.catechism_day}?edition=${n.edition}`
-                      : `/episode/${n.episode}?edition=${n.edition}`
+                      : `/episode/${n.episode}?edition=${n.edition}`)
                   }
                 >
-                  Return to{" "}
-                  {n.day || n.catechism_day
-                    ? `Day ${n.day || n.catechism_day}`
-                    : "episode"}{" "}
+                  {n.source_url
+                    ? "Return to highlighted text"
+                    : `Return to ${
+                        n.day || n.catechism_day
+                          ? `Day ${n.day || n.catechism_day}`
+                          : "episode"
+                      }`}{" "}
                   <ArrowRight size={15} />
                 </Link>
               </article>
