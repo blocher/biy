@@ -1,7 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, BookOpen, Moon, Sunrise } from "lucide-react";
+import {
+  dismissNotificationSetup,
+  notificationSetupDismissed,
+  shouldOfferNotificationSetup,
+} from "./notificationSetup";
 import { usePreferences, type Preferences } from "./Preferences";
-import { enablePush, isInstalled, onAppInstalled, pushSupported } from "./pwa";
+import {
+  currentPushSubscription,
+  enablePush,
+  isInstalled,
+  onAppInstalled,
+  pushSupported,
+} from "./pwa";
 
 type SetupDraft = Pick<
   Preferences,
@@ -20,11 +31,44 @@ export function NotificationSetupModal({
 }) {
   const prefs = usePreferences(onError);
   const [installed, setInstalled] = useState(isInstalled());
+  const [deviceSubscribed, setDeviceSubscribed] = useState(false);
+  const [deviceChecked, setDeviceChecked] = useState(false);
+  const [dismissed, setDismissed] = useState(notificationSetupDismissed());
   const [draft, setDraft] = useState<SetupDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const continueButton = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => onAppInstalled(() => setInstalled(true)), []);
+  const checkDevice = useCallback(
+    async (installedNow = isInstalled()) => {
+      setInstalled(installedNow);
+      if (!installedNow) {
+        setDeviceChecked(true);
+        setDeviceSubscribed(false);
+        return;
+      }
+      const setupDismissed = notificationSetupDismissed();
+      setDismissed(setupDismissed);
+      if (setupDismissed) {
+        setDeviceChecked(true);
+        setDeviceSubscribed(false);
+        return;
+      }
+      try {
+        const subscription = await currentPushSubscription();
+        setDeviceSubscribed(Boolean(subscription));
+      } catch (error) {
+        onError((error as Error).message);
+        setDeviceSubscribed(true);
+      } finally {
+        setDeviceChecked(true);
+      }
+    },
+    [onError],
+  );
+  useEffect(() => {
+    void checkDevice();
+    return onAppInstalled(() => void checkDevice(true));
+  }, [checkDevice]);
   useEffect(() => {
     if (!prefs.preferences || draft) return;
     setDraft({
@@ -38,9 +82,13 @@ export function NotificationSetupModal({
   }, [prefs.preferences, draft]);
 
   const open = Boolean(
-    installed &&
+    shouldOfferNotificationSetup({
+      installed,
+      deviceChecked,
+      deviceSubscribed,
+      dismissed,
+    }) &&
     prefs.preferences &&
-    !prefs.preferences.notification_setup_completed &&
     draft,
   );
   useEffect(() => {
@@ -54,7 +102,14 @@ export function NotificationSetupModal({
 
   async function finishWithoutPush() {
     setBusy(true);
-    await prefs.update({ ...draft, notification_setup_completed: true });
+    const saved = await prefs.update({
+      ...draft,
+      notification_setup_completed: true,
+    });
+    if (saved) {
+      dismissNotificationSetup();
+      setDismissed(true);
+    }
     setBusy(false);
   }
 
@@ -62,6 +117,7 @@ export function NotificationSetupModal({
     setBusy(true);
     try {
       await enablePush();
+      setDeviceSubscribed(true);
       const notification_timezone =
         Intl.DateTimeFormat().resolvedOptions().timeZone ||
         prefs.preferences?.notification_timezone;

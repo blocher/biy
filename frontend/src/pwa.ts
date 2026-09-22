@@ -1,4 +1,8 @@
 import { api } from "./api";
+import {
+  clearNotificationSetupDismissal,
+  dismissNotificationSetup,
+} from "./notificationSetup";
 
 export type PushDevice = {
   id: number;
@@ -149,6 +153,7 @@ export async function enablePush() {
     auth: serialized.keys.auth,
     device_name: deviceName(),
   });
+  clearNotificationSetupDismissal();
   return subscription;
 }
 
@@ -157,4 +162,5 @@ export async function disableCurrentPush(subscription: PushSubscription) {
     endpoint: subscription.endpoint,
   });
   await subscription.unsubscribe();
+  dismissNotificationSetup();
 }
