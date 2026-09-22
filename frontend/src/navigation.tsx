@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
   BookOpen,
   MessageCircle,
@@ -40,12 +40,11 @@ export function Sidebar({
   const logout = useContext(LogoutContext);
   const isAdmin = useContext(AdminContext);
   const { edition, availability, setEdition } = useEdition();
-  const location = useLocation();
   const navigate = useNavigate();
   function switchEdition(next: Edition) {
+    if (next === edition) return;
     setEdition(next);
-    if (next === "catechism" && location.pathname === "/commentaries") navigate("/");
-    else if (location.pathname === "/chat") navigate("/chat");
+    navigate("/");
   }
   const body = (
     <>

@@ -614,6 +614,28 @@ export function Account({
                   Use your browser’s Install option to add BIY to this device.
                 </p>
               )}
+              <details className="install-instructions" open={!installed}>
+                <summary>How to install</summary>
+                {isIOS() ? (
+                  <ol>
+                    <li>Open BIY in Safari.</li>
+                    <li>Tap Share, then “Add to Home Screen.”</li>
+                    <li>Open BIY from its new Home Screen icon.</li>
+                  </ol>
+                ) : (
+                  <ol>
+                    <li>
+                      Open your browser menu or the Install icon in the address
+                      bar.
+                    </li>
+                    <li>Choose “Install app” or “Add to Home screen.”</li>
+                    <li>Open the installed BIY app and allow notifications.</li>
+                  </ol>
+                )}
+                <p>
+                  Repeat these steps on each device where you want reminders.
+                </p>
+              </details>
               <div className="app-status-row push-permission-row">
                 <Bell size={20} />
                 <span>

@@ -270,18 +270,19 @@ class Profile(models.Model):
     notification_timezone = models.CharField(max_length=64, default="America/New_York")
     reminder_condition = models.CharField(
         max_length=16,
-        default="never",
+        default="incomplete",
         choices=[
             ("incomplete", "Only when today’s reading is incomplete"),
             ("always", "Always"),
             ("never", "Never"),
         ],
     )
-    morning_reminder_enabled = models.BooleanField(default=False)
-    morning_reminder_time = models.TimeField(default=time(7))
-    evening_reminder_enabled = models.BooleanField(default=False)
+    morning_reminder_enabled = models.BooleanField(default=True)
+    morning_reminder_time = models.TimeField(default=time(8))
+    evening_reminder_enabled = models.BooleanField(default=True)
     evening_reminder_time = models.TimeField(default=time(20))
-    shared_push_notifications = models.BooleanField(default=False)
+    shared_push_notifications = models.BooleanField(default=True)
+    notification_setup_completed = models.BooleanField(default=False)
 
 
 class PushSubscription(models.Model):

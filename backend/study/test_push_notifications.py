@@ -1,6 +1,7 @@
 import json
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 from datetime import timezone as datetime_timezone
+from importlib import import_module
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -8,7 +9,13 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from .models import Day, DayProgress, Era, Note, Profile, PushDelivery, PushSubscription
-from .push_notifications import deliver_push_batch, enqueue_due_reminders, enqueue_shared_note
+from .push_notifications import (
+    _reminder_payload,
+    deliver_push_batch,
+    enqueue_due_reminders,
+    enqueue_shared_note,
+    reading_progress,
+)
 
 
 @override_settings(SECURE_SSL_REDIRECT=False)
@@ -44,8 +51,53 @@ class PushNotificationTests(TestCase):
         )
         self.assertEqual(enqueue_due_reminders(self.now), 1)
         delivery = PushDelivery.objects.get()
-        self.assertIn("Day 2", delivery.payload["body"])
+        self.assertEqual(delivery.payload["url"], "/day/2?edition=bible")
         self.assertEqual(enqueue_due_reminders(self.now), 0)
+
+    def test_progress_signals_match_schedule_completion_and_inactivity(self):
+        for number in range(3, 6):
+            Day.objects.create(number=number, era=self.day1.era)
+        DayProgress.objects.create(
+            user=self.user,
+            day=self.day1,
+            completed_at=datetime(2026, 9, 17, 14, tzinfo=datetime_timezone.utc),
+        )
+
+        state = reading_progress(self.profile, date(2026, 9, 21))[0]
+
+        self.assertEqual(state["expected_day"], 5)
+        self.assertEqual(state["completed"], 1)
+        self.assertEqual(state["days_behind"], 4)
+        self.assertEqual(state["days_inactive"], 4)
+        self.assertEqual(state["next_day"], 2)
+
+    def test_reminder_copy_rotates_through_relevant_progress_messages(self):
+        progress = [
+            {
+                "edition": "bible",
+                "label": "Bible in a Year",
+                "expected_day": 260,
+                "today_complete": False,
+                "completed": 256,
+                "percent": 70,
+                "days_behind": 4,
+                "days_inactive": 5,
+                "next_day": 257,
+            }
+        ]
+
+        bodies = {
+            _reminder_payload(
+                self.profile, "morning", progress, date(2026, 9, 21) + timedelta(days=offset)
+            )["body"]
+            for offset in range(4)
+        }
+
+        self.assertEqual(len(bodies), 4)
+        self.assertTrue(any("4 days behind" in body and "catch up now" in body for body in bodies))
+        self.assertTrue(any("haven’t read in 5 days" in body for body in bodies))
+        self.assertIn("You’re 70% complete—keep going.", bodies)
+        self.assertTrue(any("Day 260" in body for body in bodies))
 
     def test_incomplete_suppresses_completed_today_but_always_sends(self):
         DayProgress.objects.create(
@@ -147,3 +199,52 @@ class PushNotificationTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 422)
+
+
+class NotificationDefaultMigrationTests(TestCase):
+    def test_only_untouched_profiles_receive_new_defaults(self):
+        users = [
+            get_user_model().objects.create_user(name)
+            for name in ("untouched", "customized", "subscribed")
+        ]
+        old_defaults = {
+            "morning_reminder_enabled": False,
+            "morning_reminder_time": time(7),
+            "evening_reminder_enabled": False,
+            "evening_reminder_time": time(20),
+            "shared_push_notifications": False,
+            "reminder_condition": "never",
+        }
+        untouched = Profile.objects.create(user=users[0], **old_defaults)
+        customized = Profile.objects.create(
+            user=users[1], **{**old_defaults, "morning_reminder_time": time(9)}
+        )
+        subscribed = Profile.objects.create(user=users[2], **old_defaults)
+        PushSubscription.objects.create(
+            user=users[2], endpoint="https://push.example/existing", p256dh="key", auth="secret"
+        )
+
+        class CurrentApps:
+            @staticmethod
+            def get_model(app_label, model_name):
+                self.assertEqual((app_label, model_name), ("study", "Profile"))
+                return Profile
+
+        migration = import_module(
+            "study.migrations.0012_profile_notification_setup_completed_and_more"
+        )
+        migration.apply_notification_defaults(CurrentApps(), None)
+
+        untouched.refresh_from_db()
+        customized.refresh_from_db()
+        subscribed.refresh_from_db()
+        self.assertTrue(untouched.morning_reminder_enabled)
+        self.assertEqual(untouched.morning_reminder_time, time(8))
+        self.assertTrue(untouched.evening_reminder_enabled)
+        self.assertTrue(untouched.shared_push_notifications)
+        self.assertEqual(untouched.reminder_condition, "incomplete")
+        self.assertFalse(untouched.notification_setup_completed)
+        self.assertEqual(customized.morning_reminder_time, time(9))
+        self.assertTrue(customized.notification_setup_completed)
+        self.assertFalse(subscribed.morning_reminder_enabled)
+        self.assertTrue(subscribed.notification_setup_completed)

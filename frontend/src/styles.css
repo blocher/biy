@@ -573,6 +573,9 @@ input[type="checkbox"] {
   padding: 18px 0;
   border-top: 1px solid #ecece4;
 }
+.reminder-time-row > div {
+  min-width: 0;
+}
 .reminder-time-row strong,
 .reminder-time-row small,
 .shared-push-setting strong,
@@ -615,7 +618,10 @@ input[type="checkbox"] {
 }
 .reminder-time {
   width: 132px;
+  min-width: 0;
+  max-width: 100%;
   min-height: 41px;
+  box-sizing: border-box;
 }
 .switch-control {
   position: relative;
@@ -747,6 +753,161 @@ input[type="checkbox"] {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.55;
+}
+.install-instructions {
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid #e0e2dc;
+  border-radius: 9px;
+  color: #4f625a;
+  background: #fffefa;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.install-instructions summary {
+  color: #31594e;
+  font-weight: 700;
+  cursor: pointer;
+}
+.install-instructions ol {
+  margin: 10px 0 8px;
+  padding-left: 18px;
+}
+.install-instructions li + li {
+  margin-top: 5px;
+}
+.install-instructions p {
+  color: var(--muted);
+}
+.notification-setup-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: #17261fb8;
+  backdrop-filter: blur(7px);
+}
+.notification-setup-modal {
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 48px);
+  padding: 34px 40px 30px;
+  overflow-y: auto;
+  border: 1px solid #d7caa5;
+  border-radius: 14px;
+  color: var(--ink);
+  background: #fffefa;
+  box-shadow: 0 24px 80px #071b144d;
+  text-align: center;
+}
+.notification-setup-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  place-items: center;
+  border-radius: 50%;
+  color: #8a6c2c;
+  background: #f4ecd4;
+}
+.notification-setup-modal h2 {
+  margin: 8px 0;
+  font-size: clamp(32px, 5vw, 46px);
+}
+.notification-setup-intro {
+  max-width: 540px;
+  margin: 0 auto 24px;
+  color: var(--muted);
+  font-family: var(--reading);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.notification-setup-options {
+  overflow: hidden;
+  border: 1px solid #ddd9cb;
+  border-radius: 11px;
+  text-align: left;
+}
+.notification-setup-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 42px 132px;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 18px;
+}
+.notification-setup-row + .notification-setup-row,
+.notification-setup-shared,
+.notification-setup-condition {
+  border-top: 1px solid #e7e4da;
+}
+.notification-setup-row > span:nth-child(2),
+.notification-setup-shared > span:nth-child(2) {
+  min-width: 0;
+}
+.notification-setup-row strong,
+.notification-setup-row small,
+.notification-setup-shared strong,
+.notification-setup-shared small {
+  display: block;
+}
+.notification-setup-row strong,
+.notification-setup-shared strong {
+  color: #25463d;
+  font-family: var(--serif);
+  font-size: 18px;
+}
+.notification-setup-row small,
+.notification-setup-shared small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.notification-setup-shared {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 18px;
+}
+.notification-setup-condition {
+  display: grid;
+  grid-template-columns: auto minmax(250px, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 14px 18px;
+  color: #31594e;
+  background: #f4f5ef;
+  font-size: 12px;
+  font-weight: 650;
+}
+.notification-setup-condition select {
+  min-width: 0;
+  width: 100%;
+  min-height: 40px;
+}
+.notification-setup-note {
+  margin: 18px auto 14px;
+  color: #65736b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.notification-setup-continue {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  padding: 14px 20px;
+  font-family: var(--serif);
+  font-size: 17px;
+}
+.notification-setup-later {
+  margin-top: 13px;
+}
+.notification-setup-unsupported {
+  margin-top: 9px;
+  color: #8a5c53;
+  font-size: 11px;
 }
 .text-button {
   padding: 3px 0;
@@ -1156,6 +1317,46 @@ input[type="checkbox"] {
   .reminder-time {
     grid-column: 2 / -1;
     width: 100%;
+  }
+  .notification-setup-backdrop {
+    align-items: end;
+    padding: 8px;
+  }
+  .notification-setup-modal {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    padding: 24px 18px 20px;
+    border-radius: 16px 16px 10px 10px;
+  }
+  .notification-setup-modal h2 {
+    font-size: 32px;
+  }
+  .notification-setup-intro {
+    margin-bottom: 18px;
+    font-size: 13px;
+  }
+  .notification-setup-row {
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    gap: 9px;
+    padding: 13px 12px;
+  }
+  .notification-setup-row .reminder-time {
+    grid-column: 2 / -1;
+    width: 100%;
+  }
+  .notification-setup-row strong,
+  .notification-setup-shared strong {
+    font-size: 16px;
+  }
+  .notification-setup-shared {
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    gap: 9px;
+    padding: 13px 12px;
+  }
+  .notification-setup-condition {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 13px 12px;
   }
   .reminder-condition > div {
     grid-template-columns: 1fr;
@@ -2814,6 +3015,15 @@ input[type="checkbox"] {
   top: auto !important;
   margin: 35px auto 0 !important;
   padding: 0 !important;
+}
+.reader-footer-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+.next-day-link {
+  margin-left: auto;
 }
 .reader-design #viewport-1-c-illustration {
   position: fixed !important;

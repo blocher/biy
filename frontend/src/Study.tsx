@@ -96,7 +96,9 @@ function StudyContent({
     [keyPointsOpen, setKeyPointsOpen] = useState(true),
     [editingCompletionDate, setEditingCompletionDate] = useState(false);
   const navigate = useNavigate(),
-    tab = search.get("tab") || (edition === "catechism" ? "catechism" : "scripture"),
+    tab =
+      search.get("tab") ||
+      (edition === "catechism" ? "catechism" : "scripture"),
     audio = useAudio();
   useEffect(() => {
     let live = true;
@@ -270,7 +272,10 @@ function StudyContent({
     );
   }
   const tabs = [
-    [edition === "catechism" ? "catechism" : "scripture", edition === "catechism" ? "Catechism" : "Scripture"],
+    [
+      edition === "catechism" ? "catechism" : "scripture",
+      edition === "catechism" ? "Catechism" : "Scripture",
+    ],
     ["transcript", "Full transcript"],
     ["commentary", "Commentary only"],
     ["edited", "Edited commentary"],
@@ -320,11 +325,13 @@ function StudyContent({
         <div className="empty-content">
           <BookOpen size={28} />
           <h3>Introductory episode</h3>
-          <p>This numbered day introduces a new part of the Catechism and has no assigned paragraphs.</p>
+          <p>
+            This numbered day introduces a new part of the Catechism and has no
+            assigned paragraphs.
+          </p>
         </div>
       )
-    ) :
-    selected === "scripture" && day ? (
+    ) : selected === "scripture" && day ? (
       <Scripture
         passages={day.scripture}
         audio={scriptureAudio}
@@ -485,9 +492,19 @@ function StudyContent({
             ),
             "viewport-1-c-reader": content,
             "viewport-1-c-footer-nav": (
-              <Link className="text-link" to={`${base}?tab=${selected}`}>
-                <ArrowLeft size={16} /> Back to study
-              </Link>
+              <div className="reader-footer-links">
+                <Link className="text-link" to={`${base}?tab=${selected}`}>
+                  <ArrowLeft size={16} /> Back to study
+                </Link>
+                {day && day.number < 365 && (
+                  <Link
+                    className="text-link next-day-link"
+                    to={`/day/${day.number + 1}`}
+                  >
+                    Next day <ArrowRight size={16} />
+                  </Link>
+                )}
+              </div>
             ),
           }}
         />
@@ -807,9 +824,9 @@ function StudyContent({
               ? "RSV SECOND CATHOLIC EDITION"
               : selected === "catechism"
                 ? "CATECHISM OF THE CATHOLIC CHURCH"
-              : selected === "edited"
-                ? "WRITTEN FOR REFLECTION"
-                : "LISTEN • READ • REFLECT"}
+                : selected === "edited"
+                  ? "WRITTEN FOR REFLECTION"
+                  : "LISTEN • READ • REFLECT"}
           </span>
           <button className="text-link" onClick={() => setChatOpen(true)}>
             Ask about this reading
@@ -960,7 +977,9 @@ function StudyTabAudio({
     <div className="study-tab-audio">
       <button
         className="study-tab-audio-play"
-        aria-label={episodeActive && audio.playing ? "Pause episode" : "Play episode"}
+        aria-label={
+          episodeActive && audio.playing ? "Pause episode" : "Play episode"
+        }
         onClick={() => (episodeActive ? audio.toggle() : audio.play(episode))}
       >
         {episodeActive && audio.playing ? (

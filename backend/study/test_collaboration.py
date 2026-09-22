@@ -26,9 +26,15 @@ class CollaborationTests(TestCase):
         )
 
     def test_preferences_persist_independently(self):
-        self.assertEqual(
-            self.client.get("/api/preferences").json()["progress_basis"], "first-completion"
-        )
+        defaults = self.client.get("/api/preferences").json()
+        self.assertEqual(defaults["progress_basis"], "first-completion")
+        self.assertTrue(defaults["morning_reminder_enabled"])
+        self.assertEqual(defaults["morning_reminder_time"], "08:00")
+        self.assertTrue(defaults["evening_reminder_enabled"])
+        self.assertEqual(defaults["evening_reminder_time"], "20:00")
+        self.assertTrue(defaults["shared_push_notifications"])
+        self.assertEqual(defaults["reminder_condition"], "incomplete")
+        self.assertFalse(defaults["notification_setup_completed"])
         self.write(
             "/preferences", {"progress_basis": "leaderboard", "email_notifications": False}, "patch"
         )

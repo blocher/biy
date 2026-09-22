@@ -15,6 +15,7 @@ export type Preferences = {
   evening_reminder_enabled: boolean;
   evening_reminder_time: string;
   shared_push_notifications: boolean;
+  notification_setup_completed: boolean;
 };
 export function usePreferences(onError: (message: string) => void) {
   const [preferences, setPreferences] = useState<Preferences | null>(null);
@@ -30,6 +31,12 @@ export function usePreferences(onError: (message: string) => void) {
       live = false;
     };
   }, [onError]);
+  useEffect(() => {
+    const synchronize = (event: Event) =>
+      setPreferences((event as CustomEvent<Preferences>).detail);
+    window.addEventListener("preferences-updated", synchronize);
+    return () => window.removeEventListener("preferences-updated", synchronize);
+  }, []);
   async function update(changes: Partial<Preferences>) {
     const previous = preferences;
     if (previous) setPreferences({ ...previous, ...changes });
@@ -37,6 +44,9 @@ export function usePreferences(onError: (message: string) => void) {
     try {
       const saved = await api<Preferences>("/preferences", "PATCH", changes);
       setPreferences(saved);
+      window.dispatchEvent(
+        new CustomEvent<Preferences>("preferences-updated", { detail: saved }),
+      );
       return saved;
     } catch (e) {
       setPreferences(previous);

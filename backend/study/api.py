@@ -198,6 +198,7 @@ class PreferencesIn(Schema):
     evening_reminder_enabled: bool | None = None
     evening_reminder_time: time | None = None
     shared_push_notifications: bool | None = None
+    notification_setup_completed: bool | None = None
 
 
 class PushSubscriptionIn(Schema):
@@ -231,6 +232,7 @@ def preferences(request):
         "evening_reminder_enabled": profile.evening_reminder_enabled,
         "evening_reminder_time": profile.evening_reminder_time.strftime("%H:%M"),
         "shared_push_notifications": profile.shared_push_notifications,
+        "notification_setup_completed": profile.notification_setup_completed,
         "leaderboard_start_date": edition_start_date(community_settings(), edition),
     }
 
@@ -523,7 +525,27 @@ def library(request):
     episode_progress = dict(
         EpisodeProgress.objects.filter(user=request.user).values_list("episode_id", "completed_at")
     )
-    episodes = list(Episode.objects.filter(edition=edition).select_related("era", "catechism_day"))
+    episodes = list(
+        Episode.objects.filter(edition=edition)
+        .select_related("era", "catechism_day")
+        .only(
+            "id",
+            "edition",
+            "day_id",
+            "catechism_day_id",
+            "era_id",
+            "title",
+            "published_at",
+            "source_date",
+            "duration",
+            "status",
+            "audio_file",
+            "era__name",
+            "era__color",
+            "catechism_day__part",
+            "catechism_day__color",
+        )
+    )
     if edition == "bible":
         by_day = {e.day_id: e for e in episodes if e.day_id}
         days = [

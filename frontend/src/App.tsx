@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -20,6 +20,7 @@ import { Leaderboard } from "./Leaderboard";
 import { Account } from "./Account";
 import { AdminPeople } from "./AdminPeople";
 import { Commentaries } from "./Commentaries";
+import { NotificationSetupModal } from "./NotificationSetupModal";
 import {
   EditionContext,
   editionName,
@@ -33,6 +34,8 @@ function AppContent() {
     [isAdmin, setIsAdmin] = useState(false),
     [checking, setChecking] = useState(true),
     [library, setLibrary] = useState<Library | null>(null),
+    [libraryFailure, setLibraryFailure] = useState(false),
+    [slowLibrary, setSlowLibrary] = useState(false),
     [error, setError] = useState(""),
     [username, setUsername] = useState("ben"),
     [password, setPassword] = useState(""),
@@ -44,10 +47,24 @@ function AppContent() {
     });
   const location = useLocation(),
     onError = useCallback((message: string) => setError(message), []);
+  const libraryRequest = useRef(0);
   const refresh = useCallback(() => {
+    const request = ++libraryRequest.current;
+    setLibraryFailure(false);
+    setSlowLibrary(false);
+    const slowTimer = window.setTimeout(() => {
+      if (libraryRequest.current === request) setSlowLibrary(true);
+    }, 10000);
     void api<Library>("/library")
-      .then(setLibrary)
-      .catch((e) => setError(e.message));
+      .then((result) => {
+        if (libraryRequest.current === request) setLibrary(result);
+      })
+      .catch((e) => {
+        if (libraryRequest.current !== request) return;
+        setLibraryFailure(true);
+        setError(e.message);
+      })
+      .finally(() => window.clearTimeout(slowTimer));
   }, []);
   useEffect(() => {
     api<{ user: { username: string; is_admin: boolean } | null; csrf: string }>(
@@ -71,6 +88,8 @@ function AppContent() {
   useEffect(() => {
     if (!user) return;
     let live = true;
+    const requestedEdition = storedEdition();
+    refresh();
     void api<{ bible_enabled: boolean; catechism_enabled: boolean }>(
       "/preferences",
     )
@@ -81,12 +100,15 @@ function AppContent() {
           catechism: preferences.catechism_enabled,
         };
         setAvailability(nextAvailability);
-        let next = storedEdition();
+        let next = requestedEdition;
         if (!nextAvailability[next])
           next = nextAvailability.bible ? "bible" : "catechism";
         persistEdition(next);
         setEditionState(next);
-        refresh();
+        if (next !== requestedEdition) {
+          setLibrary(null);
+          refresh();
+        }
       })
       .catch((e) => setError(e.message));
     return () => {
@@ -256,7 +278,11 @@ function AppContent() {
       <div className="loading">
         <Brand />
         <p role="status">Loading your reading plan…</p>
-        <button onClick={refresh}>Try again</button>
+        {(libraryFailure || slowLibrary) && (
+          <button onClick={refresh}>
+            {libraryFailure ? "Try again" : "Taking a while — try again"}
+          </button>
+        )}
         {notice}
       </div>
     );
@@ -378,6 +404,7 @@ function AppContent() {
                 />
               </Routes>
             </div>
+            <NotificationSetupModal onError={onError} />
             {notice}
           </AudioProvider>
         </AdminContext.Provider>

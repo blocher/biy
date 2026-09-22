@@ -4,7 +4,9 @@ from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from .importing import parse_feed
 from .management.commands.import_catechism import parse_page
@@ -143,6 +145,19 @@ class CatechismAPITests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(self.client.get("/api/library?edition=catechism").json()["completed"], 1)
         self.assertEqual(self.client.get("/api/library?edition=bible").json()["completed"], 0)
+
+    def test_library_does_not_load_large_episode_content_fields(self):
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get("/api/library?edition=catechism")
+
+        self.assertEqual(response.status_code, 200)
+        episode_queries = [
+            query["sql"] for query in queries if 'FROM "study_episode"' in query["sql"]
+        ]
+        self.assertEqual(len(episode_queries), 1)
+        self.assertNotIn('"transcript"', episode_queries[0])
+        self.assertNotIn('"formatted_transcript"', episode_queries[0])
+        self.assertNotIn('"formatted_commentary"', episode_queries[0])
 
     def test_account_requires_one_edition_and_controls_leaderboard_membership(self):
         response = self.client.patch(

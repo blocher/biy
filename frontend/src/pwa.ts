@@ -15,6 +15,7 @@ type InstallPrompt = Event & {
 
 let pendingInstall: InstallPrompt | null = null;
 const installListeners = new Set<() => void>();
+const installedListeners = new Set<() => void>();
 
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
@@ -22,10 +23,23 @@ window.addEventListener("beforeinstallprompt", (event) => {
   installListeners.forEach((listener) => listener());
 });
 
+window.addEventListener("appinstalled", () => {
+  pendingInstall = null;
+  installListeners.forEach((listener) => listener());
+  installedListeners.forEach((listener) => listener());
+});
+
 export function onInstallPromptChange(listener: () => void) {
   installListeners.add(listener);
   return () => {
     installListeners.delete(listener);
+  };
+}
+
+export function onAppInstalled(listener: () => void) {
+  installedListeners.add(listener);
+  return () => {
+    installedListeners.delete(listener);
   };
 }
 
@@ -47,6 +61,8 @@ export function isInstalled() {
     standalone?: boolean;
   };
   return (
+    (import.meta.env.DEV &&
+      new URLSearchParams(window.location.search).has("installed-preview")) ||
     window.matchMedia("(display-mode: standalone)").matches ||
     navigatorWithStandalone.standalone === true
   );
