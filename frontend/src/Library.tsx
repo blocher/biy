@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 import type { Library, Note } from "./types";
 import { api, date, dateInputValue, episodeTitle, shortDate } from "./api";
+import {
+  NoteEditorDialog,
+  noteEditorValue,
+  type NoteEditorValue,
+} from "./NoteEditorDialog";
 import { Sidebar } from "./navigation";
 import { planEntries, type PlanEntry } from "./planEntries";
 import { editionName, useEdition, type Edition } from "./Edition";
@@ -647,6 +652,7 @@ export function Journal({
   );
   const [community, setCommunity] = useState(false);
   const [person, setPerson] = useState("");
+  const [editing, setEditing] = useState<Note | null>(null);
   useEffect(() => {
     let live = true;
     setNotes(null);
@@ -668,6 +674,24 @@ export function Journal({
         .toLowerCase()
         .includes(query.toLowerCase()),
   );
+
+  async function saveEntry(value: NoteEditorValue) {
+    if (!editing) return;
+    const updated = await api<Note>(`/notes/${editing.id}`, "PUT", value);
+    setNotes(
+      (current) =>
+        current?.map((note) => (note.id === updated.id ? updated : note)) ||
+        null,
+    );
+  }
+
+  async function deleteEntry() {
+    if (!editing) return;
+    await api(`/notes/${editing.id}`, "DELETE");
+    setNotes(
+      (current) => current?.filter((note) => note.id !== editing.id) || null,
+    );
+  }
 
   return (
     <div className="app-frame">
@@ -751,11 +775,22 @@ export function Journal({
           <div className="journal-grid">
             {filteredNotes.map((n) => (
               <article className="journal-card" key={n.id}>
-                <span className="eyebrow">
-                  {community ? `${n.author.name} · ` : ""}
-                  {editionName(n.edition)} · {n.kind} · {date(n.created_at)}
-                  {n.shared ? " · Shared" : ""}
-                </span>
+                <div className="journal-card-header">
+                  <span className="eyebrow">
+                    {community ? `${n.author.name} · ` : ""}
+                    {editionName(n.edition)} · {n.kind} · {date(n.created_at)}
+                    {n.shared ? " · Shared" : ""}
+                  </span>
+                  {!community && (
+                    <button
+                      className="journal-card-edit"
+                      aria-label={`Edit ${n.kind}`}
+                      onClick={() => setEditing(n)}
+                    >
+                      <Pencil size={14} /> Edit
+                    </button>
+                  )}
+                </div>
                 <p>{n.body}</p>
                 {(n.quote || n.citation) && (
                   <blockquote className="note-quote">
@@ -804,6 +839,17 @@ export function Journal({
           </div>
         )}
       </main>
+      {editing && (
+        <NoteEditorDialog
+          open
+          mode="edit"
+          value={noteEditorValue(editing)}
+          onClose={() => setEditing(null)}
+          onSave={saveEntry}
+          onDelete={deleteEntry}
+          onError={onError}
+        />
+      )}
     </div>
   );
 }

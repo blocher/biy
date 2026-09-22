@@ -1975,6 +1975,28 @@ input[type="checkbox"] {
   border-radius: 10px;
   background: #fffdf8;
 }
+.journal-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.journal-card-header .eyebrow {
+  padding-top: 7px;
+}
+.journal-card-edit {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  padding: 6px 9px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.journal-card-edit:hover {
+  color: var(--ink);
+  background: #f3efe5;
+}
 .journal-card > p {
   white-space: pre-wrap;
   margin: 20px 0;
@@ -4802,6 +4824,33 @@ body:has(.reader-design) .player {
   justify-content: flex-end;
   gap: 10px;
   padding-top: 4px;
+}
+.reading-note-dialog footer .delete-note {
+  margin-right: auto;
+  color: #8a3f36;
+}
+.note-kind-switch {
+  justify-self: start;
+  margin: -2px 0 0;
+}
+.note-delete-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f8ebe7;
+  border: 1px solid #e9c8c0;
+  border-radius: 9px;
+}
+.note-delete-confirmation span {
+  margin-right: auto;
+  color: #71362f;
+  font-size: 13px;
+}
+.note-delete-confirmation .danger {
+  color: #fff;
+  background: #903f34;
+  border-color: #903f34;
 }
 .note-quote {
   margin-top: 14px;
