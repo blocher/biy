@@ -161,7 +161,6 @@ export function NoteEditorDialog({
           <label htmlFor={`${fieldId}-body`}>Your {noun}</label>
           <textarea
             id={`${fieldId}-body`}
-            autoFocus
             rows={6}
             maxLength={50000}
             value={draft.body}

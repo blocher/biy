@@ -11,7 +11,7 @@ export function useMobileDialogViewport(
     if (!open || !node || !viewport) return;
 
     let frame = 0;
-    const update = (keepFocused: boolean) => {
+    const update = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         if (!window.matchMedia("(max-width: 650px)").matches) {
@@ -21,25 +21,17 @@ export function useMobileDialogViewport(
         }
         node.style.setProperty("--dialog-viewport-top", `${viewport.offsetTop}px`);
         node.style.setProperty("--dialog-viewport-height", `${viewport.height}px`);
-        const active = document.activeElement;
-        if (keepFocused && active && node.contains(active) && active instanceof HTMLElement) {
-          active.scrollIntoView({ block: "nearest" });
-        }
       });
     };
-    const onResize = () => update(true);
-    const onScroll = () => update(false);
-    onResize();
-    viewport.addEventListener("resize", onResize);
-    viewport.addEventListener("scroll", onScroll);
-    window.addEventListener("resize", onResize);
-    node.addEventListener("focusin", onResize);
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
     return () => {
       cancelAnimationFrame(frame);
-      viewport.removeEventListener("resize", onResize);
-      viewport.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-      node.removeEventListener("focusin", onResize);
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
       node.style.removeProperty("--dialog-viewport-top");
       node.style.removeProperty("--dialog-viewport-height");
     };

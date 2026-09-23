@@ -390,6 +390,7 @@
   position: fixed;
   inset: 0;
   width: min(820px, calc(100vw - 40px));
+  height: min(760px, calc(100dvh - 56px));
   max-width: none;
   max-height: calc(100dvh - 56px);
   padding: 0;
@@ -398,8 +399,23 @@
   background: #fcfbf8;
   color: var(--ink);
   box-shadow: 0 18px 65px #172f2533;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
+}
+.reading-chat-surface,
+#reading-companion,
+#reading-companion-answer,
+#reading-companion-answer .study-chat,
+#reading-companion-answer #companion {
+  min-height: 0;
+}
+.reading-chat-surface,
+#reading-companion {
+  height: 100%;
+}
+#reading-companion {
+  display: flex;
+  flex-direction: column;
 }
 .reading-chat-dialog::backdrop {
   background: #15251e55;
@@ -441,7 +457,16 @@
   padding: 6px;
 }
 #reading-companion-answer {
-  padding: 20px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 20px 28px 0;
+}
+#reading-companion-answer .study-chat {
+  flex: 1;
+}
+#reading-companion-answer #companion {
+  height: 100%;
 }
 #reading-companion-answer .study-chat #companion {
   border: 0;
@@ -450,16 +475,26 @@
   display: flex;
   flex-direction: column;
 }
+#reading-companion-answer .chat-controls {
+  flex: none;
+}
 #reading-companion-answer #companion-meta {
   order: 0;
 }
 #reading-companion-answer #companion-form {
-  order: 1;
+  order: 3;
   border-top: 0;
-  padding: 0 0 16px;
+  padding: 12px 0 max(16px, env(safe-area-inset-bottom));
+  background: #fcfbf8;
+  flex: none;
 }
 #reading-companion-answer #companion-answer {
   order: 2;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 2px 18px;
 }
 #reading-companion-answer .chat-composer textarea {
   min-height: 56px;
@@ -549,7 +584,39 @@
     display: none;
   }
   #reading-companion-answer {
-    padding: 14px 16px 20px;
+    padding: 12px 16px 0;
+  }
+  #reading-companion-answer #companion-form {
+    border-top: 1px solid var(--line);
+    margin: 0 -16px;
+    padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+  }
+  #reading-companion-answer .chat-footnote {
+    display: none;
+  }
+  #reading-companion-answer #companion-form > form > label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  #reading-companion-answer .chat-privacy {
+    margin-top: 6px;
+  }
+  #reading-companion-answer .chat-composer {
+    flex-wrap: nowrap;
+    padding: 5px 6px;
+    align-items: center;
+  }
+  #reading-companion-answer .chat-composer textarea {
+    min-height: 42px;
+    max-height: 110px;
+    resize: none;
+    padding: 10px 8px;
   }
   #reading-companion-answer .chat-controls {
     gap: 10px;

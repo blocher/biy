@@ -4749,6 +4749,7 @@ body:has(.reader-design) .player {
   border: 1px solid #d9d4c8;
   border-radius: 16px;
   box-shadow: 0 30px 90px #173b3342;
+  overflow: hidden;
 }
 .reading-note-dialog::backdrop {
   background: #173b3333;
@@ -4758,6 +4759,8 @@ body:has(.reader-design) .player {
   display: grid;
   gap: 18px;
   padding: 26px;
+  max-height: inherit;
+  overflow-y: auto;
 }
 .reading-note-context summary {
   cursor: pointer;
@@ -4897,22 +4900,47 @@ body:has(.reader-design) .player {
   }
   .reading-note-dialog {
     position: fixed;
-    width: calc(100vw - 20px);
-    max-height: calc(var(--dialog-viewport-height, 100dvh) - 20px);
+    width: 100vw;
+    height: var(--dialog-viewport-height, 100dvh);
+    max-height: var(--dialog-viewport-height, 100dvh);
     top: var(--dialog-viewport-top, 0px);
     bottom: auto;
-    margin: 10px auto;
-    overflow-y: auto;
+    margin: 0;
+    border-radius: 0;
   }
   .reading-note-dialog form {
-    gap: 15px;
-    padding: 19px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    max-height: none;
+    overflow: hidden;
+    padding: 18px 18px max(12px, env(safe-area-inset-bottom));
+  }
+  .reading-note-dialog textarea {
+    flex: 1;
+    min-height: 0;
+    resize: none;
+  }
+  .reading-note-dialog header {
+    flex: none;
+    padding-bottom: 12px;
+  }
+  .reading-note-dialog .reading-note-context {
+    max-height: 22%;
+    overflow-y: auto;
+    flex: none;
+  }
+  .reading-note-dialog footer,
+  .reading-note-dialog .note-delete-confirmation,
+  .reading-note-dialog .reading-note-privacy {
+    flex: none;
   }
   .reading-note-dialog header h2 {
     font-size: 27px;
   }
   .reading-note-dialog footer button {
-    flex: 1;
+    flex: 0 1 auto;
   }
 }
 

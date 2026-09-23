@@ -181,19 +181,32 @@ export function ChatContent({
   const last = turns.at(-1);
   useEffect(() => {
     const previous = previousLast.current;
+    const scrollToTurn = () => {
+      if (embedded) {
+        const pane = newestTurn.current?.closest("#companion-answer");
+        if (pane instanceof HTMLElement && newestTurn.current) {
+          pane.scrollTop +=
+            newestTurn.current.getBoundingClientRect().top -
+            pane.getBoundingClientRect().top;
+        }
+      } else {
+        newestTurn.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
     if (
       last?.answer &&
       previous?.id === last.id &&
       previous.answerLength === 0
     ) {
-      newestTurn.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToTurn();
     } else if (last && previous?.id !== last.id && last.status !== "complete") {
-      end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (embedded) scrollToTurn();
+      else end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
     previousLast.current = last
       ? { id: last.id, answerLength: last.answer.length }
       : null;
-  }, [last?.id, last?.status, last?.answer]);
+  }, [embedded, last?.id, last?.status, last?.answer]);
   const context = chat.day
     ? `Day ${chat.day}`
     : chat.episode
