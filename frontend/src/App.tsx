@@ -24,11 +24,23 @@ import { NotificationSetupModal } from "./NotificationSetupModal";
 import {
   EditionContext,
   editionName,
+  lastPlanEdition,
+  persistPlanEdition,
   persistEdition,
   storedEdition,
   type Edition,
   type EditionAvailability,
 } from "./Edition";
+function LegacyStudyRedirect({ edition }: { edition: Edition }) {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const linked = params.get("edition");
+  const selected = linked === "bible" || linked === "catechism" ? linked : edition;
+  params.delete("edition");
+  const search = params.toString();
+  return <Navigate to={`/${selected}${location.pathname}${search ? `?${search}` : ""}${location.hash}`} replace />;
+}
+
 function AppContent() {
   const [user, setUser] = useState<string | null>(null),
     [isAdmin, setIsAdmin] = useState(false),
@@ -41,11 +53,13 @@ function AppContent() {
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false),
     [edition, setEditionState] = useState<Edition>(storedEdition),
+    [preferencesLoaded, setPreferencesLoaded] = useState(false),
     [availability, setAvailability] = useState<EditionAvailability>({
       bible: true,
       catechism: true,
     });
   const location = useLocation(),
+    pathEdition = /^\/(bible|catechism)(?:\/|$)/.exec(location.pathname)?.[1] as Edition | undefined,
     onError = useCallback((message: string) => setError(message), []);
   const libraryRequest = useRef(0);
   const refresh = useCallback(() => {
@@ -88,7 +102,9 @@ function AppContent() {
   useEffect(() => {
     if (!user) return;
     let live = true;
-    const requestedEdition = storedEdition();
+    const requestedEdition = pathEdition || storedEdition();
+    persistEdition(requestedEdition);
+    setEditionState(requestedEdition);
     refresh();
     void api<{ bible_enabled: boolean; catechism_enabled: boolean }>(
       "/preferences",
@@ -100,6 +116,7 @@ function AppContent() {
           catechism: preferences.catechism_enabled,
         };
         setAvailability(nextAvailability);
+        setPreferencesLoaded(true);
         let next = requestedEdition;
         if (!nextAvailability[next])
           next = nextAvailability.bible ? "bible" : "catechism";
@@ -110,7 +127,7 @@ function AppContent() {
           refresh();
         }
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => { setError(e.message); setPreferencesLoaded(true); });
     return () => {
       live = false;
     };
@@ -146,14 +163,19 @@ function AppContent() {
     [availability, edition, refresh],
   );
   useEffect(() => {
-    const linked = new URLSearchParams(location.search).get("edition");
+    const linked = pathEdition || (/^\/(day|episode|leaderboard)(?:\/|$)/.test(location.pathname)
+      ? new URLSearchParams(location.search).get("edition") : null);
     if (
       (linked === "bible" || linked === "catechism") &&
       availability[linked] &&
       linked !== edition
     )
       setEdition(linked);
-  }, [availability, edition, location.search, setEdition]);
+  }, [availability, edition, location.pathname, location.search, pathEdition, setEdition]);
+  useEffect(() => {
+    if (location.pathname === "/bible" || location.pathname === "/catechism")
+      persistPlanEdition(location.pathname.slice(1) as Edition);
+  }, [location.pathname]);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
@@ -273,7 +295,7 @@ function AppContent() {
         {notice}
       </div>
     );
-  if (!library)
+  if (!library || !preferencesLoaded || (pathEdition && edition !== pathEdition && availability[pathEdition]))
     return (
       <div className="loading">
         <Brand />
@@ -286,6 +308,10 @@ function AppContent() {
         {notice}
       </div>
     );
+  if (pathEdition && !availability[pathEdition]) {
+    const fallback = availability.bible ? "bible" : "catechism";
+    return <Navigate to={`/${fallback}${location.pathname.slice(pathEdition.length + 1)}${location.search}${location.hash}`} replace />;
+  }
   return (
     <EditionContext.Provider value={{ edition, availability, setEdition }}>
       <LogoutContext.Provider value={logout}>
@@ -310,8 +336,9 @@ function AppContent() {
                     />
                   }
                 />
+                <Route path="/" element={<Navigate to={`/${availability[lastPlanEdition()] ? lastPlanEdition() : availability.bible ? "bible" : "catechism"}${location.search}`} replace />} />
                 <Route
-                  path="/"
+                  path="/bible"
                   element={
                     <Home
                       key={edition}
@@ -322,9 +349,10 @@ function AppContent() {
                     />
                   }
                 />
+                <Route path="/catechism" element={<Home key={edition} user={user} library={library} onChange={refresh} onError={onError} />} />
                 <Route
                   path="/plan"
-                  element={<Navigate to={`/${location.search}`} replace />}
+                  element={<Navigate to={`/${edition}${location.search}`} replace />}
                 />
                 <Route path="/extras" element={<Navigate to="/" replace />} />
                 <Route
@@ -362,7 +390,10 @@ function AppContent() {
                     )
                   }
                 />
-                {["/day/:day", "/episode/:episode"].map((path) => (
+                {["/day/:day", "/episode/:episode", "/day/:day/reader", "/episode/:episode/reader"].map((path) => (
+                  <Route key={path} path={path} element={<LegacyStudyRedirect edition={edition} />} />
+                ))}
+                {["/:edition/day/:day", "/:edition/episode/:episode"].map((path) => (
                   <Route
                     key={path}
                     path={path}
@@ -376,7 +407,7 @@ function AppContent() {
                     }
                   />
                 ))}
-                {["/day/:day/reader", "/episode/:episode/reader"].map(
+                {["/:edition/day/:day/reader", "/:edition/episode/:episode/reader"].map(
                   (path) => (
                     <Route
                       key={path}

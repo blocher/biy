@@ -24,6 +24,7 @@ from .chat import (
 )
 from .chat_api import turn_data
 from .models import (
+    CatechismDay,
     Day,
     DayProgress,
     Commentary,
@@ -315,7 +316,55 @@ class StudyChatTests(TestCase):
         StudyConversation.objects.create(user=self.user, day=self.day2)
         StudyConversation.objects.create(user=self.other, day=self.day)
         result = self.client.get("/api/chat/conversations?day=1")
-        self.assertEqual([c["id"] for c in result.json()], [wanted.pk])
+        self.assertEqual([c["id"] for c in result.json()["items"]], [wanted.pk])
+        self.assertFalse(result.json()["has_more"])
+
+    def test_conversation_history_pages_and_deletes_older_items(self):
+        ids = []
+        for number in range(23):
+            conversation = StudyConversation.objects.create(user=self.user, day=self.day)
+            StudyTurn.objects.create(
+                conversation=conversation,
+                request_id=uuid4(),
+                question=f"Question {number}",
+            )
+            ids.append(conversation.pk)
+        first = self.client.get("/api/chat/conversations?day=1&page=1").json()
+        second = self.client.get("/api/chat/conversations?day=1&page=2").json()
+        self.assertEqual(
+            [item["id"] for item in first["items"]], list(reversed(ids[-20:]))
+        )
+        self.assertEqual(
+            [item["id"] for item in second["items"]], list(reversed(ids[:3]))
+        )
+        self.assertTrue(first["has_more"])
+        self.assertFalse(second["has_more"])
+        self.assertEqual(second["items"][0]["title"], "Question 2")
+        self.assertIn("last_activity", second["items"][0])
+        self.assertEqual(
+            self.client.delete(f"/api/chat/conversations/{ids[0]}").status_code,
+            200,
+        )
+        second_after_delete = self.client.get(
+            "/api/chat/conversations?day=1&page=2"
+        ).json()
+        self.assertNotIn(ids[0], [item["id"] for item in second_after_delete["items"]])
+
+    def test_catechism_history_uses_edition_and_day(self):
+        catechism_day = CatechismDay.objects.create(
+            number=1, part="Creed", color="#123f34"
+        )
+        wanted = StudyConversation.objects.create(
+            user=self.user, edition="catechism", catechism_day=catechism_day
+        )
+        StudyConversation.objects.create(user=self.user, day=self.day)
+        StudyConversation.objects.create(
+            user=self.other, edition="catechism", catechism_day=catechism_day
+        )
+        result = self.client.get("/api/chat/conversations?day=1&edition=catechism")
+        self.assertEqual([item["id"] for item in result.json()["items"]], [wanted.pk])
+        all_history = self.client.get("/api/chat/conversations?all_editions=true")
+        self.assertEqual(len(all_history.json()["items"]), 2)
 
     def test_sharing_revocation_removes_evidence_and_old_answer(self):
         note = self.note(user=self.other, shared=True)

@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowUpRight,
   BookOpen,
+  History,
   LockKeyhole,
   Plus,
   Send,
@@ -13,6 +14,7 @@ import { Sidebar } from "./navigation";
 import { Design } from "./Design";
 import { time } from "./api";
 import { useStudyChat, type ChatTurn } from "./useStudyChat";
+import { ChatHistoryPanel } from "./ChatHistoryPanel";
 import source from "./design/chat.html?raw";
 import "./studyChat.css";
 
@@ -156,11 +158,26 @@ export function Answer({ turn }: { turn: ChatTurn }) {
 
 export function StudyChat({ user }: { user: string }) {
   const chat = useStudyChat();
+  const [showHistory, setShowHistory] = useState(
+    () => new URLSearchParams(window.location.search).get("history") === "1",
+  );
   return (
     <div className="app-frame study-chat-frame">
       <Sidebar user={user} />
       <main className="study-chat-page">
-        <ChatContent chat={chat} />
+        {showHistory ? (
+          <ChatHistoryPanel
+            chat={chat}
+            onBack={() => setShowHistory(false)}
+            onSelect={(id) => {
+              if (id === null) chat.newConversation();
+              else chat.select(String(id));
+              setShowHistory(false);
+            }}
+          />
+        ) : (
+          <ChatContent chat={chat} onHistory={() => setShowHistory(true)} />
+        )}
       </main>
     </div>
   );
@@ -169,13 +186,17 @@ export function StudyChat({ user }: { user: string }) {
 export function ChatContent({
   chat,
   embedded = false,
+  onHistory,
 }: {
   chat: ReturnType<typeof useStudyChat>;
   embedded?: boolean;
+  onHistory: () => void;
 }) {
   const end = useRef<HTMLDivElement>(null);
   const newestTurn = useRef<HTMLElement>(null);
-  const previousLast = useRef<{ id: number; answerLength: number } | null>(null);
+  const previousLast = useRef<{ id: number; answerLength: number } | null>(
+    null,
+  );
   const editor = useRef<HTMLTextAreaElement>(null);
   const turns = chat.current?.turns ?? [];
   const last = turns.at(-1);
@@ -190,7 +211,10 @@ export function ChatContent({
             pane.getBoundingClientRect().top;
         }
       } else {
-        newestTurn.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        newestTurn.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       }
     };
     if (
@@ -201,7 +225,8 @@ export function ChatContent({
       scrollToTurn();
     } else if (last && previous?.id !== last.id && last.status !== "complete") {
       if (embedded) scrollToTurn();
-      else end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      else
+        end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
     previousLast.current = last
       ? { id: last.id, answerLength: last.answer.length }
@@ -213,9 +238,9 @@ export function ChatContent({
       ? "Extra episode"
       : "Your whole study";
   const returnTo = chat.day
-    ? `/day/${chat.day}`
+    ? `/${chat.current?.edition || chat.edition}/day/${chat.day}`
     : chat.episode
-      ? `/episode/${chat.episode}`
+      ? `/${chat.current?.edition || chat.edition}/episode/${chat.episode}`
       : "/";
   const examples =
     chat.edition === "catechism"
@@ -243,22 +268,9 @@ export function ChatContent({
         </div>
       )}
       <div className="chat-controls">
-        <label>
-          <span className="sr-only">Saved conversations</span>
-          <select
-            aria-label="Saved conversations"
-            disabled={chat.sending}
-            value={chat.current?.id ?? ""}
-            onChange={(e) => e.target.value && chat.select(e.target.value)}
-          >
-            <option value="">A new conversation</option>
-            {chat.saved.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        <button onClick={onHistory} disabled={chat.sending}>
+          <History size={17} /> History
+        </button>
         <button onClick={() => chat.newConversation()} disabled={chat.sending}>
           <Plus size={16} />
           New conversation
@@ -406,7 +418,9 @@ export function ChatContent({
                       </>
                     ) : t.status === "failed" ? (
                       <div className="chat-failure">
-                        <p role="alert" className="chat-notice">{t.error}</p>
+                        <p role="alert" className="chat-notice">
+                          {t.error}
+                        </p>
                         <button
                           disabled={chat.busy}
                           onClick={() => {

@@ -12,6 +12,14 @@ export function storedEdition(): Edition {
     : "bible";
 }
 
+export function lastPlanEdition(): Edition {
+  return typeof localStorage !== "undefined" && localStorage.getItem("daily-companion-last-plan") === "catechism" ? "catechism" : "bible";
+}
+
+export function persistPlanEdition(edition: Edition) {
+  if (typeof localStorage !== "undefined") localStorage.setItem("daily-companion-last-plan", edition);
+}
+
 export function persistEdition(edition: Edition) {
   if (typeof localStorage !== "undefined")
     localStorage.setItem(EDITION_STORAGE_KEY, edition);

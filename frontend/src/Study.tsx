@@ -59,7 +59,7 @@ export function Study(props: ComponentProps<typeof StudyContent>) {
   const params = useParams();
   return (
     <StudyContent
-      key={`${props.user}:${params.day || ""}:${params.episode || ""}`}
+      key={`${props.user}:${params.edition}:${params.day || ""}:${params.episode || ""}`}
       {...props}
     />
   );
@@ -146,7 +146,7 @@ function StudyContent({
         <main className="simple-page">
           <h1>Couldn’t open this study</h1>
           <p role="alert">{failure}</p>
-          <Link to="/">Back to reading plan</Link>
+          <Link to={`/${edition}`}>Back to reading plan</Link>
         </main>
       </div>
     );
@@ -161,7 +161,7 @@ function StudyContent({
     );
   const day = isDay ? (data as DayDetail) : null,
     episode = day ? day.episode : (data as Episode),
-    base = day ? `/day/${day.number}` : `/episode/${episode!.id}`;
+    base = day ? `/${edition}/day/${day.number}` : `/${edition}/episode/${episode!.id}`;
   const title = episode ? episodeTitle(episode.title) : day!.readings[0],
     completed = data.completed_at;
   const supplementarySpeakers = episode
@@ -533,7 +533,7 @@ function StudyContent({
                 {day && day.number < 365 && (
                   <Link
                     className="text-link next-day-link"
-                    to={`/day/${day.number + 1}`}
+                    to={`/${edition}/day/${day.number + 1}`}
                   >
                     Next day <ArrowRight size={16} />
                   </Link>
@@ -549,7 +549,7 @@ function StudyContent({
     "viewport-1-a-sidebar": <Sidebar user={user} embedded />,
     "viewport-1-a-header": (
       <>
-        <Link className="back-link" to="/">
+        <Link className="back-link" to={`/${edition}`}>
           <ArrowLeft size={15} /> Reading plan
         </Link>
         <span className="quiet">
@@ -925,12 +925,12 @@ function StudyContent({
     "viewport-2-b-audio-button": (
       <div className="day-navigation">
         {day && day.number > 1 && (
-          <Link to={`/day/${day.number - 1}`}>
+          <Link to={`/${edition}/day/${day.number - 1}`}>
             <ArrowLeft size={16} /> Day {day.number - 1}
           </Link>
         )}
         {day && day.number < 365 && (
-          <Link to={`/day/${day.number + 1}`}>
+          <Link to={`/${edition}/day/${day.number + 1}`}>
             Day {day.number + 1}
             <ArrowRight size={16} />
           </Link>

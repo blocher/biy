@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { ChatContent } from "./StudyChat";
+import { ChatHistoryPanel } from "./ChatHistoryPanel";
 import type { useStudyChat } from "./useStudyChat";
 import { Design } from "./Design";
 import source from "./design/reading-chat.html?raw";
@@ -28,6 +29,7 @@ export function ReadingChatDialog({
   readings: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [showHistory, setShowHistory] = useState(false);
   useMobileDialogViewport(dialog, open);
   useLayoutEffect(() => {
     const node = dialog.current;
@@ -45,8 +47,14 @@ export function ReadingChatDialog({
       ref={dialog}
       className="reading-chat-dialog"
       aria-label="Ask"
-      onCancel={onClose}
-      onClose={onClose}
+      onCancel={() => {
+        setShowHistory(false);
+        onClose();
+      }}
+      onClose={() => {
+        setShowHistory(false);
+        onClose();
+      }}
       onClick={(event) => {
         const link = (event.target as HTMLElement).closest('a[href^="/"]');
         if (link) onClose();
@@ -67,14 +75,36 @@ export function ReadingChatDialog({
                 <span>
                   <LockKeyhole size={14} /> Private to you
                 </span>
-                <button aria-label="Close Ask" onClick={onClose}>
+                <button
+                  aria-label="Close Ask"
+                  onClick={() => {
+                    setShowHistory(false);
+                    onClose();
+                  }}
+                >
                   <X size={22} />
                 </button>
               </>
             ),
             "reading-companion-divider": null,
             "reading-companion-question": null,
-            "reading-companion-answer": <ChatContent chat={chat} embedded />,
+            "reading-companion-answer": showHistory ? (
+              <ChatHistoryPanel
+                chat={chat}
+                onBack={() => setShowHistory(false)}
+                onSelect={(id) => {
+                  if (id === null) chat.newConversation();
+                  else chat.select(String(id));
+                  setShowHistory(false);
+                }}
+              />
+            ) : (
+              <ChatContent
+                chat={chat}
+                embedded
+                onHistory={() => setShowHistory(true)}
+              />
+            ),
             "reading-companion-divider-2": null,
             "reading-companion-composer": null,
             "reading-companion-disclaimer": null,
@@ -121,7 +151,7 @@ export function ReadingChatHistory({
         ),
         "reading-chats-list": chat.saved.length ? (
           <ul>
-            {chat.saved.map((c) => (
+            {chat.saved.slice(0, 3).map((c) => (
               <li key={c.id}>
                 <button
                   disabled={chat.sending}
@@ -143,7 +173,7 @@ export function ReadingChatHistory({
           </p>
         ),
         "reading-chats-privacy": (
-          <Link className="text-link" to="/chat">
+          <Link className="text-link" to="/chat?history=1">
             View all conversations <ChevronRight size={14} />
           </Link>
         ),

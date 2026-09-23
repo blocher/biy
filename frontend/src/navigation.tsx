@@ -17,7 +17,7 @@ export const AdminContext = createContext(false);
 export function Brand() {
   const { edition } = useEdition();
   return (
-    <Link className="brand" to="/" aria-label={`${editionName(edition)} home`}>
+    <Link className="brand" to={`/${edition}`} aria-label={`${editionName(edition)} home`}>
       <div className="brand-art">
         <Sun />
         <BookOpen />
@@ -44,7 +44,7 @@ export function Sidebar({
   function switchEdition(next: Edition) {
     if (next === edition) return;
     setEdition(next);
-    navigate("/");
+    navigate(`/${next}`);
   }
   const body = (
     <>
@@ -66,7 +66,7 @@ export function Sidebar({
         </div>
       )}
       <nav className="navigation" aria-label="Main navigation">
-        <NavLink to="/" end>
+        <NavLink to={`/${edition}`} end>
           <BookOpen size={20} /> Reading plan
         </NavLink>
         <NavLink to="/chat">

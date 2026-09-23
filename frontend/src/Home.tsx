@@ -113,7 +113,7 @@ export function Home({
           <>
             <Link
               className="primary continue-button"
-              to={`/day/${next.number}`}
+              to={`/${edition}/day/${next.number}`}
             >
               Continue Day {next.number}
               <ArrowRight size={21} />
@@ -121,7 +121,7 @@ export function Home({
             <span className="quiet">Your next unread day</span>
           </>
         ) : (
-          <Link className="primary" to="/">
+          <Link className="primary" to={`/${edition}`}>
             <CheckCircle2 size={20} /> Revisit your year
           </Link>
         ),

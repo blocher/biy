@@ -129,7 +129,7 @@ export function DayTable({
       if (value === null || value === "") nextParams.delete(name);
       else nextParams.set(name, String(value));
     }
-    return `/?${nextParams.toString()}`;
+    return `/${library.edition}?${nextParams.toString()}`;
   }
   useEffect(() => {
     const hasPage = params.has("page");
@@ -334,14 +334,14 @@ export function DayTable({
                       <td>
                         <Link
                           className="supplementary-kind"
-                          to={`/episode/${episode.id}`}
+                          to={`/${library.edition}/episode/${episode.id}`}
                         >
                           <Headphones size={16} />
                           <span>Supplement</span>
                         </Link>
                       </td>
                       <td>
-                        <Link to={`/episode/${episode.id}`}>
+                        <Link to={`/${library.edition}/episode/${episode.id}`}>
                           <strong>{episodeTitle(episode.title)}</strong>
                           <small>
                             Published {shortDate(episode.published_at)}
@@ -373,7 +373,7 @@ export function DayTable({
                       <td>
                         <Link
                           aria-label={`Open ${episodeTitle(episode.title)}`}
-                          to={`/episode/${episode.id}`}
+                          to={`/${library.edition}/episode/${episode.id}`}
                         >
                           <ArrowRight size={17} />
                         </Link>
@@ -392,10 +392,10 @@ export function DayTable({
                   >
                     <td>{checkbox(entry)}</td>
                     <td>
-                      <Link to={`/day/${day.number}`}>Day {day.number}</Link>
+                      <Link to={`/${library.edition}/day/${day.number}`}>Day {day.number}</Link>
                     </td>
                     <td>
-                      <Link to={`/day/${day.number}`}>
+                      <Link to={`/${library.edition}/day/${day.number}`}>
                         <strong>
                           {day.episode
                             ? episodeTitle(day.episode.title)
@@ -448,7 +448,7 @@ export function DayTable({
                     <td>
                       <Link
                         aria-label={`Open Day ${day.number}`}
-                        to={`/day/${day.number}`}
+                        to={`/${library.edition}/day/${day.number}`}
                       >
                         <ArrowRight size={17} />
                       </Link>
@@ -476,7 +476,7 @@ export function DayTable({
                     </span>
                     {checkbox(entry)}
                   </div>
-                  <Link to={`/episode/${episode.id}`}>
+                  <Link to={`/${library.edition}/episode/${episode.id}`}>
                     <h3>{episodeTitle(episode.title)}</h3>
                     <p>
                       {date(episode.published_at)} ·{" "}
@@ -501,7 +501,7 @@ export function DayTable({
                   <span className="eyebrow">DAY {day.number}</span>
                   {checkbox(entry)}
                 </div>
-                <Link to={`/day/${day.number}`}>
+                <Link to={`/${library.edition}/day/${day.number}`}>
                   <h3>
                     {day.episode
                       ? episodeTitle(day.episode.title)
@@ -645,13 +645,24 @@ export function Journal({
   onError: (e: string) => void;
 }) {
   const { availability, edition } = useEdition();
-  const [notes, setNotes] = useState<Note[] | null>(null),
-    [query, setQuery] = useState("");
-  const [editionFilter, setEditionFilter] = useState<"all" | Edition>(
-    availability.bible && availability.catechism ? "all" : edition,
-  );
-  const [community, setCommunity] = useState(false);
-  const [person, setPerson] = useState("");
+  const [notes, setNotes] = useState<Note[] | null>(null);
+  const [params, setParams] = useSearchParams();
+  const query = params.get("q") || "";
+  const requestedEdition = params.get("edition");
+  const editionFilter: "all" | Edition =
+    (requestedEdition === "bible" || requestedEdition === "catechism") && availability[requestedEdition]
+      ? requestedEdition
+      : availability.bible && availability.catechism ? "all" : edition;
+  const community = params.get("scope") === "community";
+  const person = community ? params.get("person") || "" : "";
+  function changeFilter(updates: Record<string, string | null>) {
+    const next = new URLSearchParams(params);
+    for (const [name, value] of Object.entries(updates)) {
+      if (value) next.set(name, value);
+      else next.delete(name);
+    }
+    setParams(next);
+  }
   const [editing, setEditing] = useState<Note | null>(null);
   useEffect(() => {
     let live = true;
@@ -707,8 +718,7 @@ export function Journal({
             aria-pressed={!community}
             className={!community ? "active" : ""}
             onClick={() => {
-              setCommunity(false);
-              setPerson("");
+              changeFilter({ scope: null, person: null });
             }}
           >
             My entries
@@ -717,8 +727,7 @@ export function Journal({
             aria-pressed={community}
             className={community ? "active" : ""}
             onClick={() => {
-              setCommunity(true);
-              setPerson("");
+              changeFilter({ scope: "community", person: null });
             }}
           >
             Community entries
@@ -734,7 +743,7 @@ export function Journal({
                 key={value}
                 aria-pressed={editionFilter === value}
                 className={editionFilter === value ? "active" : ""}
-                onClick={() => setEditionFilter(value)}
+                onClick={() => changeFilter({ edition: value === "all" ? null : value })}
               >
                 {value === "all" ? "Both editions" : editionName(value)}
               </button>
@@ -747,7 +756,7 @@ export function Journal({
             <select
               aria-label="Person"
               value={person}
-              onChange={(e) => setPerson(e.target.value)}
+              onChange={(e) => changeFilter({ person: e.target.value || null })}
             >
               <option value="">Everyone</option>
               {Array.from(
@@ -764,7 +773,7 @@ export function Journal({
           <Search size={17} />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => changeFilter({ q: e.target.value || null })}
             placeholder="Search reflections…"
             aria-label="Search reflections"
           />
@@ -803,8 +812,8 @@ export function Journal({
                   to={
                     n.source_url ||
                     (n.day || n.catechism_day
-                      ? `/day/${n.day || n.catechism_day}?edition=${n.edition}`
-                      : `/episode/${n.episode}?edition=${n.edition}`)
+                      ? `/${n.edition}/day/${n.day || n.catechism_day}`
+                      : `/${n.edition}/episode/${n.episode}`)
                   }
                 >
                   {n.source_url
@@ -833,7 +842,7 @@ export function Journal({
               Open a day and save a note or journal entry. Your reflections will
               collect here. Mark an entry Shared to share it with the community.
             </p>
-            <Link className="primary" to="/day/1">
+            <Link className="primary" to={`/${edition}/day/1`}>
               Begin with Day 1 <ArrowRight size={16} />
             </Link>
           </div>

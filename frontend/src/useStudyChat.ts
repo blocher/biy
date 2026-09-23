@@ -47,7 +47,11 @@ type Conversation = {
   episode: number | null;
   turns: ChatTurn[];
 };
-type SavedConversation = Omit<Conversation, "turns"> & { title: string };
+export type SavedConversation = Omit<Conversation, "turns"> & {
+  title: string;
+  last_activity: string;
+};
+type ConversationPage = { items: SavedConversation[]; has_more: boolean };
 type ChatStatus = {
   configured: boolean;
   magisterium_configured: boolean;
@@ -87,6 +91,12 @@ export function useStudyChat(scope?: {
   }
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [saved, setSaved] = useState<SavedConversation[]>([]);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [olderLoading, setOlderLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const savedRequest = useRef(0);
+  const nextPage = useRef(2);
   const [status, setStatus] = useState<ChatStatus | null>(null);
   const [question, setQuestion] = useState("");
   const [external, setExternal] = useState(true);
@@ -112,15 +122,60 @@ export function useStudyChat(scope?: {
     ? `?day=${scope.day}`
     : scope?.episode
       ? `?episode=${scope.episode}`
-      : "";
+      : "?all_editions=true";
   const refreshSaved = useCallback(() => {
-    void api<SavedConversation[]>(`/chat/conversations${savedScope}`)
+    const request = ++savedRequest.current;
+    setHistoryLoading(true);
+    setHistoryError("");
+    const separator = savedScope ? "&" : "?";
+    void api<ConversationPage>(
+      `/chat/conversations${savedScope}${separator}page=1`,
+    )
       .then((data) => {
-        if (alive.current) setSaved(data);
+        if (alive.current && request === savedRequest.current) {
+          setSaved(data.items);
+          setHasOlder(data.has_more);
+          nextPage.current = 2;
+        }
       })
-      .catch((e) => setError(e.message));
-  }, [savedScope]);
+      .catch((e) => {
+        if (alive.current && request === savedRequest.current)
+          setHistoryError(e.message);
+      })
+      .finally(() => {
+        if (alive.current && request === savedRequest.current)
+          setHistoryLoading(false);
+      });
+  }, [savedScope, edition]);
   useEffect(refreshSaved, [refreshSaved, id]);
+  async function loadOlder() {
+    if (!hasOlder || olderLoading || historyLoading) return;
+    const request = savedRequest.current;
+    const page = nextPage.current;
+    const separator = savedScope ? "&" : "?";
+    setOlderLoading(true);
+    setHistoryError("");
+    try {
+      const data = await api<ConversationPage>(
+        `/chat/conversations${savedScope}${separator}page=${page}`,
+      );
+      if (!alive.current || request !== savedRequest.current) return;
+      setSaved((current) => [
+        ...current,
+        ...data.items.filter(
+          (item) => !current.some((existing) => existing.id === item.id),
+        ),
+      ]);
+      setHasOlder(data.has_more);
+      nextPage.current = page + 1;
+    } catch (e) {
+      if (alive.current && request === savedRequest.current)
+        setHistoryError((e as Error).message);
+    } finally {
+      if (alive.current && request === savedRequest.current)
+        setOlderLoading(false);
+    }
+  }
   useEffect(() => {
     let active = true;
     const refresh = () => {
@@ -222,19 +277,31 @@ export function useStudyChat(scope?: {
     setError("");
     pendingRequest.current = null;
   }
-  async function remove() {
-    if (!current || !confirm("Delete this private conversation?")) return;
+  async function removeConversation(conversationId: number) {
+    if (
+      (current?.id === conversationId && busy) ||
+      !confirm("Delete this private conversation?")
+    )
+      return;
     try {
-      await api(`/chat/conversations/${current.id}`, "DELETE");
-      newConversation();
+      await api(`/chat/conversations/${conversationId}`, "DELETE");
+      if (current?.id === conversationId) newConversation();
       refreshSaved();
     } catch (e) {
+      setHistoryError((e as Error).message);
       setError((e as Error).message);
     }
+  }
+  async function remove() {
+    if (current) await removeConversation(current.id);
   }
   return {
     current,
     saved,
+    hasOlder,
+    historyLoading,
+    olderLoading,
+    historyError,
     status,
     question,
     setQuestion,
@@ -249,6 +316,8 @@ export function useStudyChat(scope?: {
     send,
     newConversation,
     remove,
+    removeConversation,
+    loadOlder,
     select,
   };
 }

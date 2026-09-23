@@ -5,7 +5,8 @@ from uuid import UUID
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import DateTimeField, Max, OuterRef, Q, Subquery
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router, Schema
@@ -110,26 +111,55 @@ def conversations(
     day: int | None = None,
     episode: int | None = None,
     edition: str = "bible",
+    all_editions: bool = False,
+    page: int = 1,
 ):
-    qs = StudyConversation.objects.filter(user=request.user, edition=edition)
+    if edition not in {"bible", "catechism"}:
+        raise HttpError(422, "Choose the Bible or Catechism edition.")
+    if page < 1:
+        raise HttpError(422, "Choose a valid history page.")
+    qs = StudyConversation.objects.filter(user=request.user)
+    if not all_editions:
+        qs = qs.filter(edition=edition)
     if day is not None:
-        qs = qs.filter(day_id=day) if edition == "bible" else qs.filter(catechism_day_id=day)
+        if all_editions:
+            qs = qs.filter(Q(day_id=day) | Q(catechism_day_id=day))
+        elif edition == "bible":
+            qs = qs.filter(day_id=day)
+        else:
+            qs = qs.filter(catechism_day_id=day)
     if episode is not None:
         qs = qs.filter(episode_id=episode)
-    return [
-        {
-            "id": c.pk,
-            "day": c.day_id,
-            "catechism_day": c.catechism_day_id,
-            "edition": c.edition,
-            "episode": c.episode_id,
-            "title": (
-                c.turns.order_by("pk").values_list("question", flat=True).first()
-                or "New conversation"
-            )[:100],
-        }
-        for c in qs.annotate(last_turn=Max("turns__created_at")).order_by("-last_turn", "-pk")[:30]
-    ]
+    first_question = (
+        StudyTurn.objects.filter(conversation_id=OuterRef("pk"))
+        .order_by("pk")
+        .values("question")[:1]
+    )
+    page_size = 20
+    start = (page - 1) * page_size
+    rows = list(
+        qs.annotate(last_turn=Max("turns__created_at"))
+        .annotate(
+            activity_at=Coalesce("last_turn", "created_at", output_field=DateTimeField())
+        )
+        .annotate(first_question=Subquery(first_question))
+        .order_by("-activity_at", "-pk")[start : start + page_size + 1]
+    )
+    return {
+        "items": [
+            {
+                "id": c.pk,
+                "day": c.day_id,
+                "catechism_day": c.catechism_day_id,
+                "edition": c.edition,
+                "episode": c.episode_id,
+                "title": (c.first_question or "New conversation")[:100],
+                "last_activity": c.activity_at.isoformat(),
+            }
+            for c in rows[:page_size]
+        ],
+        "has_more": len(rows) > page_size,
+    }
 
 
 @router.get("/conversations/{conversation_id}")

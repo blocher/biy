@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { LockKeyhole, CalendarDays } from "lucide-react";
 import { api, date } from "./api";
 import { Sidebar } from "./navigation";
 import { Design } from "./Design";
-import { BasisSelect, usePreferences } from "./Preferences";
+import { usePreferences } from "./Preferences";
 import { scheduleDelta } from "./progress";
 import source from "./design/leaderboard.html?raw";
 import "./design/leaderboard.css";
@@ -26,6 +26,17 @@ export function Leaderboard({
 }) {
   const { edition, availability, setEdition } = useEdition();
   const prefs = usePreferences(onError);
+  const [params, setParams] = useSearchParams();
+  const selected = params.get("edition");
+  const filterEdition = (selected === "bible" || selected === "catechism") && availability[selected] ? selected : edition;
+  const requestedBasis = params.get("basis");
+  const basis = requestedBasis === "first-completion" || requestedBasis === "leaderboard" || requestedBasis === "january-1"
+    ? requestedBasis : prefs.preferences?.progress_basis || "first-completion";
+  function changeFilter(name: string, value: string) {
+    const next = new URLSearchParams(params);
+    next.set(name, value);
+    setParams(next);
+  }
   const [readers, setReaders] = useState<Reader[] | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -43,7 +54,7 @@ export function Leaderboard({
     return () => {
       live = false;
     };
-  }, [edition, onError]);
+  }, [filterEdition, onError]);
   const settings = prefs.preferences;
   return (
     <Design
@@ -70,16 +81,23 @@ export function Leaderboard({
                 {(["bible", "catechism"] as const).map((value) => (
                   <button
                     key={value}
-                    aria-pressed={edition === value}
-                    className={edition === value ? "active" : ""}
-                    onClick={() => setEdition(value)}
+                    aria-pressed={filterEdition === value}
+                    className={filterEdition === value ? "active" : ""}
+                    onClick={() => { changeFilter("edition", value); setEdition(value); }}
                   >
                     {editionName(value)}
                   </button>
                 ))}
               </div>
             )}
-            <BasisSelect {...prefs} />
+            <label className="progress-basis">
+              <span>Schedule starts from</span>
+              <select aria-label="Schedule starts from" value={basis} onChange={(e) => changeFilter("basis", e.target.value)}>
+                <option value="first-completion">Personal start dates</option>
+                <option value="leaderboard">Leaderboard start date</option>
+                <option value="january-1">January 1</option>
+              </select>
+            </label>
             <div className="leaderboard-date">
               <span>Leaderboard start date</span>
               <Link to="/account">
@@ -90,12 +108,12 @@ export function Leaderboard({
               </Link>
             </div>
             <p className="basis-explanation">
-              {settings?.progress_basis === "first-completion"
+              {basis === "first-completion"
                 ? "Each person’s schedule begins on their first completed reading day."
-                : settings?.progress_basis === "january-1"
+                : basis === "january-1"
                   ? "Everyone’s schedule begins on January 1 of this year."
                   : "Everyone’s schedule begins on the shared leaderboard start date."}{" "}
-              Your selection is saved to your account.
+              This view can be bookmarked.
             </p>
           </>
         ),
@@ -125,7 +143,7 @@ export function Leaderboard({
                     const delta = scheduleDelta(
                       reader.completed,
                       reader.first_completed,
-                      settings.progress_basis,
+                      basis,
                       settings.leaderboard_start_date,
                     );
                     return (
