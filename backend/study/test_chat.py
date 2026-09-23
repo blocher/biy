@@ -650,7 +650,7 @@ class StudyChatTests(TestCase):
         author = CommentaryAuthor.objects.create(
             name="Early Witness", default_year=120, category="Early Fathers"
         )
-        Commentary.objects.create(
+        commentary = Commentary.objects.create(
             external_id="00000000-0000-0000-0000-000000000010",
             author=author,
             file_name="Early.toml",
@@ -693,7 +693,7 @@ class StudyChatTests(TestCase):
                         "paragraphs": [
                             {
                                 "text": "An early witness reads this as a claim about creation.",
-                                "source_ids": ["H1"],
+                                "source_ids": [f"H{commentary.pk}"],
                             }
                         ],
                         "follow_ups": [
@@ -709,7 +709,7 @@ class StudyChatTests(TestCase):
 
         turn.refresh_from_db()
         self.assertEqual(turn.status, "complete")
-        self.assertIn("[H1]", turn.answer)
+        self.assertIn(f"[H{commentary.pk}]", turn.answer)
         self.assertEqual(turn.sources[0]["kind"], "historical_commentary")
         self.assertIn("get_historical_commentaries", str(factory.return_value.responses.create.call_args_list[0].kwargs["tools"]))
 

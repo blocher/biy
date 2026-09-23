@@ -23,8 +23,10 @@ from pydantic import Field
 from .chat_api import router as chat_router
 from .commentaries import (
     CommentaryRange,
+    commentary_rows,
     commentary_ranges_for_readings,
     matching_references,
+    ordered_commentary_ids,
     year_label,
 )
 from .models import (
@@ -741,30 +743,31 @@ def commentaries(
             location_end__gte=passage_range.start,
             location_start__lte=passage_range.end,
         )
-    entries = Commentary.objects.filter(passage_query).select_related("author")
+    entries = Commentary.objects.filter(passage_query)
     if from_year is not None:
         entries = entries.filter(year__gte=from_year)
     if to_year is not None:
         entries = entries.filter(year__lte=to_year)
     if category:
         entries = entries.filter(author__category=category)
-    entries = entries.order_by("year", "id")
-    total = entries.count()
+    ordered_ids = ordered_commentary_ids(entries)
+    total = len(ordered_ids)
     focused_page = False
     if focus is not None and page == 1:
-        focused = entries.filter(pk=focus).first()
-        if focused is not None:
-            position = entries.filter(
-                Q(year__lt=focused.year) | Q(year=focused.year, pk__lte=focused.pk)
-            ).count()
+        try:
+            position = ordered_ids.index(focus) + 1
+        except ValueError:
+            pass
+        else:
             page = ((position - 1) // page_size) + 1
             focused_page = True
     if focused_page:
         offset = 0
-        rows = entries[: page * page_size]
+        page_ids = ordered_ids[: page * page_size]
     else:
         offset = (page - 1) * page_size
-        rows = entries[offset : offset + page_size]
+        page_ids = ordered_ids[offset : offset + page_size]
+    rows = commentary_rows(page_ids)
     year_bounds = Commentary.objects.aggregate(min_year=Min("year"), max_year=Max("year"))
     return {
         "day": day_record.number,

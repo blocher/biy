@@ -82,6 +82,19 @@ def year_label(year: int) -> str:
     return f"c. AD {year}"
 
 
+def ordered_commentary_ids(queryset) -> list[int]:
+    """Use the passage index before ordering the much smaller matching set."""
+
+    matches = queryset.order_by().values_list("year", "pk")
+    return [pk for _, pk in sorted(matches)]
+
+
+def commentary_rows(ids: list[int]) -> list[Commentary]:
+    rows = Commentary.objects.select_related("author").filter(pk__in=ids)
+    by_id = {row.pk: row for row in rows}
+    return [by_id[pk] for pk in ids if pk in by_id]
+
+
 def historical_commentaries(
     reference: str | None = None,
     day: int | None = None,
@@ -116,11 +129,9 @@ def historical_commentaries(
             location_end__gte=passage_range.start,
             location_start__lte=passage_range.end,
         )
-    queryset = Commentary.objects.select_related("author").filter(overlap).order_by(
-        "year", "pk"
-    )
-    total = queryset.count()
-    rows = list(queryset[offset : offset + limit])
+    ordered_ids = ordered_commentary_ids(Commentary.objects.filter(overlap))
+    total = len(ordered_ids)
+    rows = commentary_rows(ordered_ids[offset : offset + limit])
     sources = []
     for row in rows:
         author = row.author
