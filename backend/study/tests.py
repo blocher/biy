@@ -125,6 +125,19 @@ class TranscriptionTests(TestCase):
 
 
 class ScriptureTests(TestCase):
+    def test_import_restores_missing_sentence_space_in_source(self):
+        with TemporaryDirectory() as directory:
+            Path(directory, "01_gen_text_5.html").write_text(
+                '<verse id="v01005001"><verse_body><ver>1</ver>'
+                'This is the book of the generations of Adam.When God created man, '
+                'he made him in the likeness of God.</verse_body></verse>'
+            )
+            call_command("import_bible", source=directory)
+        self.assertIn(
+            "Adam. When God",
+            Verse.objects.get(book="Genesis", chapter=5, number=1).text,
+        )
+
     def test_import_preserves_punctuation_next_to_inline_markup(self):
         with TemporaryDirectory() as directory:
             Path(directory, "01_gen_text_1.html").write_text(

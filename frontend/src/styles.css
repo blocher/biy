@@ -4751,6 +4751,27 @@ body:has(.reader-design) .player {
   box-shadow: 0 30px 90px #173b3342;
   overflow: hidden;
 }
+.completion-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 30px;
+  color: var(--ink);
+  background: #fffdf8;
+  border: 1px solid #d9d4c8;
+  border-radius: 18px;
+  box-shadow: 0 30px 90px #173b3342;
+  text-align: center;
+}
+.completion-dialog::backdrop { background: #173b3355; backdrop-filter: blur(3px); }
+.completion-dialog-close { position: absolute; top: 14px; right: 14px; padding: 6px; background: transparent; border: 0; color: var(--muted); cursor: pointer; }
+.completion-dialog-icon { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: #e4f1e9; color: #287448; }
+.completion-dialog h2 { margin: 14px 0 6px; font-size: 24px; }
+.completion-dialog p { margin: 0 0 24px; color: var(--muted); }
+.completion-dialog-actions { display: grid; gap: 10px; }
+.completion-dialog-actions button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 9px; cursor: pointer; }
+.completion-dialog-actions .primary { width: 100%; }
+.completion-dialog-secondary { background: #fff; border: 1px solid #d9d4c8; color: var(--ink); }
+.completion-dialog-secondary:disabled { opacity: .65; cursor: wait; }
+.completion-dialog-home { background: transparent; border: 0; color: var(--muted); }
 .reading-note-dialog::backdrop {
   background: #173b3333;
   backdrop-filter: blur(3px);

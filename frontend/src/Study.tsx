@@ -1,5 +1,7 @@
 import {
   useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
   type ReactNode,
   type ComponentProps,
@@ -10,6 +12,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -34,7 +37,7 @@ import {
   shortDate,
   time,
 } from "./api";
-import type { DayDetail, Episode, ScriptureAudioCue, Segment } from "./types";
+import type { DayDetail, Episode, Library, ScriptureAudioCue, Segment } from "./types";
 import { Design } from "./Design";
 import studySource from "./design/study.html?raw";
 import readerSource from "./design/reader.html?raw";
@@ -78,7 +81,7 @@ function StudyContent({
   onChange: () => void;
   reader?: boolean;
 }) {
-  const { edition } = useEdition();
+  const { edition, availability, setEdition } = useEdition();
   const params = useParams(),
     isDay = !!params.day,
     target = isDay ? `/days/${params.day}` : `/episodes/${params.episode}`;
@@ -94,6 +97,9 @@ function StudyContent({
       () => Number(localStorage.getItem("biy-font-size")) || 20,
     ),
     [saving, setSaving] = useState(false),
+    [completionOpen, setCompletionOpen] = useState(false),
+    [otherNextDay, setOtherNextDay] = useState<number | null>(null),
+    [otherLoading, setOtherLoading] = useState(false),
     [keyPointsOpen, setKeyPointsOpen] = useState(true),
     [editingCompletionDate, setEditingCompletionDate] = useState(false);
   const navigate = useNavigate(),
@@ -101,6 +107,14 @@ function StudyContent({
       search.get("tab") ||
       (edition === "catechism" ? "catechism" : "scripture"),
     audio = useAudio();
+  const completionDialog = useRef<HTMLDialogElement>(null);
+  const otherEdition = edition === "bible" ? "catechism" : "bible";
+  useLayoutEffect(() => {
+    const dialog = completionDialog.current;
+    if (!completionOpen || !dialog) return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, [completionOpen]);
   useEffect(() => {
     let live = true;
     setData(null);
@@ -119,6 +133,9 @@ function StudyContent({
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [target, reader]);
+  useLayoutEffect(() => {
+    if (reader && !window.location.hash) window.scrollTo(0, 0);
+  }, [reader, tab]);
   useEffect(() => {
     const before = document.title;
     document.title = data
@@ -181,6 +198,17 @@ function StudyContent({
         current ? { ...current, completed_at: result.completed_at } : current,
       );
       onChange();
+      if (!completed && result.completed_at) {
+        setCompletionOpen(true);
+        setOtherNextDay(null);
+        if (availability[otherEdition]) {
+          setOtherLoading(true);
+          void api<Library>(`/library?edition=${otherEdition}`)
+            .then((library) => setOtherNextDay(library.next_day))
+            .catch(() => setOtherNextDay(null))
+            .finally(() => setOtherLoading(false));
+        }
+      }
     } catch (e) {
       onError((e as Error).message);
     } finally {
@@ -212,6 +240,39 @@ function StudyContent({
       <Check size={17} />
       {saving ? "Saving…" : completed ? "Completed" : "Mark complete"}
     </button>
+  );
+  const completionModal = createPortal(
+    <dialog
+      ref={completionDialog}
+      className="completion-dialog"
+      aria-labelledby="completion-dialog-title"
+      onClose={() => setCompletionOpen(false)}
+    >
+      <button className="completion-dialog-close" aria-label="Close" onClick={() => setCompletionOpen(false)}><X size={20} /></button>
+      <span className="completion-dialog-icon"><Check size={22} /></span>
+      <h2 id="completion-dialog-title">{day ? `Day ${day.number} complete` : "Episode complete"}</h2>
+      <p>Where would you like to go next?</p>
+      <div className="completion-dialog-actions">
+        {day && day.number < 365 && (
+          <button className="primary" onClick={() => { setCompletionOpen(false); navigate(`/${edition}/day/${day.number + 1}`); }}>
+            Go to next day <ArrowRight size={17} />
+          </button>
+        )}
+        {availability[otherEdition] && (otherLoading || otherNextDay !== null) && (
+          <button className="completion-dialog-secondary" disabled={otherLoading} onClick={() => {
+            if (otherNextDay === null) return;
+            setCompletionOpen(false);
+            setEdition(otherEdition);
+            navigate(`/${otherEdition}/day/${otherNextDay}`);
+          }}>
+            {otherLoading ? `Finding your next ${otherEdition === "bible" ? "Bible" : "Catechism"} day…` : `Go to ${otherEdition === "bible" ? "Bible" : "Catechism"} Day ${otherNextDay}`}
+            {!otherLoading && <ArrowRight size={17} />}
+          </button>
+        )}
+        <button className="completion-dialog-home" onClick={() => { setCompletionOpen(false); navigate("/"); }}>Go home</button>
+      </div>
+    </dialog>,
+    document.body,
   );
   const empty = (
     <div className="empty-content">
@@ -495,6 +556,7 @@ function StudyContent({
   if (reader)
     return (
       <div style={{ "--reading-size": `${size}px` } as React.CSSProperties}>
+        {completionModal}
         {chatDialog}
         <Design
           source={readerSource}
@@ -940,6 +1002,7 @@ function StudyContent({
   };
   return (
     <>
+      {completionModal}
       {chatDialog}
       <Design
         source={studySource}

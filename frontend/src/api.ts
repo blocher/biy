@@ -10,7 +10,9 @@ export async function api<T>(
   body?: unknown,
 ): Promise<T> {
   const separator = path.includes("?") ? "&" : "?";
-  const editionPath = `${path}${separator}edition=${storedEdition()}`;
+  const editionPath = /[?&]edition=/.test(path)
+    ? path
+    : `${path}${separator}edition=${storedEdition()}`;
   const response = await fetch("/api" + editionPath, {
     method,
     credentials: "same-origin",

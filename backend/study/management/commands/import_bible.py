@@ -23,6 +23,9 @@ def verse_body_text(body):
     # Inline markup does not imply a word boundary: punctuation often follows
     # a linked phrase immediately in the source HTML.
     text = re.sub(r"[^\S\n]+", " ", body.get_text(""))
+    # The source has "Adam.When" in Genesis 5:1. Restore the missing
+    # sentence boundary without changing spacing around inline markup.
+    text = re.sub(r"(?<=[a-z][.!?])(?=[A-Z][a-z])", " ", text)
     return re.sub(r" *(?:\n *)+", "\n", text).strip()
 
 
