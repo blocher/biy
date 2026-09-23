@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { LockKeyhole, Trash2, X } from "lucide-react";
 import type { Note } from "./types";
+import { useMobileDialogViewport } from "./useMobileDialogViewport";
 
 export type NoteEditorValue = Pick<
   Note,
@@ -43,6 +44,7 @@ export function NoteEditorDialog({
   onError: (message: string) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  useMobileDialogViewport(dialog, open);
   const fieldId = useId();
   const [draft, setDraft] = useState(value);
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
@@ -148,10 +150,13 @@ export function NoteEditorDialog({
             </div>
           )}
           {(draft.quote || draft.citation) && (
-            <blockquote className="reading-note-selection">
-              {draft.citation && <cite>{draft.citation}</cite>}
-              {draft.quote && <p>“{draft.quote}”</p>}
-            </blockquote>
+            <details className="reading-note-context">
+              <summary>From {draft.citation || "this reading"}</summary>
+              <blockquote className="reading-note-selection">
+                {draft.citation && <cite>{draft.citation}</cite>}
+                {draft.quote && <p>“{draft.quote}”</p>}
+              </blockquote>
+            </details>
           )}
           <label htmlFor={`${fieldId}-body`}>Your {noun}</label>
           <textarea

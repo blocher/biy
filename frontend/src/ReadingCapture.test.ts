@@ -21,7 +21,7 @@ describe("buildSelectionQuestion", () => {
       sourceUrl: "/day/1?tab=transcript#segment-12",
     });
 
-    expect(question.length).toBeLessThan(4000);
+    expect(question.length).toBeLessThan(800);
     expect(question).toContain("…”");
   });
 });

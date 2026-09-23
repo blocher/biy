@@ -4,11 +4,14 @@ from types import SimpleNamespace as NS
 from unittest.mock import patch
 from uuid import uuid4
 
+import httpx
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
+from openai import RateLimitError
 
 from .chat import (
+    AnswerPreview,
     catholic_sources,
     chat_model_for,
     context_for,
@@ -60,9 +63,78 @@ class StudyChatTests(TestCase):
     def test_chat_model_routes_direct_questions_to_luna_and_summaries_to_terra(self):
         self.assertEqual(chat_model_for("What is fiat lux?"), "gpt-5.6-luna")
         self.assertEqual(
+            chat_model_for(
+                "In John 1:5, I highlighted:\n\n“"
+                + "word " * 80
+                + "”\n\nWhat should I notice here?"
+            ),
+            "gpt-5.6-luna",
+        )
+        self.assertEqual(
             chat_model_for("Summarize the readings and explain the main themes in detail."),
             "gpt-5.6-terra",
         )
+
+    def test_answer_preview_waits_for_complete_paragraph_and_citations(self):
+        preview = AnswerPreview()
+        self.assertEqual(preview.feed('{"paragraphs":[{"text":"A \\"quote\\"'), [])
+        self.assertEqual(preview.feed(', still writing","source_ids":["S1"'), [])
+        self.assertEqual(
+            preview.feed(']},{"text":"Second","source_ids":[]}],"links":[]'),
+            [
+                {"text": 'A "quote", still writing', "source_ids": ["S1"]},
+                {"text": "Second", "source_ids": []},
+            ],
+        )
+        self.assertEqual(preview.feed(',"follow_ups":[] }'), [])
+
+    @patch("study.chat.client")
+    def test_streaming_turn_publishes_only_cited_complete_paragraphs(self, factory):
+        self.note()
+        source = search_site(self.user, "Eucharist", semantic=False)["sources"][0]
+        conversation = StudyConversation.objects.create(user=self.user, day=self.day)
+        turn = StudyTurn.objects.create(
+            conversation=conversation,
+            request_id=uuid4(),
+            question="What does this reflection say about the Eucharist?",
+            web_enabled=False,
+            status="running",
+        )
+        complete = {
+            "paragraphs": [
+                {"text": "The reflection mentions sacrifice.", "source_ids": [source["id"]]},
+                {"text": "This needs another source.", "source_ids": ["S999999"]},
+            ],
+            "follow_ups": ["What else?", "How does it connect?"],
+            "links": [],
+        }
+
+        def events():
+            yield NS(type="response.output_text.delta", delta='{"paragraphs":[{"text":"The reflection')
+            turn.refresh_from_db()
+            self.assertEqual(turn.answer, "")
+            yield NS(
+                type="response.output_text.delta",
+                delta=f' mentions sacrifice.","source_ids":["{source["id"]}"]}},',
+            )
+            turn.refresh_from_db()
+            self.assertIn("The reflection mentions sacrifice.", turn.answer)
+            visible = turn_data(turn, self.user)
+            self.assertEqual([item["id"] for item in visible["sources"]], [source["id"]])
+            yield NS(
+                type="response.output_text.delta",
+                delta='{"text":"This needs another source.","source_ids":["S999999"]}],"follow_ups":[],"links":[]}',
+            )
+            turn.refresh_from_db()
+            self.assertNotIn("This needs another source.", turn.answer)
+            yield NS(type="response.completed", response=NS(output=[], output_text=json.dumps(complete)))
+
+        factory.return_value.responses.create.return_value = events()
+        run_turn(turn)
+        turn.refresh_from_db()
+        self.assertEqual(turn.status, "complete")
+        self.assertIn("[source unavailable]", turn.answer)
+        self.assertTrue(factory.return_value.responses.create.call_args.kwargs["stream"])
 
     def test_internal_navigation_paths_are_allowlisted(self):
         self.assertEqual(
@@ -428,13 +500,30 @@ class StudyChatTests(TestCase):
     def test_worker_marks_failure_without_leaking_provider_body(self, run):
         c = StudyConversation.objects.create(user=self.user)
         turn = StudyTurn.objects.create(
-            conversation=c, question="test", request_id=uuid4()
+            conversation=c, question="test", request_id=uuid4(), answer="unfinished"
         )
         run.side_effect = RuntimeError("secret material")
         self.assertTrue(process_chat())
         turn.refresh_from_db()
         self.assertEqual(turn.status, "failed")
+        self.assertEqual(turn.answer, "")
         self.assertNotIn("secret", turn.error)
+
+    @patch("study.chat.run_turn")
+    def test_worker_explains_provider_rate_limit(self, run):
+        c = StudyConversation.objects.create(user=self.user)
+        turn = StudyTurn.objects.create(
+            conversation=c, question="test", request_id=uuid4()
+        )
+        response = httpx.Response(
+            429, request=httpx.Request("POST", "https://api.openai.com/v1/responses")
+        )
+        run.side_effect = RateLimitError("provider detail", response=response, body=None)
+        self.assertTrue(process_chat())
+        turn.refresh_from_db()
+        self.assertEqual(turn.status, "failed")
+        self.assertIn("rate-limited", turn.error)
+        self.assertNotIn("provider detail", turn.error)
 
     @override_settings(MAGISTERIUM_API_KEY="test")
     @patch("study.chat.httpx.post")
@@ -530,7 +619,7 @@ class StudyChatTests(TestCase):
         self.assertEqual(turn.links, [{"label": "Open Day 3", "path": "/day/3"}])
 
     def test_running_turn_exposes_source_titles_without_source_text(self):
-        note = self.note(shared=True)
+        note = self.note(user=self.other, shared=True)
         source = search_site(
             self.user, "Eucharist", kind="community", semantic=False
         )["sources"][0]
@@ -540,14 +629,21 @@ class StudyChatTests(TestCase):
             question="Has anyone reflected on the Eucharist?",
             status="running",
             sources=[source],
+            answer=f"A provisional answer [{source['id']}]",
         )
 
         data = turn_data(turn, self.user)
 
-        self.assertEqual(data["sources"], [])
+        self.assertEqual([item["id"] for item in data["sources"]], [source["id"]])
+        self.assertIn("provisional answer", data["answer"])
         self.assertEqual(data["progress_sources"][0]["title"], source["title"])
         self.assertNotIn("text", data["progress_sources"][0])
         self.assertEqual(data["progress_sources"][0]["day"], note.day_id)
+        note.shared = False
+        note.save()
+        hidden = turn_data(turn, self.user)
+        self.assertEqual(hidden["answer"], "")
+        self.assertEqual(hidden["sources"], [])
 
     @patch("study.chat.client")
     def test_historical_commentary_tool_is_citable(self, factory):

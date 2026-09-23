@@ -142,9 +142,9 @@ export function useStudyChat(scope?: {
   useEffect(() => {
     setConversation(null);
     setError("");
-    setQuestion("");
     pendingRequest.current = null;
     if (!id) return;
+    setQuestion("");
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
     let initial = true;

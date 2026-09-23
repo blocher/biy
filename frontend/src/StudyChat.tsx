@@ -174,11 +174,26 @@ export function ChatContent({
   embedded?: boolean;
 }) {
   const end = useRef<HTMLDivElement>(null);
+  const newestTurn = useRef<HTMLElement>(null);
+  const previousLast = useRef<{ id: number; answerLength: number } | null>(null);
+  const editor = useRef<HTMLTextAreaElement>(null);
   const turns = chat.current?.turns ?? [];
   const last = turns.at(-1);
   useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [last?.id, last?.status]);
+    const previous = previousLast.current;
+    if (
+      last?.answer &&
+      previous?.id === last.id &&
+      previous.answerLength === 0
+    ) {
+      newestTurn.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (last && previous?.id !== last.id && last.status !== "complete") {
+      end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    previousLast.current = last
+      ? { id: last.id, answerLength: last.answer.length }
+      : null;
+  }, [last?.id, last?.status, last?.answer]);
   const context = chat.day
     ? `Day ${chat.day}`
     : chat.episode
@@ -317,7 +332,7 @@ export function ChatContent({
                   remains available.
                 </p>
               )}
-              {!turns.length && (
+              {!turns.length && !(embedded && chat.question.trim()) && (
                 <div className="chat-empty">
                   <h2>What would you like to understand?</h2>
                   <p>
@@ -335,9 +350,20 @@ export function ChatContent({
                 </div>
               )}
               <div className="chat-turns" aria-label="Conversation">
-                {turns.map((t) => (
-                  <article key={t.id} className="chat-turn">
-                    <h2 className="chat-question">{t.question}</h2>
+                {turns.map((t, index) => (
+                  <article
+                    key={t.id}
+                    ref={index === turns.length - 1 ? newestTurn : undefined}
+                    className="chat-turn"
+                  >
+                    {t.question.includes("I highlighted:\n\n") ? (
+                      <details className="chat-selected-question">
+                        <summary>Question about a highlighted passage</summary>
+                        <p className="chat-question">{t.question}</p>
+                      </details>
+                    ) : (
+                      <h2 className="chat-question">{t.question}</h2>
+                    )}
                     {t.status === "complete" ? (
                       <>
                         <Answer turn={t} />
@@ -366,33 +392,49 @@ export function ChatContent({
                         )}
                       </>
                     ) : t.status === "failed" ? (
-                      <p role="alert" className="chat-notice">
-                        {t.error}
-                      </p>
+                      <div className="chat-failure">
+                        <p role="alert" className="chat-notice">{t.error}</p>
+                        <button
+                          disabled={chat.busy}
+                          onClick={() => {
+                            chat.setQuestion(t.question);
+                            editor.current?.focus();
+                          }}
+                        >
+                          Edit and try again
+                        </button>
+                      </div>
                     ) : (
-                      <div className="chat-working">
-                        <p role="status">
-                          <span />
-                          {t.stage}…
-                        </p>
-                        {!!t.progress_sources?.length && (
-                          <div
-                            className="chat-progress-sources"
-                            aria-label="Sources found so far"
-                          >
-                            {t.progress_sources.map((source) =>
-                              source.url.startsWith("/") ? (
-                                <a key={source.id} href={source.url}>
-                                  {source.title}
-                                  <ArrowUpRight size={13} />
-                                </a>
-                              ) : (
-                                <span key={source.id}>{source.title}</span>
-                              ),
-                            )}
+                      <>
+                        {!!t.answer && (
+                          <div className="chat-streaming-answer">
+                            <Answer turn={t} />
                           </div>
                         )}
-                      </div>
+                        <div className="chat-working">
+                          <p role="status">
+                            <span />
+                            {t.stage}…
+                          </p>
+                          {!t.answer && !!t.progress_sources?.length && (
+                            <div
+                              className="chat-progress-sources"
+                              aria-label="Sources found so far"
+                            >
+                              {t.progress_sources.map((source) =>
+                                source.url.startsWith("/") ? (
+                                  <a key={source.id} href={source.url}>
+                                    {source.title}
+                                    <ArrowUpRight size={13} />
+                                  </a>
+                                ) : (
+                                  <span key={source.id}>{source.title}</span>
+                                ),
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
                   </article>
                 ))}
@@ -419,12 +461,13 @@ export function ChatContent({
               <label htmlFor="study-question">Your question</label>
               <div className="chat-composer">
                 <textarea
+                  ref={editor}
                   id="study-question"
                   value={chat.question}
                   maxLength={4000}
                   onChange={(e) => chat.setQuestion(e.target.value)}
                   placeholder="Ask about this reading…"
-                  rows={3}
+                  rows={embedded ? 2 : 3}
                   onKeyDown={(e) => {
                     if (
                       e.key === "Enter" &&

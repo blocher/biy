@@ -12,7 +12,16 @@ from django.utils import timezone
 from openai import OpenAI
 from pgvector.django import CosineDistance
 
-from .models import CatechismDay, CatechismParagraph, Day, Episode, Note, SearchChunk, Verse
+from .models import (
+    STUDY_SEARCH_VECTOR,
+    CatechismDay,
+    CatechismParagraph,
+    Day,
+    Episode,
+    Note,
+    SearchChunk,
+    Verse,
+)
 
 
 def client():
@@ -383,9 +392,7 @@ def search_site(
                     )
                 )
         qs = qs.filter(scope)
-    vector = SearchVector("title", weight="A", config="english") + SearchVector(
-        "text", weight="B", config="english"
-    )
+    vector = STUDY_SEARCH_VECTOR
     query_obj = SearchQuery(query, search_type="websearch", config="english")
     lexical = list(
         qs.annotate(document=vector, rank=SearchRank(vector, query_obj))

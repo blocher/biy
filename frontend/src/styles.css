@@ -36,6 +36,13 @@ select,
 textarea {
   font: inherit;
 }
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
 button,
 a,
 input,
@@ -4752,6 +4759,17 @@ body:has(.reader-design) .player {
   gap: 18px;
   padding: 26px;
 }
+.reading-note-context summary {
+  cursor: pointer;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 650;
+}
+.reading-note-context .reading-note-selection {
+  margin-top: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+}
 .reading-note-dialog header,
 .reading-note-dialog footer,
 .reading-note-privacy {
@@ -4878,8 +4896,13 @@ body:has(.reader-design) .player {
     max-width: calc(100vw - 24px);
   }
   .reading-note-dialog {
+    position: fixed;
     width: calc(100vw - 20px);
-    max-height: calc(100dvh - 20px);
+    max-height: calc(var(--dialog-viewport-height, 100dvh) - 20px);
+    top: var(--dialog-viewport-top, 0px);
+    bottom: auto;
+    margin: 10px auto;
+    overflow-y: auto;
   }
   .reading-note-dialog form {
     gap: 15px;
@@ -4890,5 +4913,14 @@ body:has(.reader-design) .player {
   }
   .reading-note-dialog footer button {
     flex: 1;
+  }
+}
+
+/* iOS zooms the visual viewport when a focused form control renders below 16px. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
   }
 }

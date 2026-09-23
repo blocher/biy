@@ -125,6 +125,21 @@ class TranscriptionTests(TestCase):
 
 
 class ScriptureTests(TestCase):
+    def test_import_preserves_punctuation_next_to_inline_markup(self):
+        with TemporaryDirectory() as directory:
+            Path(directory, "01_gen_text_1.html").write_text(
+                '<verse id="v01001003"><verse_body><ver>3</ver>'
+                'And <a class="cnote">God said</a>, "Let there be light";'
+                ' he saw the <a class="cnote">year</a>,'
+                ' and it was <a class="cnote">good</a>.'
+                '</verse_body></verse>'
+            )
+            call_command("import_bible", source=directory)
+        self.assertEqual(
+            Verse.objects.get(book="Genesis", chapter=1, number=3).text,
+            'And God said, "Let there be light"; he saw the year, and it was good.',
+        )
+
     def test_complex_references(self):
         self.assertEqual(list(reference_ranges("Luke 20-22:38")), [("Luke", 20, 1, 22, 38)])
         self.assertEqual(list(reference_ranges("Luke 22:39-24")), [("Luke", 22, 39, 24, 999)])

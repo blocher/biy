@@ -31,8 +31,8 @@ function selectionSource(node: Node | null, fallback: string) {
 
 export function buildSelectionQuestion(selection: ReadingSelection) {
   const quote =
-    selection.quote.length > 3200
-      ? `${selection.quote.slice(0, 3199).trimEnd()}…`
+    selection.quote.length > 600
+      ? `${selection.quote.slice(0, 599).trimEnd()}…`
       : selection.quote;
   return `In ${selection.citation}, I highlighted:\n\n“${quote}”\n\nWhat should I notice here?`;
 }

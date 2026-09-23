@@ -1,11 +1,17 @@
 from datetime import time
 
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVector
 from django.db import models
 from django.utils import timezone
 from pgvector.django import VectorField
 
 EDITION_CHOICES = [("bible", "Bible in a Year"), ("catechism", "Catechism in a Year")]
+
+STUDY_SEARCH_VECTOR = SearchVector("title", weight="A", config="english") + SearchVector(
+    "text", weight="B", config="english"
+)
 
 
 class Era(models.Model):
@@ -354,6 +360,9 @@ class SearchChunk(models.Model):
     available_at = models.DateTimeField(default=timezone.now)
     leased_until = models.DateTimeField(null=True)
     error = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        indexes = [GinIndex(STUDY_SEARCH_VECTOR, name="study_chunk_fts_gin")]
 
 
 class StudyConversation(models.Model):

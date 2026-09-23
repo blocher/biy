@@ -20,7 +20,9 @@ def verse_body_text(body):
     for paragraph in body.find_all("p"):
         if POETIC_LINES.intersection(paragraph.get("class") or []):
             paragraph.insert_before("\n")
-    text = re.sub(r"[^\S\n]+", " ", body.get_text(" "))
+    # Inline markup does not imply a word boundary: punctuation often follows
+    # a linked phrase immediately in the source HTML.
+    text = re.sub(r"[^\S\n]+", " ", body.get_text(""))
     return re.sub(r" *(?:\n *)+", "\n", text).strip()
 
 

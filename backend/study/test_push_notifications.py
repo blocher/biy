@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 from datetime import timezone as datetime_timezone
 from importlib import import_module
 from unittest.mock import patch
@@ -8,7 +8,17 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from .models import Day, DayProgress, Era, Note, Profile, PushDelivery, PushSubscription
+from .models import (
+    CatechismDay,
+    Day,
+    DayProgress,
+    Episode,
+    Era,
+    Note,
+    Profile,
+    PushDelivery,
+    PushSubscription,
+)
 from .push_notifications import (
     _reminder_payload,
     deliver_push_batch,
@@ -23,9 +33,26 @@ class PushNotificationTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user("reader")
         self.friend = get_user_model().objects.create_user("friend")
+        self.now = datetime(2026, 9, 21, 11, 5, tzinfo=datetime_timezone.utc)
         era = Era.objects.create(name="Beginning", color="#ffffff", order=1)
         self.day1 = Day.objects.create(number=1, era=era)
         self.day2 = Day.objects.create(number=2, era=era)
+        self.day1_episode = Episode.objects.create(
+            guid="bible-day-1",
+            day=self.day1,
+            title="Day 1: In the Beginning",
+            published_at=self.now,
+            source_date=date(2025, 1, 1),
+            audio_url="https://example.org/bible-day-1.mp3",
+        )
+        self.day2_episode = Episode.objects.create(
+            guid="bible-day-2",
+            day=self.day2,
+            title="Day 2: The Covenant Begins",
+            published_at=self.now,
+            source_date=date(2025, 1, 2),
+            audio_url="https://example.org/bible-day-2.mp3",
+        )
         self.profile = Profile.objects.create(
             user=self.user,
             catechism_enabled=False,
@@ -41,7 +68,6 @@ class PushNotificationTests(TestCase):
             auth="secret",
             device_name="Reader’s iPhone",
         )
-        self.now = datetime(2026, 9, 21, 11, 5, tzinfo=datetime_timezone.utc)
 
     def test_incomplete_respects_personal_schedule_and_is_idempotent(self):
         DayProgress.objects.create(
@@ -52,6 +78,8 @@ class PushNotificationTests(TestCase):
         self.assertEqual(enqueue_due_reminders(self.now), 1)
         delivery = PushDelivery.objects.get()
         self.assertEqual(delivery.payload["url"], "/day/2?edition=bible")
+        self.assertEqual(delivery.payload["title"], "Bible in a Year · Day 2")
+        self.assertEqual(delivery.payload["body"], "Day 2: The Covenant Begins")
         self.assertEqual(enqueue_due_reminders(self.now), 0)
 
     def test_progress_signals_match_schedule_completion_and_inactivity(self):
@@ -71,7 +99,7 @@ class PushNotificationTests(TestCase):
         self.assertEqual(state["days_inactive"], 4)
         self.assertEqual(state["next_day"], 2)
 
-    def test_reminder_copy_rotates_through_relevant_progress_messages(self):
+    def test_reminder_copy_names_the_next_reading_title(self):
         progress = [
             {
                 "edition": "bible",
@@ -83,21 +111,51 @@ class PushNotificationTests(TestCase):
                 "days_behind": 4,
                 "days_inactive": 5,
                 "next_day": 257,
+                "next_title": "Day 257: A Living Word",
             }
         ]
+        payload = _reminder_payload(self.profile, "morning", progress, date(2026, 9, 21))
+        self.assertEqual(payload["title"], "Bible in a Year · Day 257")
+        self.assertEqual(payload["body"], "Day 257: A Living Word")
+        self.assertEqual(payload["url"], "/day/257?edition=bible")
 
-        bodies = {
-            _reminder_payload(
-                self.profile, "morning", progress, date(2026, 9, 21) + timedelta(days=offset)
-            )["body"]
-            for offset in range(4)
-        }
+    def test_bible_and_catechism_reminders_are_separate_and_named(self):
+        catechism_day = CatechismDay.objects.create(
+            number=1, part="The Profession of Faith", color="#64b6bd"
+        )
+        Episode.objects.create(
+            guid="catechism-day-1",
+            edition="catechism",
+            catechism_day=catechism_day,
+            title="Day 1: The Catechism in Context",
+            published_at=timezone.now(),
+            source_date=date(2025, 1, 1),
+            audio_url="https://example.org/catechism-day-1.mp3",
+        )
+        self.profile.catechism_enabled = True
+        self.profile.progress_basis = "january-1"
+        self.profile.catechism_progress_basis = "january-1"
+        self.profile.save(
+            update_fields=["catechism_enabled", "progress_basis", "catechism_progress_basis"]
+        )
 
-        self.assertEqual(len(bodies), 4)
-        self.assertTrue(any("4 days behind" in body and "catch up now" in body for body in bodies))
-        self.assertTrue(any("haven’t read in 5 days" in body for body in bodies))
-        self.assertIn("You’re 70% complete—keep going.", bodies)
-        self.assertTrue(any("Day 260" in body for body in bodies))
+        self.assertEqual(enqueue_due_reminders(self.now), 2)
+        payloads = list(PushDelivery.objects.order_by("dedupe_key").values_list("payload", flat=True))
+        self.assertEqual(
+            payloads,
+            [
+                {
+                    "title": "Bible in a Year · Day 1",
+                    "body": "Day 1: In the Beginning",
+                    "url": "/day/1?edition=bible",
+                },
+                {
+                    "title": "Catechism in a Year · Day 1",
+                    "body": "Day 1: The Catechism in Context",
+                    "url": "/day/1?edition=catechism",
+                },
+            ],
+        )
 
     def test_incomplete_suppresses_completed_today_but_always_sends(self):
         DayProgress.objects.create(

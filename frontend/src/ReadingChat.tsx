@@ -12,6 +12,7 @@ import { ChatContent } from "./StudyChat";
 import type { useStudyChat } from "./useStudyChat";
 import { Design } from "./Design";
 import source from "./design/reading-chat.html?raw";
+import { useMobileDialogViewport } from "./useMobileDialogViewport";
 
 type Chat = ReturnType<typeof useStudyChat>;
 
@@ -27,6 +28,7 @@ export function ReadingChatDialog({
   readings: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  useMobileDialogViewport(dialog, open);
   useLayoutEffect(() => {
     const node = dialog.current;
     if (!open || !node) return;

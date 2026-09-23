@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from uuid import UUID
 
@@ -58,6 +59,11 @@ def status(request):
 
 def turn_data(turn, user):
     current = sources_current(user, turn.sources)
+    draft_ids = (
+        set(re.findall(r"\[([DSMWH]\d+)\]", turn.answer))
+        if turn.status == "running"
+        else set()
+    )
     progress_sources = []
     if current and turn.status in {"queued", "running"}:
         progress_sources = [
@@ -74,14 +80,13 @@ def turn_data(turn, user):
         "id": turn.pk,
         "question": turn.question,
         "status": turn.status,
-        "answer": (
-            turn.answer
-            if current
+        "answer": turn.answer if current else (
+            "" if turn.status in {"queued", "running", "failed"}
             else "This answer used a source that has changed or is no longer shared. Please ask again."
         ),
         "sources": (
             sorted(
-                [s for s in turn.sources if s.get("used")],
+                [s for s in turn.sources if s.get("used") or s.get("id") in draft_ids],
                 key=lambda s: turn.answer.find(f"[{s['id']}]"),
             )
             if current

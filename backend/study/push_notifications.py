@@ -14,6 +14,7 @@ from .models import (
     CatechismDayProgress,
     CommunitySettings,
     DayProgress,
+    Episode,
     Note,
     Profile,
     PushDelivery,
@@ -99,6 +100,15 @@ def reading_progress(profile, today):
             if last_completed
             else None
         )
+        next_day = next((number for number in range(1, 366) if number not in completed_days), None)
+        episode_filter = {"day_id" if edition == "bible" else "catechism_day_id": next_day}
+        next_title = (
+            Episode.objects.filter(edition=edition, **episode_filter)
+            .values_list("title", flat=True)
+            .first()
+            if next_day
+            else None
+        )
         progress.append(
             {
                 "edition": edition,
@@ -109,99 +119,54 @@ def reading_progress(profile, today):
                 "percent": round(completed / 365 * 100),
                 "days_behind": max(0, day_number - completed) if day_number else 0,
                 "days_inactive": days_inactive,
-                "next_day": next(
-                    (number for number in range(1, 366) if number not in completed_days), None
-                ),
+                "next_day": next_day,
+                "next_title": next_title or f"Day {next_day}",
             }
         )
     return progress
 
 
-def _reminder_payload(profile, slot, progress, today):
-    incomplete = [state for state in progress if state["expected_day"] and not state["today_complete"]]
-    edition = "bible" if profile.bible_enabled else "catechism"
-    default_url = f"/?edition={edition}"
-    candidates = []
-
-    behind = max(progress, key=lambda state: state["days_behind"], default=None)
-    if behind and behind["days_behind"]:
-        count = behind["days_behind"]
-        candidates.append(
-            {
-                "title": "A good day to catch up",
-                "body": (
-                    f"You’re {count} day{'s' if count != 1 else ''} behind in "
-                    f"{behind['label']}—catch up now."
-                ),
-                "url": f"/day/{behind['next_day']}?edition={behind['edition']}",
-            }
-        )
-
-    inactive = max(
-        (state for state in progress if state["days_inactive"] is not None),
-        key=lambda state: state["days_inactive"],
-        default=None,
-    )
-    if inactive and inactive["days_inactive"] >= 3 and inactive["next_day"]:
-        count = inactive["days_inactive"]
-        candidates.append(
-            {
-                "title": "Your reading is waiting",
-                "body": (
-                    f"You haven’t read in {count} days. Pick up with Day "
-                    f"{inactive['next_day']}—you can begin again today."
-                ),
-                "url": f"/day/{inactive['next_day']}?edition={inactive['edition']}",
-            }
-        )
-
-    most_complete = max(progress, key=lambda state: state["percent"], default=None)
-    if most_complete and 0 < most_complete["completed"] < 365:
-        candidates.append(
-            {
-                "title": "Keep going",
-                "body": f"You’re {most_complete['percent']}% complete—keep going.",
-                "url": f"/day/{most_complete['next_day']}?edition={most_complete['edition']}",
-            }
-        )
-
-    if incomplete:
-        if len(incomplete) == 1:
-            state = incomplete[0]
-            candidates.append(
-                {
-                    "title": f"{slot.title()} reading reminder",
-                    "body": f"Day {state['expected_day']} of {state['label']} is ready when you are.",
-                    "url": f"/day/{state['expected_day']}?edition={state['edition']}",
-                }
-            )
-        else:
-            candidates.append(
-                {
-                    "title": f"{slot.title()} reading reminder",
-                    "body": "Today’s Bible and Catechism readings are ready when you are.",
-                    "url": "/?edition=bible",
-                }
-            )
-    elif most_complete and most_complete["completed"] == 365:
-        candidates.append(
-            {
-                "title": "Your journey is complete",
-                "body": "You’ve completed all 365 days. Take a moment to reflect on the journey.",
-                "url": default_url,
-            }
-        )
+def _reminder_payloads(profile, slot, progress):
+    """Create one focused reminder per enabled edition with reading still ahead."""
+    if profile.reminder_condition == "incomplete":
+        states = [
+            state
+            for state in progress
+            if state["expected_day"] and not state["today_complete"] and state["next_day"]
+        ]
     else:
-        candidates.append(
-            {
-                "title": f"{slot.title()} reading reminder",
-                "body": "Take a quiet moment for today’s reading.",
-                "url": default_url,
-            }
-        )
+        states = [state for state in progress if state["next_day"]]
+    payloads = [
+        {
+            "title": f"{state['label']} · Day {state['next_day']}",
+            "body": state["next_title"],
+            "url": f"/day/{state['next_day']}?edition={state['edition']}",
+        }
+        for state in states
+    ]
+    if payloads or profile.reminder_condition != "always":
+        return payloads
+    edition = "bible" if profile.bible_enabled else "catechism"
+    return [
+        {
+            "title": "Your journey is complete",
+            "body": "You’ve completed all 365 days. Take a moment to reflect on the journey.",
+            "url": f"/?edition={edition}",
+        }
+    ]
 
-    variant = (today.toordinal() + profile.user_id + (slot == "evening")) % len(candidates)
-    return candidates[variant]
+
+def _reminder_payload(profile, slot, progress, today):
+    """Return one payload for compatibility with callers that need a singular reminder."""
+    payloads = _reminder_payloads(profile, slot, progress)
+    if payloads:
+        return payloads[0]
+    edition = "bible" if profile.bible_enabled else "catechism"
+    return {
+        "title": "Your journey is complete",
+        "body": "You’ve completed all 365 days. Take a moment to reflect on the journey.",
+        "url": f"/?edition={edition}",
+    }
 
 
 def enqueue_due_reminders(now=None):
@@ -232,16 +197,17 @@ def enqueue_due_reminders(now=None):
             ]
             if profile.reminder_condition == "incomplete" and not incomplete:
                 continue
-            payload = _reminder_payload(profile, slot, progress, local_now.date())
-            dedupe_key = f"{profile.user_id}:{local_now.date().isoformat()}:{slot}"
-            for subscription in subscriptions:
-                _, was_created = PushDelivery.objects.get_or_create(
-                    subscription=subscription,
-                    kind="reminder",
-                    dedupe_key=dedupe_key,
-                    defaults={"payload": payload},
-                )
-                created += int(was_created)
+            for payload in _reminder_payloads(profile, slot, progress):
+                edition = payload["url"].split("edition=", 1)[-1]
+                dedupe_key = f"{profile.user_id}:{local_now.date().isoformat()}:{slot}:{edition}"
+                for subscription in subscriptions:
+                    _, was_created = PushDelivery.objects.get_or_create(
+                        subscription=subscription,
+                        kind="reminder",
+                        dedupe_key=dedupe_key,
+                        defaults={"payload": payload},
+                    )
+                    created += int(was_created)
     return created
 
 
