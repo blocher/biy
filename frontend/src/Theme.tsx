@@ -13,17 +13,24 @@ function useTheme() {
 
 export function ThemeToggle() {
   const { theme, setPreference } = useTheme();
-  const next = theme === "dark" ? "light" : "dark";
   return (
     <button
       type="button"
       className="theme-toggle"
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
-      onClick={() => setPreference(next)}
+      role="switch"
+      aria-label="Dark mode"
+      aria-checked={theme === "dark"}
+      title={theme === "dark" ? "Turn off dark mode" : "Turn on dark mode"}
+      onClick={() => setPreference(theme === "dark" ? "light" : "dark")}
     >
-      {next === "dark" ? <Moon size={18} /> : <Sun size={18} />}
-      <span>{next === "dark" ? "Dark mode" : "Light mode"}</span>
+      <span className="theme-switch-track" aria-hidden="true">
+        <span className="theme-switch-thumb" />
+        <Sun size={16} />
+        <Moon size={16} />
+      </span>
+      <span className="theme-switch-label">
+        {theme === "dark" ? "Dark mode" : "Light mode"}
+      </span>
     </button>
   );
 }

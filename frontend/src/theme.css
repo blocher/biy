@@ -25,12 +25,62 @@ html[data-theme="dark"][data-edition="catechism"] {
   --action: #245c69;
 }
 .theme-toggle {
-  min-width: 44px;
   min-height: 44px;
+  padding: 4px;
+  gap: 8px;
   white-space: nowrap;
 }
-.theme-toggle svg {
+.theme-switch-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 58px;
+  height: 32px;
+  padding: 0 7px;
   flex: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft, #e6e9df);
+  color: var(--ink);
+  transition: background-color 150ms ease;
+}
+.theme-toggle[aria-checked="true"] .theme-switch-track {
+  background: var(--action, #2a604a);
+  color: #fff;
+}
+.theme-switch-track svg {
+  position: relative;
+  z-index: 1;
+  flex: none;
+}
+.theme-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fffdf8;
+  box-shadow: 0 1px 4px #173b3333;
+  transition: transform 150ms ease;
+}
+.theme-toggle[aria-checked="true"] .theme-switch-thumb {
+  transform: translateX(26px);
+}
+.theme-toggle[aria-checked="false"] .theme-switch-track svg:first-of-type,
+.theme-toggle[aria-checked="true"] .theme-switch-track svg:last-of-type {
+  color: #173b33;
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch-track,
+  .theme-switch-thumb {
+    transition: none;
+  }
 }
 .theme-settings {
   grid-column: 1 / -1;
@@ -53,7 +103,7 @@ html[data-theme="dark"][data-edition="catechism"] {
   right: max(16px, env(safe-area-inset-right));
   z-index: 1;
 }
-.reader-controls .theme-toggle span {
+.reader-controls .theme-switch-label {
   display: none;
 }
 @media (max-width: 900px) {
@@ -65,8 +115,11 @@ html[data-theme="dark"][data-edition="catechism"] {
   .sidebar-bottom .theme-toggle {
     font-size: 12px;
   }
-  .sidebar-bottom .theme-toggle span {
+  .sidebar-bottom .theme-switch-label {
     display: none;
+  }
+  .sidebar-bottom > .theme-toggle {
+    padding: 4px;
   }
 }
 
