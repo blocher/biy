@@ -20,11 +20,12 @@ from ninja.errors import HttpError
 from ninja.security import django_auth
 from pydantic import Field
 
+from .catechism_audio import align_catechism_audio
 from .chat_api import router as chat_router
 from .commentaries import (
     CommentaryRange,
-    commentary_rows,
     commentary_ranges_for_readings,
+    commentary_rows,
     matching_references,
     ordered_commentary_ids,
     year_label,
@@ -305,9 +306,7 @@ def push_subscriptions(request):
 
 @api.put("/push/subscriptions/current")
 def touch_push_subscription(request, payload: PushSubscriptionDeleteIn):
-    subscription = get_object_or_404(
-        PushSubscription, user=request.user, endpoint=payload.endpoint
-    )
+    subscription = get_object_or_404(PushSubscription, user=request.user, endpoint=payload.endpoint)
     subscription.last_seen_at = timezone.now()
     subscription.save(update_fields=["last_seen_at"])
     return {"last_seen_at": subscription.last_seen_at}
@@ -643,6 +642,16 @@ def day_detail(request, number: int):
             if day.paragraph_start is not None
             else []
         )
+        paragraph_data = [
+            {"number": paragraph.number, "text": paragraph.text, "source_url": paragraph.source_url}
+            for paragraph in paragraphs
+        ]
+        cues = (
+            align_catechism_audio(paragraph_data, ep.transcript, ep.classification)
+            if ep and ep.audio_file
+            else []
+        )
+        cues_by_paragraph = {cue["paragraph_number"]: cue for cue in cues}
         return {
             "edition": edition,
             "number": number,
@@ -654,12 +663,8 @@ def day_detail(request, number: int):
             "completed_at": progress.completed_at if progress else None,
             "scripture": [],
             "catechism": [
-                {
-                    "number": paragraph.number,
-                    "text": paragraph.text,
-                    "source_url": paragraph.source_url,
-                }
-                for paragraph in paragraphs
+                {**paragraph, "audio": cues_by_paragraph.get(paragraph["number"])}
+                for paragraph in paragraph_data
             ],
             "episode": episode_detail(ep, request.user) if ep else None,
         }

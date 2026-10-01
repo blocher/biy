@@ -1,0 +1,29 @@
+.catechism-paragraph {
+  margin-bottom: 1.4em;
+  border-left: 2px solid transparent;
+  padding-left: 12px;
+}
+.catechism-paragraph.audio-active {
+  border-left-color: var(--green);
+}
+.catechism-paragraph p {
+  line-height: 1.85;
+  scroll-margin-top: 100px;
+}
+.catechism-paragraph p strong {
+  color: var(--green);
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.72em;
+  margin-right: 0.25em;
+}
+.catechism-paragraph .passage-audio-button {
+  font-family: "DM Sans", sans-serif;
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+.catechism-audio-status {
+  color: var(--muted);
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}

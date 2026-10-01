@@ -38,13 +38,20 @@ import {
   shortDate,
   time,
 } from "./api";
-import type { DayDetail, Episode, Library, ScriptureAudioCue, Segment } from "./types";
+import type {
+  DayDetail,
+  Episode,
+  Library,
+  ScriptureAudioCue,
+  Segment,
+} from "./types";
 import { Design } from "./Design";
 import studySource from "./design/study.html?raw";
 import readerSource from "./design/reader.html?raw";
 import { useAudio } from "./Audio";
 import { Notes } from "./Notes";
 import { Scripture } from "./Scripture";
+import { Catechism } from "./Catechism";
 import { Sidebar } from "./navigation";
 import { useStudyChat } from "./useStudyChat";
 import { ReadingChatDialog, ReadingChatHistory } from "./ReadingChat";
@@ -349,12 +356,18 @@ function StudyContent({
   const scriptureCues = day?.scripture.flatMap((passage) =>
     passage.audio ? [passage.audio] : [],
   );
-  const readingClips = mergeAudioSpans(scriptureCues);
+  const readingCues =
+    edition === "catechism"
+      ? day?.catechism?.flatMap((paragraph) =>
+          paragraph.audio ? [paragraph.audio] : [],
+        )
+      : scriptureCues;
+  const readingClips = mergeAudioSpans(readingCues);
   const commentaryClips = mergeAudioSpans(episode?.commentary);
   const scriptureAudio =
     episode?.has_audio && readingClips.length
       ? {
-          episodeActive: audio.episode?.id === episode.id,
+          episodeActive: audio.episode?.id === episode.id && audio.clipPlayback,
           position: audio.position,
           playing: audio.playing,
           playAll: () => audio.playClips(episode, readingClips),
@@ -366,38 +379,26 @@ function StudyContent({
   const content =
     selected === "catechism" && day ? (
       day.catechism?.length ? (
-        <article className="catechism-text">
-          <header>
-            <span className="eyebrow">{day.era}</span>
-            {day.section && <p>{day.section}</p>}
-            {day.chapter && <p>{day.chapter}</p>}
-          </header>
-          {day.catechism.map((paragraph) => (
-            <p
-              id={`ccc-${paragraph.number}`}
-              key={paragraph.number}
-              data-reading-citation={`Catechism § ${paragraph.number}`}
-              data-reading-url={`#ccc-${paragraph.number}`}
-            >
-              <strong>{paragraph.number}</strong> {paragraph.text}
-            </p>
-          ))}
-          <a
-            className="text-link"
-            href={day.catechism[0].source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read the source on vatican.va
-          </a>
-        </article>
+        <Catechism
+          paragraphs={day.catechism}
+          episode={episode}
+          era={day.era}
+          section={day.section}
+          chapter={day.chapter}
+          toolbar={reader}
+        />
       ) : (
         <div className="empty-content">
           <BookOpen size={28} />
-          <h3>Introductory episode</h3>
+          <h3>
+            {day.readings.length
+              ? "Catechism text unavailable"
+              : "Introductory episode"}
+          </h3>
           <p>
-            This numbered day introduces a new part of the Catechism and has no
-            assigned paragraphs.
+            {day.readings.length
+              ? "The assigned Catechism paragraphs have not been imported yet."
+              : "This numbered day introduces a new part of the Catechism and has no assigned paragraphs."}
           </p>
         </div>
       )
@@ -412,9 +413,8 @@ function StudyContent({
     ) : selected === "commentary" ? (
       <>
         <p className="view-note">
-          Original commentary and prayer, with Scripture readings and
-          promotional material removed. Brief Scripture quotations within the
-          teaching are retained.
+          Original commentary and prayer, with {edition === "catechism" ? "Catechism" : "Scripture"} readings and
+          promotional material removed. Brief quotations within the teaching are retained.
         </p>
         {transcript(episode?.commentary, "Commentary")}
       </>
@@ -580,6 +580,12 @@ function StudyContent({
             "viewport-1-c-accessibility": null,
             "viewport-1-c-passage-tabs": (
               <nav className="reader-passages">
+                {selected === "catechism" &&
+                  day?.catechism?.map((paragraph) => (
+                    <a href={`#ccc-${paragraph.number}`} key={paragraph.number}>
+                      § {paragraph.number}
+                    </a>
+                  ))}
                 {selected === "scripture" &&
                   day?.readings.map((r, i) => (
                     <a href={`#passage-${i}`} key={r}>
@@ -1030,21 +1036,26 @@ function StudyTabAudio({
   if (!episode?.has_audio) return null;
   const episodeActive = audio.episode?.id === episode.id;
   const readingActive = Boolean(
-    episodeActive && audioSpanContaining(readingClips, audio.position),
+    episodeActive &&
+    audio.clipPlayback &&
+    audioSpanContaining(readingClips, audio.position),
   );
   const commentaryActive = Boolean(
-    episodeActive && audioSpanContaining(commentaryClips, audio.position),
+    episodeActive &&
+    audio.clipPlayback &&
+    audioSpanContaining(commentaryClips, audio.position),
   );
   const readingDuration = audioSpanDuration(readingClips);
   const commentaryDuration = audioSpanDuration(commentaryClips);
 
-  if (selected === "scripture") {
+  if (selected === "scripture" || selected === "catechism") {
+    const readingName = selected === "catechism" ? "Catechism" : "Scripture";
     if (!readingClips.length) return null;
     const label = readingActive
       ? audio.playing
-        ? "Pause Scripture"
-        : "Resume Scripture"
-      : "Play Scripture";
+        ? `Pause ${readingName}`
+        : `Resume ${readingName}`
+      : `Play ${readingName}`;
     return (
       <div className="study-tab-audio">
         <button
@@ -1063,7 +1074,7 @@ function StudyTabAudio({
           )}
         </button>
         <span className="study-tab-audio-copy">
-          <strong>{label.replace(" Scripture", "")}</strong>
+          <strong>{label.replace(` ${readingName}`, "")}</strong>
           <small>{time(readingDuration)}</small>
         </span>
       </div>
@@ -1077,11 +1088,17 @@ function StudyTabAudio({
       <button
         className="study-tab-audio-play"
         aria-label={
-          episodeActive && audio.playing ? "Pause episode" : "Play episode"
+          episodeActive && !audio.clipPlayback && audio.playing
+            ? "Pause episode"
+            : "Play episode"
         }
-        onClick={() => (episodeActive ? audio.toggle() : audio.play(episode))}
+        onClick={() =>
+          episodeActive && !audio.clipPlayback
+            ? audio.toggle()
+            : audio.play(episode)
+        }
       >
-        {episodeActive && audio.playing ? (
+        {episodeActive && !audio.clipPlayback && audio.playing ? (
           <Pause size={13} />
         ) : (
           <Play size={13} />

@@ -146,6 +146,37 @@ class CatechismAPITests(TestCase):
         self.assertEqual(self.client.get("/api/library?edition=catechism").json()["completed"], 1)
         self.assertEqual(self.client.get("/api/library?edition=bible").json()["completed"], 0)
 
+    def test_catechism_detail_exposes_only_verified_reading_cues(self):
+        text = "God infinitely perfect and blessed in himself created man freely."
+        CatechismParagraph.objects.filter(number=1).update(text=text)
+        self.episode.audio_file = "catechism/test.mp3"
+        self.episode.transcript = [
+            {"id": 1, "start": 10, "end": 20, "text": text},
+            {"id": 2, "start": 20, "end": 30, "text": "Reflecting on today's reading."},
+        ]
+        self.episode.classification = [
+            {"id": 1, "kind": "catechism"},
+            {"id": 2, "kind": "commentary"},
+        ]
+        self.episode.save()
+        detail = self.client.get("/api/days/1?edition=catechism").json()
+        cue = detail["catechism"][0]["audio"]
+        self.assertEqual((cue["paragraph_number"], cue["start"], cue["end"]), (1, 10, 20))
+        self.assertIsNone(detail["catechism"][1]["audio"])
+        self.assertEqual(detail["scripture"], [])
+
+        self.episode.audio_file = ""
+        self.episode.save()
+        detail = self.client.get("/api/days/1?edition=catechism").json()
+        self.assertTrue(all(row["audio"] is None for row in detail["catechism"]))
+
+    def test_introductory_day_has_no_paragraph_audio(self):
+        self.catechism_day.paragraph_start = None
+        self.catechism_day.paragraph_end = None
+        self.catechism_day.save()
+        detail = self.client.get("/api/days/1?edition=catechism").json()
+        self.assertEqual(detail["catechism"], [])
+
     def test_library_does_not_load_large_episode_content_fields(self):
         with CaptureQueriesContext(connection) as queries:
             response = self.client.get("/api/library?edition=catechism")

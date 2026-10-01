@@ -14,6 +14,9 @@ type AudioState = {
   episode: Episode | null;
   position: number;
   playing: boolean;
+  clipPlayback: boolean;
+  loading: boolean;
+  error: string;
   play: (e: Episode, at?: number) => void;
   playClips: (e: Episode, clips: AudioClip[]) => void;
   seek: (n: number) => void;
@@ -31,6 +34,9 @@ export function AudioProvider({
   const [episode, setEpisode] = useState<Episode | null>(null),
     [position, setPosition] = useState(0),
     [playing, setPlaying] = useState(false),
+    [clipPlayback, setClipPlayback] = useState(false),
+    [loading, setLoading] = useState(false),
+    [error, setError] = useState(""),
     [speed, setSpeed] = useState(1);
   const audio = useRef<HTMLAudioElement>(null),
     pending = useRef<number | null>(null),
@@ -38,7 +44,8 @@ export function AudioProvider({
     lastSave = useRef(0),
     episodeRef = useRef<Episode | null>(null),
     clipQueue = useRef<AudioClip[]>([]),
-    clipIndex = useRef(0);
+    clipIndex = useRef(0),
+    clipFinished = useRef(false);
   function save() {
     const e = episodeRef.current;
     if (e && audio.current)
@@ -46,16 +53,40 @@ export function AudioProvider({
         position: audio.current.currentTime,
       }).catch((err) => onError(err.message));
   }
+  function playbackError(message: string) {
+    setLoading(false);
+    setPlaying(false);
+    setError(message);
+    onError(message);
+  }
+  function startPlayback() {
+    setError("");
+    setLoading(true);
+    void audio.current?.play().catch((error) => {
+      setLoading(false);
+      if (error.name !== "AbortError")
+        playbackError("Could not play audio. Please try again.");
+    });
+  }
   function begin(e: Episode, at?: number) {
     if (!e.has_audio && !e.audio) {
       onError("Audio has not been imported for this episode yet.");
       return;
     }
-    if (episodeRef.current?.id === e.id) {
-      if (at !== undefined) audio.current!.currentTime = at;
-      void audio.current?.play().catch((e) => {
-        if (e.name !== "AbortError") onError("Press play to start audio.");
-      });
+    setError("");
+    setLoading(true);
+    if (episodeRef.current?.id === e.id && audio.current) {
+      if (audio.current.error || audio.current.readyState === 0) {
+        pending.current = at ?? audio.current.currentTime;
+        autoplay.current = true;
+        audio.current.load();
+      } else {
+        if (at !== undefined) {
+          audio.current.currentTime = at;
+          setPosition(at);
+        }
+        startPlayback();
+      }
       return;
     }
     if (episodeRef.current) save();
@@ -69,6 +100,8 @@ export function AudioProvider({
   function play(e: Episode, at?: number) {
     clipQueue.current = [];
     clipIndex.current = 0;
+    clipFinished.current = false;
+    setClipPlayback(false);
     begin(e, at);
   }
   function playClips(e: Episode, clips: AudioClip[]) {
@@ -80,11 +113,13 @@ export function AudioProvider({
         clip.end > clip.start,
     );
     if (!valid.length) {
-      onError("Scripture audio is not available for this reading yet.");
+      onError("Audio is not available for this reading yet.");
       return;
     }
     clipQueue.current = valid;
     clipIndex.current = 0;
+    clipFinished.current = false;
+    setClipPlayback(true);
     begin(e, valid[0].start);
   }
   function seek(n: number) {
@@ -96,17 +131,27 @@ export function AudioProvider({
         (Number.isFinite(audio.current.duration)
           ? audio.current.duration
           : (episode?.duration ?? 0));
+      clipFinished.current = false;
       audio.current.currentTime = Math.max(minimum, Math.min(n, maximum));
     }
   }
   function toggle() {
     if (!audio.current) return;
     if (playing) audio.current.pause();
-    else
-      void audio.current.play().catch((e) => {
-        if (e.name !== "AbortError")
-          onError("Could not play audio. Please try again.");
-      });
+    else {
+      const clips = clipQueue.current;
+      if (
+        clips.length &&
+        audio.current.currentTime >= clips[clips.length - 1].end - 0.05
+      ) {
+        clipIndex.current = 0;
+        clipFinished.current = false;
+        audio.current.currentTime = clips[0].start;
+        setPosition(clips[0].start);
+      }
+      if (episodeRef.current)
+        begin(episodeRef.current, audio.current.currentTime);
+    }
   }
   useEffect(() => {
     const hide = () => save();
@@ -115,7 +160,18 @@ export function AudioProvider({
   }, []);
   return (
     <AudioContext.Provider
-      value={{ episode, position, playing, play, playClips, seek, toggle }}
+      value={{
+        episode,
+        position,
+        playing,
+        clipPlayback,
+        loading,
+        error,
+        play,
+        playClips,
+        seek,
+        toggle,
+      }}
     >
       {children}
       <audio
@@ -129,10 +185,7 @@ export function AudioProvider({
             pending.current = null;
             if (autoplay.current) {
               autoplay.current = false;
-              void audio.current.play().catch((e) => {
-                if (e.name !== "AbortError")
-                  onError("Press play to start audio.");
-              });
+              startPlayback();
             }
           }
         }}
@@ -140,7 +193,12 @@ export function AudioProvider({
           const value = audio.current?.currentTime || 0;
           setPosition(value);
           const clip = clipQueue.current[clipIndex.current];
-          if (audio.current && clip && value >= clip.end - 0.05) {
+          if (
+            audio.current &&
+            clip &&
+            !clipFinished.current &&
+            value >= clip.end - 0.05
+          ) {
             const nextIndex = clipIndex.current + 1;
             const next = clipQueue.current[nextIndex];
             if (next) {
@@ -148,11 +206,10 @@ export function AudioProvider({
               audio.current.currentTime = next.start;
               setPosition(next.start);
             } else {
+              clipFinished.current = true;
               audio.current.pause();
               audio.current.currentTime = clip.end;
               setPosition(clip.end);
-              clipQueue.current = [];
-              clipIndex.current = 0;
             }
             return;
           }
@@ -161,20 +218,27 @@ export function AudioProvider({
             save();
           }
         }}
+        onWaiting={() => setLoading(true)}
+        onPlaying={() => {
+          setLoading(false);
+          setError("");
+        }}
         onPlay={() => setPlaying(true)}
         onPause={() => {
           setPlaying(false);
+          setLoading(false);
           save();
         }}
         onEnded={() => {
           setPlaying(false);
-          clipQueue.current = [];
-          clipIndex.current = 0;
+          setLoading(false);
           save();
         }}
         onError={() =>
           episode &&
-          onError("Audio could not load. Check your connection and try again.")
+          playbackError(
+            "Audio could not load. Check your connection and try again.",
+          )
         }
       />
       {episode && (
@@ -260,6 +324,9 @@ export function AudioProvider({
               episodeRef.current = null;
               clipQueue.current = [];
               clipIndex.current = 0;
+              setClipPlayback(false);
+              setLoading(false);
+              setError("");
               setEpisode(null);
             }}
           >

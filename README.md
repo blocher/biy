@@ -148,7 +148,7 @@ Files and checkpoints live under ignored `media/`. A PostgreSQL advisory lock pr
 - Notes and journal entries are private per account, editable and optionally linked to the current audio time. Unsaved text is kept in that browser tab until saved. The journal collects entries across the year.
 - Completion timestamps persist and repeated “complete” calls preserve the original timestamp. A day can be marked unread again.
 - Unimported days show explicit availability states and never fabricated transcripts or summaries.
-- Catechism days show the official Vatican text by numbered paragraph. Its two 2025 bonus episodes appear after Day 365 and do not count toward yearly progress.
+- Catechism days show the official Vatican text by numbered paragraph. Processed episodes expose verified reading audio with day and paragraph play/pause/resume controls, paragraph links in reader mode, and explicit partial/unavailable states. Playback uses the existing podcast; it never generates new audio. Cue boundaries have transcript-segment precision, and mixed commentary/reading segments without exact timestamps are omitted. Its two 2025 bonus episodes appear after Day 365 and do not count toward yearly progress.
 - Journal and leaderboard views can switch editions; Ask searches both corpora while preferring the active edition.
 
 ## Verification
@@ -163,6 +163,17 @@ npm run test:selection
 # With the two dev servers running and local BEN_INITIAL_PASSWORD configured:
 node tests/smoke.mjs
 ```
+
+Catechism audio acceptance uses mocked API responses and media events, so it requires only a frontend dev server and never changes an account, downloads a podcast, or invokes AI:
+
+```sh
+cd frontend
+npm run dev -- --port 5183 --strictPort
+# In another terminal, after installing Playwright Chromium/Chrome and WebKit:
+BIY_TEST_URL=http://127.0.0.1:5183 npm run test:catechism-audio
+```
+
+It checks desktop Chromium and mobile WebKit, reading/paragraph navigation, pause/resume, end-of-reading replay, commentary gaps, load errors/retry, and unavailable/introductory days. Screenshots go to `/tmp/biy-catechism-audio` (override with `BIY_TEST_OUTPUT`). Actual podcast alignment still needs a processed episode; the test intentionally does not create one.
 
 The browser smoke test signs in, checks the layout, plays/seeks Day 1, opens reader mode, saves/reloads/deletes an acceptance-test journal entry, and completes/reloads/uncompletes Day 1. Run only against the initial local test account; it changes Day 1’s completion state. It does not call OpenAI.
 
