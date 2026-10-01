@@ -157,11 +157,26 @@ Files and checkpoints live under ignored `media/`. A PostgreSQL advisory lock pr
 cd frontend
 npm test
 npm run build
+# Isolated, mocked reading-selection checks; starts its own Vite server:
+npm run test:selection
 # With the two dev servers running and local BEN_INITIAL_PASSWORD configured:
 node tests/smoke.mjs
 ```
 
 The browser smoke test signs in, checks the layout, plays/seeks Day 1, opens reader mode, saves/reloads/deletes an acceptance-test journal entry, and completes/reloads/uncompletes Day 1. Run only against the initial local test account; it changes Day 1’s completion state. It does not call OpenAI.
+
+The selection acceptance test uses the real reading toolbar and note dialog with
+mocked chat and API calls, without signing in or changing a database. It checks
+desktop keyboard selection and touch layouts at 390px and 320px, including
+collapsed native ranges, handle changes, note metadata, scrolling, visual viewport
+changes, dismissal, navigation and unmounting. Screenshots go to ignored
+`data/screenshots/selection/`. With a compatible Playwright WebKit engine installed,
+run `SELECTION_BROWSER=webkit npm run test:selection` for the same WebKit checks.
+Headless emulation cannot display the iPhone's native selection menu. On a real
+iPhone, select text near both ends of the screen, adjust its handles, scroll or
+rotate, then use **Take note** and **Ask** to confirm the quote and citation. The
+touch toolbar docks at the opposite visible edge and its close button discards
+the retained selection; native **Copy** and **Look Up** remain available.
 
 ## Deployment
 

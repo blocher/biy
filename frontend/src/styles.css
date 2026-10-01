@@ -4642,7 +4642,10 @@ body:has(.reader-design) .player {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
+  width: 248px;
   padding: 4px;
+  user-select: none;
+  -webkit-user-select: none;
   color: #173b33;
   background: #fffdf7;
   border: 1px solid #d9d4c8;
@@ -4665,6 +4668,12 @@ body:has(.reader-design) .player {
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
+  flex: 1;
+  touch-action: manipulation;
+}
+.reading-selection-tools .reading-selection-dismiss {
+  flex: 0 0 44px;
+  padding: 8px;
 }
 .reading-selection-tools > span {
   width: 1px;

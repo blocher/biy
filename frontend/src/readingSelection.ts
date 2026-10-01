@@ -1,5 +1,11 @@
 type Bounds = { left: number; top: number; width: number; height: number };
 
+export type ReadingSelection = {
+  quote: string;
+  citation: string;
+  sourceUrl: string;
+};
+
 export type SelectionToolbarPosition = {
   left: number;
   top: number;
