@@ -448,3 +448,19 @@ html[data-theme="dark"] .design img.decoration {
   mix-blend-mode: luminosity;
   opacity: 0.65;
 }
+
+/* Era colors remain on the timeline/markers; these small labels need readable
+   text even when the publisher assigns a very dark era color inline. */
+html[data-theme="dark"]
+  :is(.home-design #hero-day-label .eyebrow, .study-day-progress-row .eyebrow) {
+  color: var(--gold) !important;
+}
+html[data-theme="dark"] .pagination-button.disabled {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+html[data-theme="dark"] ::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}

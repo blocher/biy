@@ -40,12 +40,7 @@ function environment({
   const browser = Object.assign(new EventTarget(), {
     matchMedia: () => media,
     document: { documentElement: root, querySelector: () => meta },
-    get localStorage() {
-      if (blocked) throw new Error("SecurityError");
-      return storage;
-    },
   });
-  // Object.assign invokes accessors; define blocked storage on the target instead.
   Object.defineProperty(browser, "localStorage", {
     configurable: true,
     get() {
