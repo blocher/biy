@@ -143,7 +143,16 @@ async function geometry(page) {
       height: Math.min(bottom, rect.y + rect.height) - Math.max(top, rect.y),
     });
     const rects = [...range.getClientRects()].map(bounds);
-    const scaleY = element.offsetHeight ? element.getBoundingClientRect().height / element.offsetHeight : 1;
+    const paragraph = element.parentElement;
+    const paragraphStyle = getComputedStyle(paragraph);
+    // Inline offsetHeight rounds font metrics (WebKit reports33 for a32px
+    // glyph box). Derive zoom from the block's fractional computed border box.
+    let paragraphBoxHeight = parseFloat(paragraphStyle.height);
+    if (paragraphStyle.boxSizing !== "border-box") {
+      paragraphBoxHeight += parseFloat(paragraphStyle.paddingTop) + parseFloat(paragraphStyle.paddingBottom)
+        + parseFloat(paragraphStyle.borderTopWidth) + parseFloat(paragraphStyle.borderBottomWidth);
+    }
+    const scaleY = paragraphBoxHeight > 0 ? paragraph.getBoundingClientRect().height / paragraphBoxHeight : 1;
     const lineHeight = parseFloat(getComputedStyle(element).lineHeight) * scaleY;
     // WebKit's native highlight may fill one computed line-height upward from
     // the glyph descent edge, rather than Chromium's tighter glyph rectangle.
@@ -163,6 +172,7 @@ async function geometry(page) {
       typography: {
         fontSize: getComputedStyle(element).fontSize,
         lineHeight: getComputedStyle(element).lineHeight,
+        scaleY, paragraphBoxHeight,
         element: bounds(element.getBoundingClientRect()),
         paragraph: bounds(element.parentElement.getBoundingClientRect()),
       },
