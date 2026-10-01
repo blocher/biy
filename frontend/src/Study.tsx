@@ -1,3 +1,4 @@
+import { ThemeToggle } from "./Theme";
 import {
   useEffect,
   useLayoutEffect,
@@ -525,6 +526,7 @@ function StudyContent({
         </label>
       </nav>
       <div className="font-controls">
+        <ThemeToggle />
         <button
           aria-label="Smaller text"
           disabled={size <= 16}

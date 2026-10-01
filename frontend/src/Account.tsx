@@ -17,6 +17,7 @@ import {
 import { usePreferences } from "./Preferences";
 import { api } from "./api";
 import { Sidebar } from "./navigation";
+import { ThemeSettings } from "./Theme";
 import {
   canPromptInstall,
   currentPushSubscription,
@@ -277,6 +278,7 @@ export function Account({
           <p>A quiet place to keep your details up to date.</p>
         </header>
         <div className="account-layout">
+          <ThemeSettings />
           <section className="account-card profile-card">
             <div className="account-card-heading">
               <span className="account-icon">

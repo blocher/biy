@@ -12,6 +12,7 @@ import {
   LibraryBig,
 } from "lucide-react";
 import { editionName, useEdition, type Edition } from "./Edition";
+import { ThemeToggle } from "./Theme";
 export const LogoutContext = createContext(() => {});
 export const AdminContext = createContext(false);
 export function Brand() {
@@ -93,6 +94,7 @@ export function Sidebar({
         )}
       </nav>
       <div className="sidebar-bottom">
+        <ThemeToggle />
         <NavLink className="account" to="/account">
           <span className="avatar">{user[0].toUpperCase()}</span>
           <div>
