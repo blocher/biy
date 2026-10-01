@@ -143,6 +143,7 @@ Files and checkpoints live under ignored `media/`. A PostgreSQL advisory lock pr
 - Home shows the day list, completion checks, progress and a prominent next-unread action.
 - Search by day/book/title, filter by period/completion, and switch between table and cards.
 - Each day includes RSV-2CE Scripture, full transcript, commentary-only transcript, lightly edited commentary, summary and clickable audio outline.
+- The light/dark toggle is available in navigation, reader mode, and sign-in. Appearance follows the device until you choose a theme; Account → Appearance can restore the device setting. The choice is saved in this browser and shared between its tabs.
 - Full-page reader supports text sizing; the audio player supports seeking, 15-second skip, speed control and saved position.
 - Notes and journal entries are private per account, editable and optionally linked to the current audio time. Unsaved text is kept in that browser tab until saved. The journal collects entries across the year.
 - Completion timestamps persist and repeated “complete” calls preserve the original timestamp. A day can be marked unread again.
@@ -157,6 +158,8 @@ Files and checkpoints live under ignored `media/`. A PostgreSQL advisory lock pr
 cd frontend
 npm test
 npm run build
+# Isolated, mocked reading-selection checks; starts its own Vite server:
+npm run test:selection
 # With the two dev servers running and local BEN_INITIAL_PASSWORD configured:
 node tests/smoke.mjs
 ```
@@ -173,6 +176,21 @@ BIY_TEST_URL=http://127.0.0.1:5183 npm run test:catechism-audio
 It checks desktop Chromium and mobile WebKit, reading/paragraph navigation, pause/resume, end-of-reading replay, commentary gaps, load errors/retry, and unavailable/introductory days. Screenshots go to `/tmp/biy-catechism-audio` (override with `BIY_TEST_OUTPUT`). Actual podcast alignment still needs a processed episode; the test intentionally does not create one.
 
 The browser smoke test signs in, checks the layout, plays/seeks Day 1, opens reader mode, saves/reloads/deletes an acceptance-test journal entry, and completes/reloads/uncompletes Day 1. Run only against the initial local test account; it changes Day 1’s completion state. It does not call OpenAI.
+
+The theme acceptance suite uses mocked APIs and silent test audio, with no account or database changes. With Vite running on port 5181, run `node tests/theme.mjs` from `frontend` (Chromium/Chrome and Playwright WebKit must be installed). Override `BIY_TEST_URL` for another local port or set `BIY_TEST_BROWSER=chromium` / `webkit` for one engine. It checks persistence, device and cross-tab changes, keyboard controls, contrast, and 320/390px reader, dialog, and audio surfaces; screenshots are saved under ignored `data/screenshots/theme/`.
+
+The selection acceptance test uses the real reading toolbar and note dialog with
+mocked chat and API calls, without signing in or changing a database. It checks
+desktop keyboard selection and touch layouts at 390px and 320px, including
+collapsed native ranges, handle changes, note metadata, scrolling, visual viewport
+changes, dismissal, navigation and unmounting. Screenshots go to ignored
+`data/screenshots/selection/`. With a compatible Playwright WebKit engine installed,
+run `SELECTION_BROWSER=webkit npm run test:selection` for the same WebKit checks.
+Headless emulation cannot display the iPhone's native selection menu. On a real
+iPhone, select text near both ends of the screen, adjust its handles, scroll or
+rotate, then use **Take note** and **Ask** to confirm the quote and citation. The
+touch toolbar docks at the opposite visible edge and its close button discards
+the retained selection; native **Copy** and **Look Up** remain available.
 
 ## Deployment
 
