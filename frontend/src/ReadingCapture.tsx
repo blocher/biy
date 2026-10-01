@@ -5,29 +5,10 @@ import { api } from "./api";
 import { NoteEditorDialog, type NoteEditorValue } from "./NoteEditorDialog";
 import type { Note } from "./types";
 import type { useStudyChat } from "./useStudyChat";
+import type { ReadingSelection } from "./readingSelection";
+import { localReadingUrl, useReadingSelection } from "./useReadingSelection";
 
 type Chat = ReturnType<typeof useStudyChat>;
-
-type ReadingSelection = {
-  quote: string;
-  citation: string;
-  sourceUrl: string;
-};
-
-function localUrl(fragment = "") {
-  return `${window.location.pathname}${window.location.search}${fragment}`;
-}
-
-function selectionSource(node: Node | null, fallback: string) {
-  const element =
-    node instanceof Element ? node : node?.parentElement || undefined;
-  const source = element?.closest<HTMLElement>("[data-reading-citation]");
-  const fragment = source?.dataset.readingUrl || "";
-  return {
-    citation: source?.dataset.readingCitation || fallback,
-    sourceUrl: fragment.startsWith("/") ? fragment : localUrl(fragment),
-  };
-}
 
 export function buildSelectionQuestion(selection: ReadingSelection) {
   const quote =
@@ -53,57 +34,34 @@ export function ReadingCapture({
   onError: (message: string) => void;
 }) {
   const surface = useRef<HTMLDivElement>(null);
-  const [selection, setSelection] = useState<ReadingSelection | null>(null);
-  const [toolbar, setToolbar] = useState<{ left: number; top: number } | null>(
-    null,
-  );
+  const { selection, snapshot, toolbar, suspend, dismiss } =
+    useReadingSelection(surface, contextLabel, target);
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const savedTimer = useRef(0);
 
   useEffect(() => {
-    const hide = () => setToolbar(null);
-    const dismiss = (event: PointerEvent) => {
-      const element = event.target as HTMLElement;
-      if (!element.closest(".reading-selection-tools")) setToolbar(null);
-      if (!element.closest(".reading-capture-launcher")) setLauncherOpen(false);
+    const closeLauncher = (event: PointerEvent) => {
+      if (
+        !(event.target instanceof Element) ||
+        !event.target.closest(".reading-capture-launcher")
+      )
+        setLauncherOpen(false);
     };
-    window.addEventListener("scroll", hide, true);
-    window.addEventListener("resize", hide);
-    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("pointerdown", closeLauncher);
     return () => {
-      window.removeEventListener("scroll", hide, true);
-      window.removeEventListener("resize", hide);
-      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("pointerdown", closeLauncher);
+      window.clearTimeout(savedTimer.current);
     };
   }, []);
 
-  function readSelection(point?: { left: number; top: number }) {
-    const native = window.getSelection();
-    if (!native || native.isCollapsed || !native.rangeCount || !surface.current)
-      return false;
-    const range = native.getRangeAt(0);
-    if (!surface.current.contains(range.commonAncestorContainer)) return false;
-    const quote = native.toString().replace(/\s+/g, " ").trim().slice(0, 10000);
-    if (!quote) return false;
-    const source = selectionSource(range.startContainer, contextLabel);
-    const rect = range.getBoundingClientRect();
-    setSelection({ quote, ...source });
-    setLauncherOpen(false);
-    setToolbar(
-      point || {
-        left: Math.min(
-          window.innerWidth - 116,
-          Math.max(116, rect.left + rect.width / 2),
-        ),
-        top: rect.top > 72 ? rect.top - 12 : rect.bottom + 58,
-      },
-    );
-    return true;
-  }
+  useEffect(() => {
+    if (selection) setLauncherOpen(false);
+  }, [selection]);
 
   function openNote() {
-    setToolbar(null);
+    suspend();
     setLauncherOpen(false);
     setSaved(false);
     setNoteOpen(true);
@@ -111,8 +69,9 @@ export function ReadingCapture({
 
   function openAsk() {
     chat.newConversation();
-    if (selection) chat.setQuestion(buildSelectionQuestion(selection));
-    setToolbar(null);
+    if (snapshot.current)
+      chat.setQuestion(buildSelectionQuestion(snapshot.current));
+    suspend();
     setLauncherOpen(false);
     onOpenAsk();
   }
@@ -120,9 +79,10 @@ export function ReadingCapture({
   async function saveNote(value: NoteEditorValue) {
     const note = await api<Note>(target + "/notes", "POST", value);
     window.dispatchEvent(new CustomEvent("biy-note-saved", { detail: note }));
-    setSelection(null);
+    dismiss();
     setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+    window.clearTimeout(savedTimer.current);
+    savedTimer.current = window.setTimeout(() => setSaved(false), 3000);
   }
 
   const tools = (
@@ -132,14 +92,31 @@ export function ReadingCapture({
           className="reading-selection-tools"
           role="toolbar"
           aria-label="Use highlighted text"
-          style={{ left: toolbar.left, top: toolbar.top }}
+          data-placement={toolbar.placement}
+          onPointerDown={(event) => {
+            // Mouse activation should not clear the browser highlight before click.
+            // Touch activation uses the snapshot even if Safari collapses its range.
+            if (event.pointerType === "mouse") event.preventDefault();
+          }}
+          style={{
+            left: toolbar.left,
+            top: toolbar.top,
+            maxWidth: toolbar.maxWidth,
+          }}
         >
           <button onClick={openNote}>
-            <NotebookPen size={16} /> Note
+            <NotebookPen size={16} /> Take note
           </button>
           <span aria-hidden="true" />
           <button onClick={openAsk}>
             <MessageCircle size={16} /> Ask
+          </button>
+          <button
+            className="reading-selection-dismiss"
+            aria-label="Dismiss selection tools"
+            onClick={dismiss}
+          >
+            <X size={16} />
           </button>
         </div>
       )}
@@ -162,8 +139,7 @@ export function ReadingCapture({
           aria-expanded={launcherOpen}
           title="Note or ask without losing your place"
           onClick={() => {
-            setSelection(null);
-            setToolbar(null);
+            dismiss();
             setLauncherOpen((open) => !open);
           }}
         >
@@ -180,30 +156,7 @@ export function ReadingCapture({
 
   return (
     <>
-      <div
-        className="reading-capture-surface"
-        ref={surface}
-        onPointerUp={(event) => {
-          if (
-            (event.target as HTMLElement).closest("button, a, input, textarea")
-          )
-            return;
-          window.setTimeout(
-            () => {
-              if (!readSelection()) setToolbar(null);
-            },
-            event.pointerType === "touch" ? 180 : 0,
-          );
-        }}
-        onKeyUp={(event) => {
-          if (event.key.startsWith("Arrow") || event.key === "Shift")
-            window.setTimeout(() => readSelection(), 0);
-        }}
-        onContextMenu={(event) => {
-          if (readSelection({ left: event.clientX, top: event.clientY }))
-            event.preventDefault();
-        }}
-      >
+      <div className="reading-capture-surface" ref={surface}>
         {children}
       </div>
       {createPortal(tools, document.body)}
@@ -218,7 +171,7 @@ export function ReadingCapture({
             audio_time: null,
             quote: selection?.quote || "",
             citation: selection?.citation || contextLabel,
-            source_url: selection?.sourceUrl || localUrl(),
+            source_url: selection?.sourceUrl || localReadingUrl(),
           }}
           onClose={() => setNoteOpen(false)}
           onSave={saveNote}
