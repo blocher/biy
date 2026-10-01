@@ -161,6 +161,8 @@ npm test
 npm run build
 # Isolated, mocked reading-selection checks; starts its own Vite server:
 npm run test:selection
+# Isolated page-wide find behavior and painted geometry (Chromium + WebKit):
+npm run test:find-page
 # With the two dev servers running and local BEN_INITIAL_PASSWORD configured:
 node tests/smoke.mjs
 ```

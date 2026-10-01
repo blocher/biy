@@ -9,16 +9,21 @@ export function findRanges(surface: HTMLElement, query: string): Range[] {
     if (cached !== undefined) return cached;
     const style = getComputedStyle(element);
     const visible = !element.matches(excluded) && style.display !== "none" &&
-      style.visibility !== "hidden" && style.visibility !== "collapse" &&
       style.contentVisibility !== "hidden" && style.opacity !== "0" &&
       (!element.parentElement || rendered(element.parentElement));
     visibility.set(element, visible);
     return visible;
   }
-  const walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT, {
+  const walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
     acceptNode(node) {
+      if (node instanceof Element) {
+        return node.tagName === "BR" && rendered(node) && getComputedStyle(node).visibility === "visible"
+          ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+      }
       const parent = node.parentElement;
       if (!node.textContent || !parent || !rendered(parent)) return NodeFilter.FILTER_REJECT;
+      // Visibility is inherited but a descendant may explicitly become visible.
+      if (["hidden", "collapse"].includes(getComputedStyle(parent).visibility)) return NodeFilter.FILTER_REJECT;
       // Closed details can still report element boxes in some browsers.
       for (let ancestor: Element | null = parent; ancestor; ancestor = ancestor.parentElement) {
         if (ancestor instanceof HTMLDetailsElement && !ancestor.open &&
@@ -33,10 +38,15 @@ export function findRanges(surface: HTMLElement, query: string): Range[] {
   let text = "";
   let block: Element | null = null;
   function textBlock(element: Element | null): Element | null {
-    while (element && element !== surface && getComputedStyle(element).display === "inline") element = element.parentElement;
+    while (element && element !== surface) {
+      const display = getComputedStyle(element).display;
+      if (!display.startsWith("inline") && display !== "contents") break;
+      element = element.parentElement;
+    }
     return element;
   }
   while (walker.nextNode()) {
+    if (walker.currentNode instanceof Element) { text += "\n"; continue; }
     const node = walker.currentNode as Text;
     const nextBlock = textBlock(node.parentElement);
     if (block && nextBlock !== block) text += "\n";

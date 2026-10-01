@@ -208,6 +208,79 @@ class SiteSearchTests(TestCase):
         self.assertEqual(len(scripture), 1)
         self.assertEqual(scripture[0]["url"], "/bible/day/1/reader?tab=scripture#verse-john-3-16")
 
+    def full_john_chapter(self):
+        Verse.objects.bulk_create([
+            Verse(book="John", chapter=3, number=number, text="An unrelated passage.")
+            for number in range(1, 16)
+        ])
+        index_chapter("John", 3)
+
+    def test_partial_chapter_match_links_to_the_assigned_verse(self):
+        self.full_john_chapter()
+        results = [item for item in self.search("loved the world") if item["kind"] == "scripture"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["url"], "/bible/day/1/reader?tab=scripture#verse-john-3-16")
+        self.assertEqual(results[0]["title"], "John 3:16")
+        self.assertIn("God so loved the world", results[0]["excerpt"])
+        self.assertNotIn("unrelated", results[0]["excerpt"])
+
+    def test_match_only_in_unassigned_verse_does_not_link_to_overlapping_reading(self):
+        self.full_john_chapter()
+        Verse.objects.filter(book="John", chapter=3, number=15).update(text="A comet appeared.")
+        index_chapter("John", 3)
+        results = self.search("comet")
+        self.assertFalse(any(item["kind"] == "scripture" for item in results))
+
+    def test_split_chunk_chooses_day_that_contains_the_match(self):
+        self.full_john_chapter()
+        self.day.readings = ["John 3:9-10"]
+        self.day.save()
+        Day.objects.create(number=2, era=self.day.era, readings=["John 3:16-18"])
+        results = [item for item in self.search("loved the world") if item["kind"] == "scripture"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["url"], "/bible/day/2/reader?tab=scripture#verse-john-3-16")
+        self.assertIn("God so loved the world", results[0]["excerpt"])
+        self.assertNotIn("unrelated", results[0]["excerpt"])
+
+    def test_stemmed_match_keeps_excerpt_and_anchor_on_matching_verse(self):
+        self.full_john_chapter()
+        self.day.readings = ["John 3:9-16"]
+        self.day.save()
+        results = [item for item in self.search("love") if item["kind"] == "scripture"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["url"], "/bible/day/1/reader?tab=scripture#verse-john-3-16")
+        self.assertTrue(results[0]["excerpt"].startswith("16. God so loved the world"))
+
+    def test_cross_chapter_assignment_links_to_matching_verse(self):
+        self.full_john_chapter()
+        self.day.readings = ["John 2:25-3:18"]
+        self.day.save()
+        results = [item for item in self.search("loved the world") if item["kind"] == "scripture"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["url"], "/bible/day/1/reader?tab=scripture#verse-john-3-16")
+
+    def test_fuzzy_scripture_match_also_requires_an_assigned_verse(self):
+        self.full_john_chapter()
+        Verse.objects.filter(book="John", chapter=3, number=15).update(text="The Eucharist is a gift.")
+        index_chapter("John", 3)
+        self.assertFalse(any(item["kind"] == "scripture" for item in self.search("eucharits")))
+
+        Verse.objects.filter(book="John", chapter=3, number=16).update(text="The Eucharist is a gift.")
+        index_chapter("John", 3)
+        results = [item for item in self.search("eucharits") if item["kind"] == "scripture"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["url"], "/bible/day/1/reader?tab=scripture#verse-john-3-16")
+        self.assertIn("Eucharist", results[0]["excerpt"])
+
+        self.day.readings = ["John 3:9-16"]
+        self.day.save()
+        Verse.objects.filter(book="John", chapter=3, number=15).update(text="An unrelated passage.")
+        index_chapter("John", 3)
+        results = [item for item in self.search("eucharits") if item["kind"] == "scripture"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["url"], "/bible/day/1/reader?tab=scripture#verse-john-3-16")
+        self.assertTrue(results[0]["excerpt"].startswith("16. The Eucharist is a gift."))
+
     def test_catechism_chunks_return_one_reading_with_a_matching_anchor(self):
         CatechismDay.objects.create(
             number=2, part="Sacraments", paragraph_start=1, paragraph_end=3, color="#123456",
