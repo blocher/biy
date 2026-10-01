@@ -155,7 +155,8 @@ class CatechismAPITests(TestCase):
             {"id": 2, "start": 20, "end": 30, "text": "Reflecting on today's reading."},
         ]
         self.episode.classification = [
-            {"id": 1, "kind": "catechism"}, {"id": 2, "kind": "commentary"},
+            {"id": 1, "kind": "catechism"},
+            {"id": 2, "kind": "commentary"},
         ]
         self.episode.save()
         detail = self.client.get("/api/days/1?edition=catechism").json()

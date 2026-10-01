@@ -68,6 +68,7 @@ def align_catechism_audio(paragraphs, transcript, classification):
                 if (
                     confidence < 0.75
                     or blocks[0].a != 0
+                    or blocks[0].b != 0
                     or blocks[0].size < min(4, len(anchor))
                     or last.a + last.size != len(anchor)
                     or last.size < min(4, len(anchor))

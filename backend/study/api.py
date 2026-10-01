@@ -20,11 +20,12 @@ from ninja.errors import HttpError
 from ninja.security import django_auth
 from pydantic import Field
 
+from .catechism_audio import align_catechism_audio
 from .chat_api import router as chat_router
 from .commentaries import (
     CommentaryRange,
-    commentary_rows,
     commentary_ranges_for_readings,
+    commentary_rows,
     matching_references,
     ordered_commentary_ids,
     year_label,
@@ -47,7 +48,6 @@ from .models import (
 )
 from .scripture import reading_text
 from .scripture_audio import align_scripture_audio
-from .catechism_audio import align_catechism_audio
 
 api = NinjaAPI(title="Bible in a Year", auth=django_auth, docs_url=None)
 
@@ -306,9 +306,7 @@ def push_subscriptions(request):
 
 @api.put("/push/subscriptions/current")
 def touch_push_subscription(request, payload: PushSubscriptionDeleteIn):
-    subscription = get_object_or_404(
-        PushSubscription, user=request.user, endpoint=payload.endpoint
-    )
+    subscription = get_object_or_404(PushSubscription, user=request.user, endpoint=payload.endpoint)
     subscription.last_seen_at = timezone.now()
     subscription.save(update_fields=["last_seen_at"])
     return {"last_seen_at": subscription.last_seen_at}

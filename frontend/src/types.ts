@@ -73,7 +73,15 @@ export type ScriptureAudioCue = {
   end: number;
   confidence: number;
 };
+export type CatechismAudioCue = {
+  paragraph_number: number;
+  reference: string;
+  start: number;
+  end: number;
+  confidence: number;
+};
 export type CatechismParagraph = {
+  audio?: CatechismAudioCue | null;
   number: number;
   text: string;
   source_url: string;
