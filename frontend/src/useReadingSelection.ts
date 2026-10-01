@@ -41,6 +41,7 @@ export function useReadingSelection(
     if (!node) return;
     let selectionFrame = 0;
     let viewportFrame = 0;
+    let selecting = false;
     enabled.current = true;
     snapshot.current = null;
     range.current = null;
@@ -69,6 +70,9 @@ export function useReadingSelection(
       if (!enabled.current) return false;
       const native = window.getSelection();
       if (!native || native.isCollapsed || !native.rangeCount) {
+        // A mouse drag can first collapse the old selection. Wait for the
+        // completed drag instead of disabling capture at this intermediate step.
+        if (selecting) return false;
         // iOS may collapse its native range while opening a menu or focusing an
         // action. Keep the captured text until an action or explicit dismissal.
         if (
@@ -119,6 +123,7 @@ export function useReadingSelection(
       viewportFrame = requestAnimationFrame(position);
     };
     const pointerDown = (event: PointerEvent) => {
+      selecting = false;
       const element = event.target instanceof Element ? event.target : null;
       if (element?.closest(".reading-selection-tools")) return;
       if (!element || !node.contains(element) || element.closest(interactive)) {
@@ -126,6 +131,7 @@ export function useReadingSelection(
         if (enabled.current) dismiss();
         return;
       }
+      selecting = true;
       enabled.current = true;
       touch.current = event.pointerType === "touch";
       if (!touch.current) {
@@ -135,16 +141,18 @@ export function useReadingSelection(
         setToolbar(null);
       }
     };
-    const pointerUp = (event: PointerEvent) => {
-      if (
-        !(event.target instanceof Element) ||
-        event.target.closest(interactive)
-      )
-        return;
+    const pointerUp = () => {
+      if (!selecting) return;
+      selecting = false;
+      enabled.current = true;
       queueRead();
+    };
+    const pointerCancel = () => {
+      selecting = false;
     };
     const keyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        selecting = false;
         if (enabled.current) dismiss();
         return;
       }
@@ -168,7 +176,8 @@ export function useReadingSelection(
     document.addEventListener("selectionchange", read);
     document.addEventListener("pointerdown", pointerDown);
     document.addEventListener("keydown", keyDown);
-    node.addEventListener("pointerup", pointerUp);
+    document.addEventListener("pointerup", pointerUp);
+    document.addEventListener("pointercancel", pointerCancel);
     node.addEventListener("contextmenu", contextMenu);
     window.addEventListener("scroll", reposition, true);
     window.addEventListener("resize", reposition);
@@ -181,7 +190,8 @@ export function useReadingSelection(
       document.removeEventListener("selectionchange", read);
       document.removeEventListener("pointerdown", pointerDown);
       document.removeEventListener("keydown", keyDown);
-      node.removeEventListener("pointerup", pointerUp);
+      document.removeEventListener("pointerup", pointerUp);
+      document.removeEventListener("pointercancel", pointerCancel);
       node.removeEventListener("contextmenu", contextMenu);
       window.removeEventListener("scroll", reposition, true);
       window.removeEventListener("resize", reposition);

@@ -119,6 +119,69 @@ try {
     await context.close();
   }
 
+  // Exercise actual desktop drags repeatedly, including replacing a previous
+  // highlight. Programmatic ranges alone miss the browser's event ordering.
+  {
+    const { context, page } = await open({
+      viewport: { width: 1280, height: 900 },
+    });
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const points = await page.locator("#upper").evaluate((element, index) => {
+        const text = element.firstChild;
+        const caret = (offset) => {
+          const range = document.createRange();
+          range.setStart(text, offset);
+          range.setEnd(text, offset + 1);
+          const rect = range.getBoundingClientRect();
+          return { x: rect.left + 1, y: rect.top + rect.height / 2 };
+        };
+        return { start: caret(index % 2 ? 27 : 0), end: caret(index % 2 ? 46 : 19) };
+      }, attempt);
+      await page.mouse.move(points.start.x, points.start.y);
+      await page.mouse.down();
+      await page.mouse.move(points.end.x, points.end.y, { steps: 6 });
+      await page.mouse.up();
+      await expect(toolbar(page)).toBeVisible();
+    }
+    await context.close();
+  }
+
+  // Starting another mouse drag can collapse the previous range before the
+  // browser publishes the new one. The final mouse-up must still show tools.
+  {
+    const { context, page } = await open({
+      viewport: { width: 1280, height: 900 },
+    });
+    await select(page, "upper", { touch: false, end: 9 });
+    await expect(toolbar(page)).toBeVisible();
+    await page.locator("#lower").evaluate((element) => {
+      element.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          bubbles: true,
+          pointerType: "mouse",
+        }),
+      );
+      const selection = getSelection();
+      selection.removeAllRanges();
+      document.dispatchEvent(new Event("selectionchange"));
+      const range = document.createRange();
+      range.setStart(element.firstChild, 0);
+      range.setEnd(element.firstChild, 14);
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+      element.dispatchEvent(
+        new PointerEvent("pointerup", {
+          bubbles: true,
+          pointerType: "mouse",
+        }),
+      );
+    });
+    await expect(toolbar(page)).toBeVisible();
+    await toolbar(page).getByRole("button", { name: "Ask", exact: true }).click();
+    await expect(page.getByLabel("Ask draft")).toContainText("John 1:9");
+    await context.close();
+  }
+
   for (const width of [390, 320]) {
     const { context, page, saved } = await open({
       viewport: { width, height: 844 },
@@ -296,7 +359,7 @@ try {
 
   expect(errors).toEqual([]);
   console.log(
-    "Reading selection acceptance passed: desktop keyboard; touch at 390px/320px; native collapse/handle changes; mocked note payload; opposite dock; viewport/scroll; dismissal; unmount.",
+    "Reading selection acceptance passed: repeated desktop drags and keyboard; touch at 390px/320px; native collapse/handle changes; mocked note payload; opposite dock; viewport/scroll; dismissal; unmount.",
   );
 } finally {
   await browser.close();
