@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script type="module">
+      import "../../src/design/home.css";
+      import "../../src/design/study.css";
+      import "../../src/design/reader.css";
+      import "../../src/styles.css";
+      import "../../src/theme.css";
+    </script>
+  </head>
+  <body style="min-height: 200vh">
+    <button id="complete" style="margin-top: 110vh">Mark complete</button>
+    <dialog class="completion-dialog" aria-labelledby="completion-dialog-title">
+      <button class="completion-dialog-close" aria-label="Close">×</button>
+      <span class="completion-dialog-icon">✓</span>
+      <h2 id="completion-dialog-title">Day 1 complete</h2>
+      <p>Where would you like to go next?</p>
+      <div class="completion-dialog-actions">
+        <button class="primary">Go to the next day</button>
+        <button class="completion-dialog-home">Go home</button>
+      </div>
+    </dialog>
+    <script>
+      document.querySelector("#complete").onclick = () =>
+        document.querySelector(".completion-dialog").showModal();
+    </script>
+  </body>
+</html>
