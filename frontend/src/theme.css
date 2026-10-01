@@ -238,7 +238,7 @@ html[data-theme="dark"]
     .outline-label,
     .timestamp,
     .reader-mode-links a,
-    .catechism-text > p strong,
+    .catechism-text [data-reading-citation] strong,
     .chat-citation,
     .reminder-condition label.active
   ) {

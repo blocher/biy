@@ -367,8 +367,8 @@ for (const engine of engines) {
     ]);
     await page.goto(base + "/catechism/day/1/reader");
     await page.locator(".catechism-text").waitFor();
-    await readable(page, ".catechism-text > p");
-    await readable(page, ".catechism-text > p strong");
+    await readable(page, ".catechism-text [data-reading-citation]");
+    await readable(page, ".catechism-text [data-reading-citation] strong");
     await noOverflow(page, "catechism reader");
     await page.screenshot({
       path: screenshots + engine.name() + "-catechism-dark-320.png",
