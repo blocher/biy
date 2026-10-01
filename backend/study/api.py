@@ -47,6 +47,7 @@ from .models import (
 )
 from .scripture import reading_text
 from .scripture_audio import align_scripture_audio
+from .catechism_audio import align_catechism_audio
 
 api = NinjaAPI(title="Bible in a Year", auth=django_auth, docs_url=None)
 
@@ -643,6 +644,16 @@ def day_detail(request, number: int):
             if day.paragraph_start is not None
             else []
         )
+        paragraph_data = [
+            {"number": paragraph.number, "text": paragraph.text, "source_url": paragraph.source_url}
+            for paragraph in paragraphs
+        ]
+        cues = (
+            align_catechism_audio(paragraph_data, ep.transcript, ep.classification)
+            if ep and ep.audio_file
+            else []
+        )
+        cues_by_paragraph = {cue["paragraph_number"]: cue for cue in cues}
         return {
             "edition": edition,
             "number": number,
@@ -654,12 +665,8 @@ def day_detail(request, number: int):
             "completed_at": progress.completed_at if progress else None,
             "scripture": [],
             "catechism": [
-                {
-                    "number": paragraph.number,
-                    "text": paragraph.text,
-                    "source_url": paragraph.source_url,
-                }
-                for paragraph in paragraphs
+                {**paragraph, "audio": cues_by_paragraph.get(paragraph["number"])}
+                for paragraph in paragraph_data
             ],
             "episode": episode_detail(ep, request.user) if ep else None,
         }
