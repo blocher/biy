@@ -58,6 +58,9 @@ function Fixture() {
             <div style={{ visibility: "hidden" }}><p>Visibility-hidden beacon</p></div>
             <p aria-hidden="true">Aria-hidden beacon</p>
             <p style={{ opacity: 0 }}>Transparent beacon</p>
+            <span className="sr-only">Screen-reader-only beacon</span>
+            <span style={{ position: "absolute", clip: "rect(0px, 0px, 0px, 0px)", width: 1, height: 1, overflow: "hidden" }}>Zero-clip accessible-label beacon</span>
+            <a className="skip-link" href="#main-match">Skip-link beacon</a>
             <details id="details-match">
               <summary>Open extra reading</summary>
               <p id="details-text">A disclosed beacon appears.</p>

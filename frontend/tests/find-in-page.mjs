@@ -29,7 +29,7 @@ async function settle(page) {
 async function open(browser, mobile, fallback = false, standalone = true) {
   const context = await browser.newContext({
     viewport: mobile ? { width: 390, height: 844 } : { width: 1280, height: 900 },
-    deviceScaleFactor: 1, isMobile: mobile, hasTouch: mobile,
+    deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile,
   });
   const page = await context.newPage();
   page.on("pageerror", (error) => errors.push(error.message));
@@ -126,11 +126,25 @@ async function geometry(page) {
     let left = 0, top = 0, right = innerWidth, bottom = innerHeight;
     for (let parent = element; parent; parent = parent.parentElement) {
       const style = getComputedStyle(parent), rect = parent.getBoundingClientRect();
-      if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) { left = Math.max(left, rect.left); right = Math.min(right, rect.right); }
-      if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) { top = Math.max(top, rect.top); bottom = Math.min(bottom, rect.bottom); }
+      const scaleX = parent.offsetWidth ? rect.width / parent.offsetWidth : 1;
+      const scaleY = parent.offsetHeight ? rect.height / parent.offsetHeight : 1;
+      const clientLeft = rect.left + parent.clientLeft * scaleX;
+      const clientTop = rect.top + parent.clientTop * scaleY;
+      if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) {
+        left = Math.max(left, clientLeft); right = Math.min(right, clientLeft + parent.clientWidth * scaleX);
+      }
+      if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) {
+        top = Math.max(top, clientTop); bottom = Math.min(bottom, clientTop + parent.clientHeight * scaleY);
+      }
     }
     return {
       viewport: { width: innerWidth, height: innerHeight },
+      typography: {
+        fontSize: getComputedStyle(element).fontSize,
+        lineHeight: getComputedStyle(element).lineHeight,
+        element: bounds(element.getBoundingClientRect()),
+        paragraph: bounds(element.parentElement.getBoundingClientRect()),
+      },
       rects: [...range.getClientRects()].map(bounds),
       clipped: [...range.getClientRects()].map((rect) => ({
         x: Math.max(left, rect.left), y: Math.max(top, rect.top),
@@ -148,6 +162,7 @@ async function assertPaint(page, label, fallback) {
   const measured = await geometry(page);
   expect(measured.clipped.length, `${label}: match is in visible scrollport`).toBeGreaterThan(0);
   if (fallback) {
+    metrics.push({ label, ...measured });
     expect(measured.fallback.length, `${label}: SVG rectangle count`).toBe(measured.clipped.length);
     for (let index = 0; index < measured.clipped.length; index++)
       for (const key of ["x", "y", "width", "height"])
@@ -170,10 +185,29 @@ async function assertPaint(page, label, fallback) {
       const px = x / scaleX, py = y / scaleY;
       if (!measured.clipped.some((rect) => px >= rect.x - 1 && px <= rect.x + rect.width + 1 && py >= rect.y - 1 && py <= rect.y + rect.height + 1)) misaligned++;
     }
+    metrics.push({ label, painted, misaligned, ...measured });
+    if (painted <= 30 || misaligned / painted >= 0.01) {
+      console.error("Native paint diagnostic:", JSON.stringify(metrics.at(-1)));
+      await settle(page);
+      await page.screenshot({ path: new URL(`${label}-extra-frames.png`, screenshots).pathname, animations: "disabled" });
+      await page.evaluate(() => {
+        // Diagnostic only: keep the original failure. This reveals whether a
+        // native engine invalidates paint when existing live ranges reflow.
+        for (const name of ["biy-page-find", "biy-page-find-active"]) {
+          const prior = CSS.highlights.get(name);
+          const replacement = new Highlight(...prior);
+          replacement.priority = prior.priority;
+          CSS.highlights.set(name, replacement);
+        }
+      });
+      await settle(page);
+      const repainted = await geometry(page);
+      metrics.push({ label: `${label}-reregistered`, ...repainted });
+      await page.screenshot({ path: new URL(`${label}-reregistered.png`, screenshots).pathname, animations: "disabled" });
+    }
     expect(painted, `${label}: orange highlight pixels actually rendered`).toBeGreaterThan(30);
     expect(misaligned / painted, `${label}: highlight paint outside text Range`).toBeLessThan(0.01);
-    metrics.push({ label, painted, misaligned, ...measured });
-  } else metrics.push({ label, ...measured });
+  }
   return measured;
 }
 
@@ -195,14 +229,22 @@ async function checkGeometry(page, label, fallback) {
   const viewport = page.viewportSize();
   await page.setViewportSize({ width: viewport.width - 48, height: viewport.height - 65 });
   await page.locator("#geometry-word").evaluate((element) => element.scrollIntoView({ block: "center" }));
-  await assertPaint(page, `${label}-viewport-resize`, fallback);
+  const resized = await assertPaint(page, `${label}-viewport-resize`, fallback);
+  await page.evaluate(() => { document.body.style.zoom = "1.25"; });
+  await page.locator("#geometry-word").evaluate((element) => element.scrollIntoView({ block: "center" }));
+  const zoomed = await assertPaint(page, `${label}-body-zoom`, fallback);
+  expect(zoomed.rects[0].width).toBeGreaterThan(resized.rects[0].width * 1.2);
   // A clipped nested word must not paint through the scrollport's edge.
   await page.locator("#geometry-word").evaluate((element) => {
     const scroll = document.getElementById("nested-scroll");
     const word = element.getBoundingClientRect();
-    scroll.scrollTop += word.top - scroll.getBoundingClientRect().top + word.height / 2;
+    const box = scroll.getBoundingClientRect();
+    const scaleY = box.height / scroll.offsetHeight;
+    const clientTop = box.top + scroll.clientTop * scaleY;
+    scroll.scrollTop += (word.top - clientTop + word.height / 2) / scaleY;
   });
   await assertPaint(page, `${label}-nested-clip`, fallback);
+  await page.evaluate(() => { document.body.style.zoom = ""; });
 }
 
 async function checkBehavior(page, native) {

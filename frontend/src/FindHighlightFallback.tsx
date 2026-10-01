@@ -18,11 +18,17 @@ export function FindHighlightFallback({ ranges, active }: { ranges: Range[]; act
           for (let parent = range.startContainer.parentElement; parent; parent = parent.parentElement) {
             const style = getComputedStyle(parent);
             const bounds = parent.getBoundingClientRect();
+            const scaleX = parent.offsetWidth ? bounds.width / parent.offsetWidth : 1;
+            const scaleY = parent.offsetHeight ? bounds.height / parent.offsetHeight : 1;
+            const clientLeft = bounds.left + parent.clientLeft * scaleX;
+            const clientTop = bounds.top + parent.clientTop * scaleY;
             if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) {
-              left = Math.max(left, bounds.left); right = Math.min(right, bounds.right);
+              left = Math.max(left, clientLeft);
+              right = Math.min(right, clientLeft + parent.clientWidth * scaleX);
             }
             if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) {
-              top = Math.max(top, bounds.top); bottom = Math.min(bottom, bounds.bottom);
+              top = Math.max(top, clientTop);
+              bottom = Math.min(bottom, clientTop + parent.clientHeight * scaleY);
             }
           }
           for (const rect of range.getClientRects()) {

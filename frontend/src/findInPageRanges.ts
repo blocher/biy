@@ -1,5 +1,5 @@
 // Keep offsets in the original text: lowercasing can change Unicode string lengths.
-const excluded = "script, style, noscript, template, input, textarea, select, [hidden], [inert], [aria-hidden='true'], [data-page-find-ignore], .page-find, .page-find-highlights, .reading-selection-tools, .reading-capture-launcher";
+const excluded = "script, style, noscript, template, input, textarea, select, .sr-only, .skip-link:not(:focus), [hidden], [inert], [aria-hidden='true'], [data-page-find-ignore], .page-find, .page-find-highlights, .reading-selection-tools, .reading-capture-launcher";
 
 export function findRanges(surface: HTMLElement, query: string): Range[] {
   if (!query.trim()) return [];
@@ -8,7 +8,9 @@ export function findRanges(surface: HTMLElement, query: string): Range[] {
     const cached = visibility.get(element);
     if (cached !== undefined) return cached;
     const style = getComputedStyle(element);
-    const visible = !element.matches(excluded) && style.display !== "none" &&
+    const clipped = style.clip.replace(/\s/g, "") === "rect(0px,0px,0px,0px)" ||
+      style.clipPath === "inset(50%)";
+    const visible = !clipped && !element.matches(excluded) && style.display !== "none" &&
       style.contentVisibility !== "hidden" && style.opacity !== "0" &&
       (!element.parentElement || rendered(element.parentElement));
     visibility.set(element, visible);
