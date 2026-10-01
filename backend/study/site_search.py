@@ -18,7 +18,6 @@ from .models import STUDY_SEARCH_VECTOR, CatechismDay, Commentary, Day, Episode,
 from .scripture import reference_ranges
 from .search import accessible_chunks
 
-
 COMMENTARY_VECTOR = SearchVector("source_title", weight="A", config="english") + SearchVector(
     "text", weight="B", config="english"
 )
@@ -96,6 +95,21 @@ def chunk_result(chunk, query, bible):
     }
 
 
+def ranked_results(matches, limit):
+    """Keep the best excerpt for each source, then apply the result limit."""
+    if limit <= 0:
+        return []
+    results, seen = [], set()
+    for _, identity, result in sorted(matches, key=lambda pair: -pair[0]):
+        if identity in seen:
+            continue
+        seen.add(identity)
+        results.append(result)
+        if len(results) >= limit:
+            break
+    return results
+
+
 def site_search(user, query, limit=24):
     """Search what this member can open, without invoking an AI model."""
     query = query.strip()
@@ -109,30 +123,46 @@ def site_search(user, query, limit=24):
     bible, commentary_ranges = reading_locations()
     search_query = SearchQuery(query, search_type="websearch", config="english")
     matches = []
-    seen = set()
 
     def add(result, score):
-        if result and result["key"] not in seen:
-            seen.add(result["key"])
-            matches.append((score, result))
+        if result:
+            matches.append((score, ("result", result["key"]), result))
+
+    def add_chunks(rows, score_field, boost, candidate_limit):
+        # Chunk keys and anchors identify excerpts, not distinct search results.
+        # Iterate the ranked rows until enough *openable sources* are found, so
+        # one long episode cannot use up the candidate budget before Scripture
+        # or other commentary is even considered.
+        seen = set()
+        for row in rows.iterator(chunk_size=200):
+            identity = ("chunk", row.kind, row.source)
+            if identity in seen:
+                continue
+            result = chunk_result(row, query, bible)
+            if result is None:
+                continue
+            seen.add(identity)
+            matches.append((boost + float(getattr(row, score_field)), identity, result))
+            if len(seen) >= candidate_limit:
+                break
+        return len(seen)
 
     chunks = accessible_chunks(user)
     if not bible_enabled:
         chunks = chunks.exclude(kind="scripture").exclude(metadata__edition="bible")
     if not catechism_enabled:
         chunks = chunks.exclude(kind="catechism").exclude(metadata__edition="catechism")
-    lexical = list(
+    lexical = (
         chunks.annotate(document=STUDY_SEARCH_VECTOR)
         .filter(document=search_query)
         .annotate(rank=SearchRank(STUDY_SEARCH_VECTOR, search_query))
-        .order_by("-rank", "pk")[:45]
+        .order_by("-rank", "pk")
     )
-    for row in lexical:
-        add(chunk_result(row, query, bible), 2 + float(row.rank))
+    lexical_count = add_chunks(lexical, "rank", 2, 45)
 
     # Whole-word trigrams recover useful near misses such as "eucharits".
     # This only supplements indexed full-text matches; it never calls embeddings.
-    if len(query) >= 3 and len(lexical) < 12:
+    if len(query) >= 3 and lexical_count < 12:
         fuzzy = (
             chunks.filter(Q(title__trigram_similar=query) | Q(text__trigram_word_similar=query)).annotate(
                 similarity=Greatest(
@@ -141,10 +171,9 @@ def site_search(user, query, limit=24):
                 )
             )
             .filter(similarity__gte=0.28)
-            .order_by("-similarity", "pk")[:20]
+            .order_by("-similarity", "pk")
         )
-        for row in fuzzy:
-            add(chunk_result(row, query, bible), 1 + float(row.similarity))
+        add_chunks(fuzzy, "similarity", 1, 20)
 
     episode_scope = Q()
     if bible_enabled:
@@ -231,6 +260,4 @@ def site_search(user, query, limit=24):
         if historical_count >= 12:
             break
 
-    return {
-        "results": [result for _, result in sorted(matches, key=lambda pair: -pair[0])[:limit]]
-    }
+    return {"results": ranked_results(matches, limit)}

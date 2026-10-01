@@ -77,11 +77,19 @@ export function ReadingCapture({
         dismiss();
         setLauncherOpen(false);
         setFindOpen(true);
+        const field = document.querySelector<HTMLInputElement>(".page-find input");
+        field?.focus();
+        field?.select();
       }
     };
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);
   }, [noteOpen, siteSearchOpen]);
+
+  useEffect(() => {
+    setFindOpen(false);
+    setLauncherOpen(false);
+  }, [target]);
 
   function openNote() {
     suspend();
@@ -199,7 +207,7 @@ export function ReadingCapture({
       </div>
       {createPortal(tools, document.body)}
       {findOpen && createPortal(
-        <FindInPage surface={surface} onClose={() => setFindOpen(false)} />,
+        <FindInPage onClose={() => setFindOpen(false)} />,
         document.body,
       )}
       {createPortal(
@@ -228,3 +236,4 @@ export function ReadingCapture({
     </>
   );
 }
+

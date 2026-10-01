@@ -1,66 +1,22 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Search, X } from "lucide-react";
 
-type Mark = { left: number; top: number; width: number; height: number; active: boolean };
+import { FindHighlightFallback } from "./FindHighlightFallback";
+import { findRanges, isFindUI } from "./findInPageRanges";
 
-function findRanges(surface: HTMLElement, query: string): Range[] {
-  if (!query.trim()) return [];
-  const walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      const parent = node.parentElement;
-      if (
-        !node.textContent?.trim() ||
-        !parent ||
-        parent.closest("button, input, textarea, select, [aria-hidden='true']") ||
-        !parent.getClientRects().length
-      ) return NodeFilter.FILTER_REJECT;
-      return NodeFilter.FILTER_ACCEPT;
-    },
-  });
-  const segments: { node: Text; start: number; end: number }[] = [];
-  let text = "";
-  let block: Element | null = null;
-  while (walker.nextNode()) {
-    const node = walker.currentNode as Text;
-    const nextBlock = node.parentElement?.closest("p, li, h1, h2, h3, h4, blockquote, td") || node.parentElement;
-    if (block && nextBlock !== block) text += "\n";
-    block = nextBlock || null;
-    segments.push({ node, start: text.length, end: text.length + node.length });
-    text += node.textContent;
-  }
-  const needle = query.trim().toLocaleLowerCase();
-  const haystack = text.toLocaleLowerCase();
-  const ranges: Range[] = [];
-  let offset = 0;
-  while ((offset = haystack.indexOf(needle, offset)) !== -1 && ranges.length < 500) {
-    const first = segments.find((part) => part.start <= offset && offset < part.end);
-    const end = offset + needle.length;
-    const last = segments.find((part) => part.start < end && end <= part.end);
-    if (first && last) {
-      const range = document.createRange();
-      range.setStart(first.node, offset - first.start);
-      range.setEnd(last.node, end - last.start);
-      ranges.push(range);
-    }
-    offset += Math.max(needle.length, 1);
-  }
-  return ranges;
-}
-
-export function FindInPage({ surface, onClose }: {
-  surface: RefObject<HTMLElement | null>;
+export function FindInPage({ onClose }: {
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [ranges, setRanges] = useState<Range[]>([]);
   const [active, setActive] = useState(0);
-  const [marks, setMarks] = useState<Mark[]>([]);
+
+  const nativeHighlights = !!CSS.highlights && typeof Highlight !== "undefined";
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => input.current?.focus(), []);
   useEffect(() => {
-    const node = surface.current;
-    if (!node) return;
+    const node = document.body;
     let frame = 0;
     setActive(0);
     const refresh = () => {
@@ -76,53 +32,68 @@ export function FindInPage({ surface, onClose }: {
       });
     };
     refresh();
-    const observer = new MutationObserver(refresh);
-    observer.observe(node, { subtree: true, childList: true, characterData: true });
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
-  }, [surface, query]);
-
-  useEffect(() => {
-    if (!ranges.length) return;
-    ranges[active]?.startContainer.parentElement?.scrollIntoView({ block: "center" });
-  }, [ranges, active]);
-
-  useEffect(() => {
-    let frame = 0;
-    const position = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const visible: Mark[] = [];
-        ranges.forEach((range, index) => {
-          for (const rect of range.getClientRects()) {
-            if (rect.width < 1 || rect.height < 1 || rect.bottom < 0 || rect.top > innerHeight) continue;
-            visible.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, active: index === active });
-          }
-        });
-        setMarks(visible);
-      });
-    };
-    position();
-    window.addEventListener("scroll", position, true);
-    window.addEventListener("resize", position);
-    window.visualViewport?.addEventListener("resize", position);
+    const observer = new MutationObserver((changes) => {
+      if (changes.some((change) => !isFindUI(change.target))) refresh();
+    });
+    observer.observe(node, {
+      subtree: true, childList: true, characterData: true, attributes: true,
+      attributeFilter: ["class", "style", "hidden", "open", "aria-hidden", "inert"],
+    });
+    window.addEventListener("resize", refresh);
+    document.addEventListener("toggle", refresh, true);
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", position, true);
-      window.removeEventListener("resize", position);
-      window.visualViewport?.removeEventListener("resize", position);
+      observer.disconnect();
+      window.removeEventListener("resize", refresh);
+      document.removeEventListener("toggle", refresh, true);
     };
-  }, [ranges, active]);
+  }, [query]);
+
+  const current = Math.min(active, Math.max(0, ranges.length - 1));
+  useEffect(() => {
+    setActive(current);
+    const range = ranges[current];
+    if (!range) return;
+    range.startContainer.parentElement?.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+    // A match may be far down a single long paragraph. Center the actual text,
+    // rather than leaving it offscreen after centering the paragraph's box.
+    for (let parent = range.startContainer.parentElement; parent; parent = parent.parentElement) {
+      if (parent === document.body || parent === document.documentElement) continue;
+      if (!/(auto|scroll|hidden)/.test(getComputedStyle(parent).overflowY) || parent.scrollHeight <= parent.clientHeight) continue;
+      const bounds = parent.getBoundingClientRect();
+      const text = range.getClientRects()[0] || range.getBoundingClientRect();
+      if (text.top < bounds.top || text.bottom > bounds.bottom)
+        parent.scrollTop += text.top - bounds.top - parent.clientHeight / 2;
+    }
+    const rect = range.getClientRects()[0] || range.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const top = viewport?.offsetTop || 0;
+    const height = viewport?.height || innerHeight;
+    if (rect.top < top + 72 || rect.bottom > top + height - 24)
+      window.scrollBy({ top: rect.top - top - height / 2, behavior: "instant" });
+  }, [ranges, current]);
+
+  useEffect(() => {
+    if (!nativeHighlights) return;
+    // The browser paints the real text ranges. No cached viewport rectangles,
+    // scroll listeners, or coordinate conversion can drift away from the words.
+    const all = new Highlight(...ranges);
+    const selected = new Highlight(...(ranges[current] ? [ranges[current]] : []));
+    selected.priority = 1;
+    CSS.highlights.set("biy-page-find", all);
+    CSS.highlights.set("biy-page-find-active", selected);
+    return () => {
+      CSS.highlights.delete("biy-page-find");
+      CSS.highlights.delete("biy-page-find-active");
+    };
+  }, [ranges, current, nativeHighlights]);
 
   function move(step: number) {
     if (ranges.length) setActive((current) => (current + step + ranges.length) % ranges.length);
   }
 
   return <>
-    <div className="page-find-highlights" aria-hidden="true">
-      {marks.map(({ active: highlighted, ...bounds }, index) =>
-        <span key={index} className={highlighted ? "active" : ""} style={bounds} />
-      )}
-    </div>
+    {!nativeHighlights && <FindHighlightFallback ranges={ranges} active={current} />}
     <div className="page-find" role="search" aria-label="Find on this page">
       <Search size={18} aria-hidden="true" />
       <input
@@ -138,7 +109,7 @@ export function FindInPage({ surface, onClose }: {
         }}
       />
       <span className="page-find-count" role="status">
-        {query ? ranges.length ? `${active + 1} of ${ranges.length}${ranges.length === 500 ? "+" : ""}` : "No matches" : ""}
+        {query ? ranges.length ? `${current + 1} of ${ranges.length}${ranges.length === 500 ? "+" : ""}` : "No matches" : ""}
       </span>
       <button type="button" aria-label="Previous match" disabled={!ranges.length} onClick={() => move(-1)}><ArrowUp size={17} /></button>
       <button type="button" aria-label="Next match" disabled={!ranges.length} onClick={() => move(1)}><ArrowDown size={17} /></button>
@@ -146,3 +117,4 @@ export function FindInPage({ surface, onClose }: {
     </div>
   </>;
 }
+
