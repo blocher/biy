@@ -4639,7 +4639,7 @@ body:has(.reader-design) .player {
 .reading-selection-tools {
   position: fixed;
   z-index: 1400;
-  transform: translate(-50%, -100%);
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   padding: 4px;
@@ -4652,8 +4652,14 @@ body:has(.reader-design) .player {
     0 2px 8px #183c3414;
   animation: reading-tools-in 120ms ease-out;
 }
+.reading-selection-tools[data-placement="dock-top"] {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+.reading-selection-tools[data-placement="dock-bottom"] {
+  transform: translate(-50%, calc(-100% - env(safe-area-inset-bottom, 0px)));
+}
 .reading-selection-tools button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 7px 12px;
   border-radius: 8px;
   font-size: 13px;
@@ -4668,7 +4674,6 @@ body:has(.reader-design) .player {
 @keyframes reading-tools-in {
   from {
     opacity: 0;
-    transform: translate(-50%, calc(-100% + 5px));
   }
 }
 .reading-capture-launcher {

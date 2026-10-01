@@ -5,6 +5,10 @@ import { api } from "./api";
 import { NoteEditorDialog, type NoteEditorValue } from "./NoteEditorDialog";
 import type { Note } from "./types";
 import type { useStudyChat } from "./useStudyChat";
+import {
+  selectionToolbarPosition,
+  type SelectionToolbarPosition,
+} from "./readingSelection";
 
 type Chat = ReturnType<typeof useStudyChat>;
 
@@ -54,9 +58,7 @@ export function ReadingCapture({
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<ReadingSelection | null>(null);
-  const [toolbar, setToolbar] = useState<{ left: number; top: number } | null>(
-    null,
-  );
+  const [toolbar, setToolbar] = useState<SelectionToolbarPosition | null>(null);
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -78,7 +80,7 @@ export function ReadingCapture({
     };
   }, []);
 
-  function readSelection(point?: { left: number; top: number }) {
+  function readSelection() {
     const native = window.getSelection();
     if (!native || native.isCollapsed || !native.rangeCount || !surface.current)
       return false;
@@ -90,14 +92,18 @@ export function ReadingCapture({
     const rect = range.getBoundingClientRect();
     setSelection({ quote, ...source });
     setLauncherOpen(false);
+    const viewport = window.visualViewport;
     setToolbar(
-      point || {
-        left: Math.min(
-          window.innerWidth - 116,
-          Math.max(116, rect.left + rect.width / 2),
-        ),
-        top: rect.top > 72 ? rect.top - 12 : rect.bottom + 58,
-      },
+      selectionToolbarPosition(
+        rect,
+        {
+          left: viewport?.offsetLeft || 0,
+          top: viewport?.offsetTop || 0,
+          width: viewport?.width || window.innerWidth,
+          height: viewport?.height || window.innerHeight,
+        },
+        window.matchMedia("(any-pointer: coarse)").matches,
+      ),
     );
     return true;
   }
@@ -132,7 +138,12 @@ export function ReadingCapture({
           className="reading-selection-tools"
           role="toolbar"
           aria-label="Use highlighted text"
-          style={{ left: toolbar.left, top: toolbar.top }}
+          data-placement={toolbar.placement}
+          style={{
+            left: toolbar.left,
+            top: toolbar.top,
+            maxWidth: toolbar.maxWidth,
+          }}
         >
           <button onClick={openNote}>
             <NotebookPen size={16} /> Note
@@ -200,7 +211,10 @@ export function ReadingCapture({
             window.setTimeout(() => readSelection(), 0);
         }}
         onContextMenu={(event) => {
-          if (readSelection({ left: event.clientX, top: event.clientY }))
+          if (
+            readSelection() &&
+            !window.matchMedia("(any-pointer: coarse)").matches
+          )
             event.preventDefault();
         }}
       >
