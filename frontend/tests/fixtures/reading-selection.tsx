@@ -1,5 +1,6 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import { ReadingCapture } from "../../src/ReadingCapture";
 import type { useStudyChat } from "../../src/useStudyChat";
 import "../../src/styles.css";
@@ -56,6 +57,7 @@ function Fixture() {
               The true light, which enlightens every man, was coming into the
               world.
             </p>
+            <p id="inline">Find the <strong>living</strong> word in this line.</p>
           </main>
         </ReadingCapture>
       )}
@@ -78,6 +80,6 @@ function Fixture() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Fixture />
+    <BrowserRouter><Fixture /></BrowserRouter>
   </StrictMode>,
 );

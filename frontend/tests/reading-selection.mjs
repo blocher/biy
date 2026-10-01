@@ -23,13 +23,32 @@ const screenshots = new URL(
 await mkdir(screenshots, { recursive: true });
 const errors = [];
 
-async function open(options) {
+async function open(options, { standalone = false } = {}) {
   const context = await browser.newContext(options);
   const page = await context.newPage();
+  if (standalone) await page.addInitScript(() => {
+    const native = window.matchMedia.bind(window);
+    window.matchMedia = (query) => {
+      const result = native(query);
+      if (query === "(display-mode: standalone)")
+        Object.defineProperty(result, "matches", { value: true });
+      return result;
+    };
+  });
   page.on("pageerror", (error) => errors.push(error.message));
   const saved = [];
   await page.route("**/api/**", async (route) => {
     const request = route.request();
+    if (request.method() === "GET" && new URL(request.url()).pathname === "/api/search") {
+      await route.fulfill({ json: { results: [{
+        key: "scripture:test",
+        kind: "scripture",
+        title: "John 1:5",
+        excerpt: "The light shines in the darkness.",
+        url: "/tests/fixtures/reading-selection.html?result=1#lower",
+      }] } });
+      return;
+    }
     if (
       request.method() !== "POST" ||
       !new URL(request.url()).pathname.endsWith("/notes")
@@ -143,6 +162,81 @@ try {
       await page.mouse.up();
       await expect(toolbar(page)).toBeVisible();
     }
+    await context.close();
+  }
+
+  // The plus menu keeps highlight actions separate from the two search modes.
+  {
+    const { context, page } = await open({ viewport: { width: 1280, height: 900 } });
+    await page.getByRole("button", { name: "Open reading tools" }).click();
+    await expect(page.getByRole("menuitem")).toHaveCount(4);
+    await page.getByRole("menuitem", { name: "Find on this page" }).click();
+    const find = page.getByRole("search", { name: "Find on this page" });
+    await expect(find).toBeVisible();
+    await find.getByRole("searchbox", { name: "Find text on this page" }).fill("light");
+    await expect(find.getByRole("status")).toHaveText("1 of 3");
+    await expect(page.locator(".page-find-highlights span")).toHaveCount(3);
+    await page.screenshot({ path: new URL("find-desktop.png", screenshots).pathname });
+    await find.getByRole("button", { name: "Next match" }).click();
+    await expect(find.getByRole("status")).toHaveText("2 of 3");
+    await find.getByRole("searchbox", { name: "Find text on this page" }).fill("not-in-the-reading");
+    await expect(find.getByRole("status")).toHaveText("No matches");
+    await find.getByRole("searchbox", { name: "Find text on this page" }).fill("living word");
+    await expect(find.getByRole("status")).toHaveText("1 of 1");
+    await expect(page.locator(".page-find-highlights span")).toHaveCount(2);
+    await find.getByRole("button", { name: "Close find" }).click();
+    await expect(page.locator(".page-find-highlights span")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Open reading tools" }).click();
+    await page.getByRole("menuitem", { name: "Search the site" }).click();
+    const site = page.getByRole("dialog", { name: "Search the site" });
+    await expect(site).toBeVisible();
+    await site.getByRole("searchbox", { name: "Search readings and commentary" }).fill("light");
+    await expect(site.getByRole("link", { name: /John 1:5/ })).toBeVisible();
+    await page.screenshot({ path: new URL("site-search-desktop.png", screenshots).pathname });
+    expect(new URL(page.url()).searchParams.has("result")).toBe(false);
+    await site.getByRole("button", { name: "Close site search" }).click();
+    await expect(site).not.toBeVisible();
+    expect(new URL(page.url()).searchParams.has("result")).toBe(false);
+    await page.getByRole("button", { name: "Open reading tools" }).click();
+    await page.getByRole("menuitem", { name: "Search the site" }).click();
+    await expect(site.getByRole("link", { name: /John 1:5/ })).toBeVisible();
+    await site.getByRole("link", { name: /John 1:5/ }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("result")).toBe("1");
+    await expect(site).not.toBeVisible();
+    await context.close();
+  }
+
+  {
+    const { context, page } = await open(
+      { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+      { standalone: true },
+    );
+    const intercepted = await page.evaluate(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "f", ctrlKey: true, bubbles: true, cancelable: true,
+      });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    expect(intercepted).toBe(true);
+    await expect(page.getByRole("search", { name: "Find on this page" })).toBeVisible();
+    await page.getByRole("button", { name: "Close find" }).tap();
+    await page.getByRole("button", { name: "Open reading tools" }).tap();
+    await page.getByRole("menuitem", { name: "Search the site" }).tap();
+    const site = page.getByRole("dialog", { name: "Search the site" });
+    await site.getByRole("searchbox", { name: "Search readings and commentary" }).fill("light");
+    await expect(site.getByRole("link", { name: /John 1:5/ })).toBeVisible();
+    await page.screenshot({ path: new URL("site-search-mobile.png", screenshots).pathname });
+    await page.evaluate(() => {
+      Object.defineProperty(visualViewport, "offsetTop", { value: 120, configurable: true });
+      Object.defineProperty(visualViewport, "height", { value: 360, configurable: true });
+      visualViewport.dispatchEvent(new Event("resize"));
+    });
+    await expect.poll(async () => {
+      const rect = await site.boundingBox();
+      return rect.y + rect.height;
+    }).toBeLessThanOrEqual(480);
     await context.close();
   }
 
@@ -359,7 +453,7 @@ try {
 
   expect(errors).toEqual([]);
   console.log(
-    "Reading selection acceptance passed: repeated desktop drags and keyboard; touch at 390px/320px; native collapse/handle changes; mocked note payload; opposite dock; viewport/scroll; dismissal; unmount.",
+    "Reading selection acceptance passed: four-action menu, exact page find, site-search modal and navigation, standalone shortcut, mobile viewport, desktop drags and keyboard, touch selection, note payload, dismissal, unmount.",
   );
 } finally {
   await browser.close();

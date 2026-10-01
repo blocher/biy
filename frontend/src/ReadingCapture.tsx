@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Check, MessageCircle, NotebookPen, Plus, X } from "lucide-react";
+import { Check, MessageCircle, NotebookPen, Plus, Search, ScanSearch, X } from "lucide-react";
 import { api } from "./api";
 import { NoteEditorDialog, type NoteEditorValue } from "./NoteEditorDialog";
 import type { Note } from "./types";
 import type { useStudyChat } from "./useStudyChat";
 import type { ReadingSelection } from "./readingSelection";
 import { localReadingUrl, useReadingSelection } from "./useReadingSelection";
+import { FindInPage } from "./FindInPage";
+import { SiteSearchDialog } from "./SiteSearchDialog";
 
 type Chat = ReturnType<typeof useStudyChat>;
+
+function standalone() {
+  return window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
 
 export function buildSelectionQuestion(selection: ReadingSelection) {
   const quote =
@@ -38,6 +45,8 @@ export function ReadingCapture({
     useReadingSelection(surface, contextLabel, target);
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [siteSearchOpen, setSiteSearchOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const savedTimer = useRef(0);
 
@@ -59,6 +68,20 @@ export function ReadingCapture({
   useEffect(() => {
     if (selection) setLauncherOpen(false);
   }, [selection]);
+
+  useEffect(() => {
+    if (!standalone() || noteOpen || siteSearchOpen) return;
+    const shortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        dismiss();
+        setLauncherOpen(false);
+        setFindOpen(true);
+      }
+    };
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  }, [noteOpen, siteSearchOpen]);
 
   function openNote() {
     suspend();
@@ -129,6 +152,21 @@ export function ReadingCapture({
             <button role="menuitem" onClick={openAsk}>
               <MessageCircle size={17} /> Ask about this reading
             </button>
+            <button role="menuitem" onClick={() => {
+              dismiss();
+              setLauncherOpen(false);
+              setFindOpen(true);
+            }}>
+              <Search size={17} /> Find on this page
+            </button>
+            <button role="menuitem" onClick={() => {
+              dismiss();
+              setLauncherOpen(false);
+              setFindOpen(false);
+              setSiteSearchOpen(true);
+            }}>
+              <ScanSearch size={17} /> Search the site
+            </button>
           </div>
         )}
         <button
@@ -137,7 +175,7 @@ export function ReadingCapture({
             launcherOpen ? "Close reading tools" : "Open reading tools"
           }
           aria-expanded={launcherOpen}
-          title="Note or ask without losing your place"
+          title="Notes, questions, and search without losing your place"
           onClick={() => {
             dismiss();
             setLauncherOpen((open) => !open);
@@ -160,6 +198,14 @@ export function ReadingCapture({
         {children}
       </div>
       {createPortal(tools, document.body)}
+      {findOpen && createPortal(
+        <FindInPage surface={surface} onClose={() => setFindOpen(false)} />,
+        document.body,
+      )}
+      {createPortal(
+        <SiteSearchDialog open={siteSearchOpen} onClose={() => setSiteSearchOpen(false)} />,
+        document.body,
+      )}
       {createPortal(
         <NoteEditorDialog
           open={noteOpen}
