@@ -175,7 +175,10 @@ try {
     await expect(find).toBeVisible();
     await find.getByRole("searchbox", { name: "Find text on this page" }).fill("light");
     await expect(find.getByRole("status")).toHaveText("1 of 3");
-    await expect(page.locator(".page-find-highlights span")).toHaveCount(3);
+    const nativeFind = await page.evaluate(() => !!CSS.highlights && typeof Highlight !== "undefined");
+    const nativeFindText = () => page.evaluate(() => [...(CSS.highlights.get("biy-page-find") || [])].map((range) => range.toString()));
+    if (nativeFind) await expect.poll(nativeFindText).toEqual(["light", "light", "light"]);
+    else await expect.poll(() => page.locator(".page-find-highlights rect").count()).toBeGreaterThan(0);
     await page.screenshot({ path: new URL("find-desktop.png", screenshots).pathname });
     await find.getByRole("button", { name: "Next match" }).click();
     await expect(find.getByRole("status")).toHaveText("2 of 3");
@@ -183,9 +186,11 @@ try {
     await expect(find.getByRole("status")).toHaveText("No matches");
     await find.getByRole("searchbox", { name: "Find text on this page" }).fill("living word");
     await expect(find.getByRole("status")).toHaveText("1 of 1");
-    await expect(page.locator(".page-find-highlights span")).toHaveCount(2);
+    if (nativeFind) await expect.poll(nativeFindText).toEqual(["living word"]);
+    else await expect.poll(() => page.locator(".page-find-highlights rect").count()).toBeGreaterThan(0);
     await find.getByRole("button", { name: "Close find" }).click();
-    await expect(page.locator(".page-find-highlights span")).toHaveCount(0);
+    await expect(page.locator(".page-find-highlights")).toHaveCount(0);
+    if (nativeFind) expect(await page.evaluate(() => !CSS.highlights.has("biy-page-find") && !CSS.highlights.has("biy-page-find-active"))).toBe(true);
 
     await page.getByRole("button", { name: "Open reading tools" }).click();
     await page.getByRole("menuitem", { name: "Search the site" }).click();

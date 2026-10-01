@@ -137,20 +137,38 @@ async function geometry(page) {
         top = Math.max(top, clientTop); bottom = Math.min(bottom, clientTop + parent.clientHeight * scaleY);
       }
     }
+    const clip = (rect) => ({
+      x: Math.max(left, rect.x), y: Math.max(top, rect.y),
+      width: Math.min(right, rect.x + rect.width) - Math.max(left, rect.x),
+      height: Math.min(bottom, rect.y + rect.height) - Math.max(top, rect.y),
+    });
+    const rects = [...range.getClientRects()].map(bounds);
+    const scaleY = element.offsetHeight ? element.getBoundingClientRect().height / element.offsetHeight : 1;
+    const lineHeight = parseFloat(getComputedStyle(element).lineHeight) * scaleY;
+    // WebKit's native highlight may fill one computed line-height upward from
+    // the glyph descent edge, rather than Chromium's tighter glyph rectangle.
+    // CI screenshots before/after re-registration confirmed this is native
+    // paint, not stale geometry. Keep x exact and bound y to that measured line.
+    const nativePaintRects = rects.map((rect) => {
+      const height = Math.max(rect.height, lineHeight);
+      return clip({ ...rect, y: rect.y + rect.height - height, height });
+    }).filter((rect) => rect.width > 0 && rect.height > 0);
     return {
       viewport: { width: innerWidth, height: innerHeight },
+      visualViewport: window.visualViewport ? {
+        width: visualViewport.width, height: visualViewport.height,
+        offsetLeft: visualViewport.offsetLeft, offsetTop: visualViewport.offsetTop,
+        scale: visualViewport.scale,
+      } : null,
       typography: {
         fontSize: getComputedStyle(element).fontSize,
         lineHeight: getComputedStyle(element).lineHeight,
         element: bounds(element.getBoundingClientRect()),
         paragraph: bounds(element.parentElement.getBoundingClientRect()),
       },
-      rects: [...range.getClientRects()].map(bounds),
-      clipped: [...range.getClientRects()].map((rect) => ({
-        x: Math.max(left, rect.left), y: Math.max(top, rect.top),
-        width: Math.min(right, rect.right) - Math.max(left, rect.left),
-        height: Math.min(bottom, rect.bottom) - Math.max(top, rect.top),
-      })).filter((rect) => rect.width > 0 && rect.height > 0),
+      rects,
+      clipped: rects.map(clip).filter((rect) => rect.width > 0 && rect.height > 0),
+      nativePaintRects,
       highlights: [...(CSS.highlights?.get("biy-page-find") || [])].map((range) => ({ text: range.toString(), rects: [...range.getClientRects()].map(bounds) })),
       fallback: [...document.querySelectorAll(".page-find-highlights rect")].map((rect) => bounds(rect.getBoundingClientRect())),
     };
@@ -177,16 +195,19 @@ async function assertPaint(page, label, fallback) {
     const decoded = decodePng(png);
     const scaleX = decoded.width / measured.viewport.width;
     const scaleY = decoded.height / measured.viewport.height;
-    let painted = 0, misaligned = 0;
+    const glyphMinimum = Math.max(30, measured.clipped.reduce((area, rect) => area + rect.width * rect.height, 0) * scaleX * scaleY * 0.2);
+    let painted = 0, misaligned = 0, glyphPainted = 0;
     for (let y = 0; y < decoded.height; y++) for (let x = 0; x < decoded.width; x++) {
       const at = (y * decoded.width + x) * decoded.channels;
       if (decoded.pixels[at] !== 247 || decoded.pixels[at + 1] !== 171 || decoded.pixels[at + 2] !== 72) continue;
       painted++;
       const px = x / scaleX, py = y / scaleY;
-      if (!measured.clipped.some((rect) => px >= rect.x - 1 && px <= rect.x + rect.width + 1 && py >= rect.y - 1 && py <= rect.y + rect.height + 1)) misaligned++;
+      const inside = (rect) => px >= rect.x - 1 && px <= rect.x + rect.width + 1 && py >= rect.y - 1 && py <= rect.y + rect.height + 1;
+      if (measured.clipped.some(inside)) glyphPainted++;
+      if (!measured.nativePaintRects.some(inside)) misaligned++;
     }
-    metrics.push({ label, painted, misaligned, ...measured });
-    if (painted <= 30 || misaligned / painted >= 0.01) {
+    metrics.push({ label, painted, glyphPainted, glyphMinimum, misaligned, ...measured });
+    if (painted <= 30 || glyphPainted <= glyphMinimum || misaligned / painted >= 0.01) {
       console.error("Native paint diagnostic:", JSON.stringify(metrics.at(-1)));
       await settle(page);
       await page.screenshot({ path: new URL(`${label}-extra-frames.png`, screenshots).pathname, animations: "disabled" });
@@ -206,7 +227,8 @@ async function assertPaint(page, label, fallback) {
       await page.screenshot({ path: new URL(`${label}-reregistered.png`, screenshots).pathname, animations: "disabled" });
     }
     expect(painted, `${label}: orange highlight pixels actually rendered`).toBeGreaterThan(30);
-    expect(misaligned / painted, `${label}: highlight paint outside text Range`).toBeLessThan(0.01);
+    expect(glyphPainted, `${label}: orange covers at least 20% of the clipped glyph Range`).toBeGreaterThan(glyphMinimum);
+    expect(misaligned / painted, `${label}: highlight paint outside exact word/computed line-height bounds`).toBeLessThan(0.01);
   }
   return measured;
 }

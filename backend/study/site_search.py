@@ -11,7 +11,7 @@ from django.contrib.postgres.search import (
     TrigramSimilarity,
     TrigramWordSimilarity,
 )
-from django.db.models import Q, Value
+from django.db.models import F, Q, Value
 from django.db.models.functions import Greatest
 
 from .commentaries import commentary_ranges_for_readings, range_overlaps
@@ -171,11 +171,12 @@ def ranked_results(matches, limit):
     """Keep the best excerpt for each source, then apply the result limit."""
     if limit <= 0:
         return []
-    results, seen = [], set()
+    results, seen, seen_keys = [], set(), set()
     for _, identity, result in sorted(matches, key=lambda pair: -pair[0]):
-        if identity in seen:
+        if identity in seen or result["key"] in seen_keys:
             continue
         seen.add(identity)
+        seen_keys.add(result["key"])
         results.append(result)
         if len(results) >= limit:
             break
@@ -196,9 +197,9 @@ def site_search(user, query, limit=24):
     search_query = SearchQuery(query, search_type="websearch", config="english")
     matches = []
 
-    def add(result, score):
+    def add(result, score, identity=None):
         if result:
-            matches.append((score, ("result", result["key"]), result))
+            matches.append((score, identity or ("result", result["key"]), result))
 
     def add_chunks(rows, score_field, boost, candidate_limit):
         # Chunk keys and anchors identify excerpts, not distinct search results.
@@ -207,7 +208,11 @@ def site_search(user, query, limit=24):
         # or other commentary is even considered.
         seen = set()
         for row in rows.iterator(chunk_size=200):
-            identity = ("chunk", row.kind, row.source)
+            identity = (
+                ("episode", row.episode_id)
+                if row.kind == "commentary" and row.episode_id is not None
+                else ("chunk", row.kind, row.source)
+            )
             if identity in seen:
                 continue
             result = chunk_result(row, query, bible, fuzzy=score_field == "similarity")
@@ -276,11 +281,13 @@ def site_search(user, query, limit=24):
                 "url": f"/{edition}/day/{day_id}",
             },
             2.5 + float(row.rank),
+            identity=("episode", row.pk),
         )
 
     if catechism_enabled:
         plan = (
             CatechismDay.objects.annotate(
+                search_episode_id=F("episode__pk"),
                 document=SearchVector("part", weight="A", config="english")
                 + SearchVector("section", weight="B", config="english")
                 + SearchVector("chapter", weight="B", config="english")
@@ -299,6 +306,7 @@ def site_search(user, query, limit=24):
                     "url": f"/catechism/day/{row.number}",
                 },
                 2.3 + float(row.rank),
+                identity=("episode", row.search_episode_id) if row.search_episode_id else None,
             )
 
     # Historical commentaries are a separate corpus. Only offer entries that

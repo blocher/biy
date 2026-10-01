@@ -37,6 +37,19 @@ class RankedResultTests(SimpleTestCase):
         identity = ("chunk", "journal", "note:1")
         self.assertEqual(ranked_results([(2, identity, result), (1, identity, result)], 24), [result])
 
+    def test_episode_card_keeps_best_matching_source_and_deduplicates_keys(self):
+        overview = {"key": "day:bible:1", "kind": "reading_day", "excerpt": "Day overview"}
+        commentary = {"key": "episode:7:1", "kind": "commentary", "excerpt": "Best explanation"}
+        identity = ("episode", 7)
+        self.assertEqual(
+            ranked_results([(2.5, identity, overview), (3, identity, commentary)], 24),
+            [commentary],
+        )
+        self.assertEqual(
+            ranked_results([(3, identity, overview), (2, ("result", overview["key"]), overview)], 24),
+            [overview],
+        )
+
     def test_same_title_or_destination_does_not_merge_distinct_sources(self):
         first = {"key": "note:1:0", "title": "Reading note", "url": "/bible/day/1"}
         second = {**first, "key": "note:2:0"}
@@ -157,10 +170,50 @@ class SiteSearchTests(TestCase):
         self.assertGreater(SearchChunk.objects.filter(episode=episode).count(), 45)
 
         results = self.search("loved")
-        commentary = [item for item in results if item["kind"] == "commentary"]
-        self.assertEqual(len(commentary), 1)
-        self.assertIn("tab=commentary#segment-", commentary[0]["url"])
+        episode_cards = [item for item in results if item["kind"] in {"commentary", "reading_day"}]
+        self.assertEqual(len(episode_cards), 1)
         self.assertTrue(any(item["kind"] == "scripture" for item in results))
+
+    def test_overview_and_repeated_commentary_share_one_episode_card(self):
+        episode = Episode.objects.get(day=self.day)
+        episode.status = "ready"
+        episode.title = "Day 1: Loved the World"
+        episode.description = "An overview of how God loved the world."
+        episode.transcript = [
+            {"id": index, "start": index * 30, "text": "God loved the world. " * 120}
+            for index in range(3)
+        ]
+        episode.classification = [{"id": index, "kind": "commentary"} for index in range(3)]
+        episode.save()
+        self.assertGreater(SearchChunk.objects.filter(episode=episode).count(), 1)
+
+        results = self.search("loved the world")
+        episode_cards = [item for item in results if item["kind"] in {"commentary", "reading_day"}]
+        self.assertEqual(len(episode_cards), 1)
+        self.assertEqual(episode_cards[0]["title"], episode.title)
+        self.assertIn("loved the world", episode_cards[0]["excerpt"])
+        self.assertEqual(len([item for item in results if item["kind"] == "scripture"]), 1)
+
+    def test_catechism_plan_overview_and_commentary_share_episode_identity(self):
+        day = CatechismDay.objects.create(number=2, part="Baptism", color="#123456")
+        episode = Episode.objects.create(
+            guid="search-catechism-two", edition="catechism", catechism_day=day,
+            title="Day 2: Baptism", description="An overview of baptism.", status="ready",
+            published_at=timezone.now(), source_date="2025-01-02",
+            transcript=[{"id": 1, "start": 0, "text": "Baptism brings grace. " * 150}],
+            classification=[{"id": 1, "kind": "commentary"}],
+        )
+        results = self.search("baptism")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["title"], episode.title)
+
+        # The plan and commentary must still collapse when the episode overview
+        # itself does not match, so its reading-day key never enters the list.
+        episode.title = "Day 2: The Christian Life"
+        episode.description = "An introduction."
+        episode.save()
+        results = self.search("baptism")
+        self.assertEqual(len(results), 1)
 
     def test_long_notes_return_once_but_separate_notes_remain_distinct(self):
         first = Note.objects.create(
