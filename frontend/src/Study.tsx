@@ -412,9 +412,8 @@ function StudyContent({
     ) : selected === "commentary" ? (
       <>
         <p className="view-note">
-          Original commentary and prayer, with Scripture readings and
-          promotional material removed. Brief Scripture quotations within the
-          teaching are retained.
+          Original commentary and prayer, with {edition === "catechism" ? "Catechism" : "Scripture"} readings and
+          promotional material removed. Brief quotations within the teaching are retained.
         </p>
         {transcript(episode?.commentary, "Commentary")}
       </>
