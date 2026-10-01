@@ -1,0 +1,450 @@
+/* Theme support extends the existing palette and layouts. Light mode keeps the
+   original styles; the dark palette is shared by both study editions. */
+:root {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #151e1b;
+  --ink: #e3e9df;
+  --ink-soft: #c4cfc6;
+  --muted: #a9b7ad;
+  --green: #9acdb6;
+  --line: #3e5147;
+  --surface: #202c26;
+  --surface-soft: #29372e;
+  --surface-hover: #34483b;
+  --action: #2a604a;
+  --gold: #dec285;
+  --danger: #f0aba3;
+  color: var(--ink);
+  background: var(--paper);
+}
+html[data-theme="dark"][data-edition="catechism"] {
+  --green: #94d4e0;
+  --action: #245c69;
+}
+.theme-toggle {
+  min-width: 44px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+.theme-toggle svg {
+  flex: none;
+}
+.theme-settings {
+  grid-column: 1 / -1;
+}
+.theme-settings p {
+  color: var(--muted);
+  margin: 8px 0 18px;
+}
+.theme-settings label {
+  display: block;
+  margin-bottom: 6px;
+}
+.theme-settings select {
+  max-width: 100%;
+  min-height: 44px;
+}
+.login-theme {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 1;
+}
+.reader-controls .theme-toggle span {
+  display: none;
+}
+@media (max-width: 900px) {
+  .sidebar-bottom {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sidebar-bottom .theme-toggle {
+    font-size: 12px;
+  }
+  .sidebar-bottom .theme-toggle span {
+    display: none;
+  }
+}
+
+html[data-theme="dark"]
+  :is(
+    h1,
+    h2,
+    h3,
+    .brand,
+    .account-field,
+    .reminder-time-row strong,
+    .shared-push-setting strong,
+    .notification-setup-row strong,
+    .notification-setup-shared strong,
+    .reminder-condition legend,
+    .device-list strong,
+    .chapter > p,
+    .chapter .verse-paragraph,
+    .catechism-text,
+    .reading-selection-tools,
+    .reading-note-selection p,
+    .note-quote p,
+    .commentary-text,
+    .day-table .supplementary-row strong
+  ) {
+  color: var(--ink);
+}
+html[data-theme="dark"] :is(input, select, textarea) {
+  color: var(--ink);
+  border-color: var(--line);
+  accent-color: var(--green);
+}
+html[data-theme="dark"]
+  :is(
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea,
+    .account-card,
+    .edition-switcher,
+    .search,
+    .member-directory,
+    .member-editor,
+    .preview-panel,
+    .scripture-audio-bar,
+    .journal-card,
+    .reading-mode-split,
+    .reader-passages a,
+    .reading-selection-tools,
+    .reading-capture-menu,
+    .reading-note-dialog,
+    .reading-chat-dialog,
+    .completion-dialog,
+    .completion-dialog-secondary,
+    .notification-setup-modal,
+    .install-instructions,
+    .reading-chat-history,
+    .chat-history-panel,
+    .chat-composer,
+    .commentary-card,
+    .skip-link
+  ) {
+  background: var(--surface);
+}
+html[data-theme="dark"]
+  :is(
+    .search input,
+    .member-search input,
+    .chat-composer textarea,
+    .player select
+  ) {
+  background: transparent;
+}
+html[data-theme="dark"]
+  :is(.sidebar, .sidebar-inner, .login-page, .reader-design .generated-screen) {
+  background: var(--paper);
+}
+html[data-theme="dark"]
+  :is(
+    .study-design #viewport-2-b-scripture-card,
+    .study-design #viewport-2-b-journal,
+    .study-chat #companion,
+    #reading-companion-header,
+    #reading-companion-answer #companion-form
+  ) {
+  background: var(--surface);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .reader-design #viewport-1-c-top-nav {
+  background: #151e1bf2;
+}
+html[data-theme="dark"] .player {
+  background: #202c26f5;
+}
+html[data-theme="dark"]
+  :is(
+    .avatar,
+    .account-icon,
+    .member-avatar,
+    .member-avatar.large,
+    .reader-avatar,
+    .reminder-symbol,
+    .reminder-symbol.evening,
+    .reminder-symbol.community,
+    .notification-setup-mark,
+    .completion-dialog-icon,
+    .notification-setup-condition,
+    .reminder-condition > div,
+    .notification-device-panel,
+    .member-activity,
+    .empty-content,
+    .view-note,
+    .reader-mode-links,
+    .login-story,
+    .reading-note-selection,
+    .note-quote,
+    .commentary-filters,
+    .day-table .next-day,
+    .chat-examples button,
+    .chat-question,
+    .chat-selected-question,
+    .chat-answer-links a,
+    .chat-progress-sources a,
+    .chat-progress-sources > span,
+    .chat-history-new,
+    .chat-follow-ups button,
+    .navigation a.active,
+    .view-switch button[aria-pressed="true"],
+    .segmented button.active,
+    .transcript-segment.current
+  ) {
+  background: var(--surface-soft);
+}
+html[data-theme="dark"]
+  :is(.study-design #viewport-1-a-summary, .home-design #reflection) {
+  background: var(--surface-soft);
+}
+html[data-theme="dark"]
+  :is(
+    button:hover,
+    .reader-mode-links a:hover,
+    .reader-passages a:hover,
+    .journal-card-edit:hover,
+    .member-list > button:hover,
+    .chat-answer-links a:hover,
+    .chat-progress-sources a:hover,
+    .reminder-condition label.active,
+    .member-list > button.selected
+  ) {
+  background: var(--surface-hover);
+}
+html[data-theme="dark"]
+  :is(
+    .text-link,
+    .brand-art svg:last-child,
+    .app-status-row,
+    .install-instructions summary,
+    .device-list h4,
+    .text-button,
+    .account-notice,
+    .status-complete,
+    .saved,
+    .completion-dialog-icon,
+    .schedule-status--on-schedule,
+    .schedule-status--ahead,
+    .schedule-ahead,
+    .security-note svg,
+    .key-points-disclosure > summary,
+    .study-outline > summary,
+    .outline-label,
+    .timestamp,
+    .reader-mode-links a,
+    .catechism-text > p strong,
+    .chat-citation,
+    .reminder-condition label.active
+  ) {
+  color: var(--green);
+}
+html[data-theme="dark"][data-edition="catechism"] .brand-art svg:last-child {
+  color: var(--green);
+}
+html[data-theme="dark"]
+  :is(
+    .account-field,
+    .reminder-time-row,
+    .shared-push-setting,
+    .notification-setup-options,
+    .notification-setup-shared,
+    .member-search,
+    .outline-button,
+    .outline-number,
+    .passage-audio-button,
+    .reader-mode-links,
+    .reader-passages a,
+    .reading-selection-tools,
+    .reading-capture-menu,
+    .reading-note-dialog,
+    .reading-note-dialog textarea,
+    .reading-chat-dialog,
+    .completion-dialog,
+    .completion-dialog-secondary,
+    .notification-setup-modal,
+    .install-instructions,
+    .reminder-condition > div,
+    .chat-sources,
+    .chat-composer,
+    .reading-chat-new,
+    .commentary-filters,
+    .commentary-card,
+    .commentary-load-more,
+    .commentary-notes,
+    .scripture-audio-bar
+  ) {
+  border-color: var(--line);
+}
+html[data-theme="dark"]
+  :is(
+    .home-design #reflection p,
+    .home-design #listen p,
+    .show-password,
+    .security-note,
+    .reminder-condition label,
+    .install-instructions,
+    .notification-setup-note,
+    .member-search,
+    .member-status,
+    .schedule-status--starting,
+    .day-table th,
+    .segment-meta > span,
+    .segment-meta small,
+    .seek span,
+    .login-story > p,
+    .reading-note-privacy,
+    .commentary-header p,
+    .commentary-reading-picker p,
+    .commentary-filters label,
+    .commentary-sort-note,
+    .commentary-card-footer,
+    .commentary-notes,
+    .chat-progress-sources a,
+    .chat-progress-sources > span
+  ) {
+  color: var(--muted);
+}
+html[data-theme="dark"]
+  :is(
+    a:hover,
+    .brand-art svg:first-child,
+    .chapter h3,
+    .verse sup,
+    .passage-heading .eyebrow,
+    .member-admin-mark,
+    .member-directory-foot,
+    .member-password-section > div:first-child svg,
+    .member-editor-actions p svg,
+    .reminder-symbol,
+    .notification-setup-mark,
+    .reading-note-selection cite,
+    .note-quote cite,
+    .schedule-status--behind,
+    .schedule-behind,
+    .commentary-heading-icon,
+    .commentary-reading-picker h2 span,
+    .commentary-count,
+    .commentary-year,
+    .commentary-tradition,
+    .commentary-reset,
+    .commentary-sort-note svg,
+    .commentary-source,
+    .commentary-condemned,
+    .commentary-card-footer a,
+    .commentary-load-more,
+    .commentary-empty svg,
+    .commentary-notes summary,
+    .supplementary-kind,
+    .progress-exclusion
+  ) {
+  color: var(--gold);
+}
+html[data-theme="dark"]
+  :is(
+    .home-design #hero-headline em,
+    .login-story h1 em,
+    .notification-setup-unsupported,
+    .device-list button,
+    .chat-history-delete,
+    .reading-note-dialog footer .delete-note,
+    .note-delete-confirmation span
+  ) {
+  color: var(--danger);
+}
+html[data-theme="dark"]
+  :is(
+    .toast,
+    .community-warning,
+    .chat-notice,
+    .day-table .supplementary-row,
+    .day-card.supplementary-card
+  ) {
+  background: #3a3223;
+  color: #f1d5a0;
+  border-color: #876f40;
+}
+html[data-theme="dark"] .note-delete-confirmation {
+  background: #422924;
+  border-color: #82544c;
+}
+html[data-theme="dark"] :is(.completed-button, .day-check.checked) {
+  background: var(--surface-soft);
+  color: var(--green);
+  border-color: var(--green);
+}
+/* Accent text and filled controls need separate colors to keep their contrast. */
+html[data-theme="dark"]
+  :is(
+    .primary,
+    .edition-switcher button[aria-pressed="true"],
+    .reading-mode-main:hover,
+    .reading-mode-menu:hover,
+    .study-tab-audio-play,
+    .scripture-audio-icon,
+    .reader-mode-links a.active,
+    .play-round,
+    .commentary-filter-submit,
+    .reading-capture-fab,
+    .chat-composer button,
+    .large-avatar,
+    .reading-capture-saved
+  ) {
+  background: var(--action);
+  color: #fffefa;
+}
+html[data-theme="dark"]
+  :is(
+    .primary:hover,
+    .study-tab-audio-play:hover,
+    .play-round:hover,
+    .commentary-filter-submit:hover,
+    .reading-capture-fab:hover,
+    .chat-composer button:hover
+  ) {
+  background: #356f57;
+  color: #fffefa;
+}
+html[data-theme="dark"] .commentary-card.featured {
+  background: #183b2d;
+}
+html[data-theme="dark"] .commentary-card.featured :is(h3, .commentary-text) {
+  color: #f6f0e2;
+}
+html[data-theme="dark"]
+  :is(
+    .progress-panel progress,
+    .switch-control > span,
+    .reading-selection-tools > span
+  ) {
+  background: var(--line);
+}
+html[data-theme="dark"] .progress-panel progress::-webkit-progress-bar {
+  background: var(--line);
+}
+html[data-theme="dark"] .progress-panel progress::-webkit-progress-value {
+  background: var(--green);
+}
+html[data-theme="dark"] .progress-panel progress::-moz-progress-bar {
+  background: var(--green);
+}
+html[data-theme="dark"] .switch-control input:checked + span {
+  background: var(--action);
+}
+html[data-theme="dark"] .reading-capture-surface ::selection {
+  color: #fff4d8;
+  background: #66562f;
+}
+html[data-theme="dark"] dialog::backdrop {
+  background: #050b08aa;
+}
+/* Original illustrations retain their colors without bright paper rectangles. */
+html[data-theme="dark"] .design img.decoration {
+  mix-blend-mode: luminosity;
+  opacity: 0.65;
+}
