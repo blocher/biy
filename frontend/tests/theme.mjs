@@ -262,6 +262,27 @@ for (const engine of engines) {
     await readable(page, "h1");
     await readable(page, ".primary");
     await readable(page, ".day-table");
+    // Exercise the same classes used by AdminPeople and NotificationSetupModal,
+    // without granting fixture users admin rights or simulating installed PWAs.
+    await page.evaluate(() => {
+      const fixture = document.createElement("section");
+      fixture.id = "theme-peripheral-contrast";
+      fixture.style.position = "fixed";
+      fixture.style.left = "-10000px";
+      const avatar = document.createElement("span");
+      avatar.className = "member-avatar";
+      avatar.textContent = "R";
+      const hint = document.createElement("p");
+      hint.className = "notification-setup-condition";
+      hint.textContent = "Only when today's reading is incomplete";
+      fixture.append(avatar, hint);
+      document.body.append(fixture);
+    });
+    await readable(page, ".member-avatar");
+    await readable(page, ".notification-setup-condition");
+    await page
+      .locator("#theme-peripheral-contrast")
+      .evaluate((el) => el.remove());
     await page.screenshot({
       path: screenshots + engine.name() + "-home-dark.png",
       fullPage: true,

@@ -464,3 +464,11 @@ html[data-theme="dark"] ::placeholder {
   color: var(--muted);
   opacity: 1;
 }
+
+/* Administrative avatars and first-run reminder hints also use dark surfaces. */
+html[data-theme="dark"] .member-avatar {
+  color: var(--green);
+}
+html[data-theme="dark"] .notification-setup-condition {
+  color: var(--ink);
+}
