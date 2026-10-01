@@ -4757,18 +4757,19 @@ body:has(.reader-design) .player {
 .page-find-highlights {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1380;
   pointer-events: none;
 }
-.page-find-highlights span {
-  position: fixed;
-  border-radius: 2px;
-  background: #f4cf57a8;
-  box-shadow: inset 0 -2px #a97912;
+::highlight(biy-page-find) {
+  background-color: #f4cf57;
+  color: #201800;
 }
-.page-find-highlights span.active {
-  background: #f7ab48bd;
-  box-shadow: 0 0 0 2px #a55d16;
+::highlight(biy-page-find-active) {
+  background-color: #f7ab48;
+  color: #201000;
+  text-decoration: underline;
 }
 .page-find {
   position: fixed;
@@ -5117,3 +5118,4 @@ body:has(.reader-design) .player {
     font-size: max(16px, 1em) !important;
   }
 }
+

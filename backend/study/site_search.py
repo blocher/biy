@@ -4,20 +4,29 @@ import re
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from django.contrib.postgres.search import (
+    SearchHeadline,
     SearchQuery,
     SearchRank,
     SearchVector,
     TrigramSimilarity,
     TrigramWordSimilarity,
 )
-from django.db.models import Q
+from django.db.models import F, Q, Value
 from django.db.models.functions import Greatest
 
 from .commentaries import commentary_ranges_for_readings, range_overlaps
-from .models import STUDY_SEARCH_VECTOR, CatechismDay, Commentary, Day, Episode, Profile
+from .models import (
+    STUDY_SEARCH_VECTOR,
+    CatechismDay,
+    Commentary,
+    Day,
+    Episode,
+    Profile,
+    SearchChunk,
+    Verse,
+)
 from .scripture import reference_ranges
 from .search import accessible_chunks
-
 
 COMMENTARY_VECTOR = SearchVector("source_title", weight="A", config="english") + SearchVector(
     "text", weight="B", config="english"
@@ -62,20 +71,82 @@ def reading_locations():
     return bible, commentary
 
 
-def scripture_url(chunk, bible):
+def scripture_result(chunk, query, bible, fuzzy=False):
+    """Validate and link the matching part of a chunk that a reading displays."""
     data = chunk.metadata
-    location = (data.get("chapter"), data.get("first_verse"))
+    chapter = data["chapter"]
+    verses = list(Verse.objects.filter(
+        book=data["book"], chapter=chapter,
+        number__range=(data["first_verse"], data["last_verse"]),
+    ).order_by("number").values("number", "text"))
+    search_query = SearchQuery(query, search_type="websearch", config="english")
     for book, start, end, day in bible:
-        if book == data.get("book") and start <= location <= end:
-            slug = re.sub(r"[^a-z0-9]+", "-", book.lower())
-            return f"/bible/day/{day}/reader?tab=scripture#verse-{slug}-{location[0]}-{location[1]}"
-    return ""
+        if book != data["book"]:
+            continue
+        visible = [verse for verse in verses if start <= (chapter, verse["number"]) <= end]
+        if not visible:
+            continue
+        first, last = visible[0]["number"], visible[-1]["number"]
+        title = f"{book} {chapter}:{first}" + (f"-{last}" if first != last else "")
+        text = "\n".join(f"{verse['number']}. {verse['text']}" for verse in visible)
+
+        # A chunk can straddle assigned passages. Reapply the same PostgreSQL
+        # matcher to just the visible verses, including its actual reference,
+        # so a hit in an unassigned verse cannot create a misleading result.
+        passage = SearchChunk.objects.filter(pk=chunk.pk).annotate(
+            passage_title=Value(title), passage_text=Value(text),
+        )
+        if fuzzy:
+            passage = passage.filter(
+                Q(passage_title__trigram_similar=query)
+                | Q(passage_text__trigram_word_similar=query)
+            ).annotate(similarity=Greatest(
+                TrigramSimilarity("passage_title", query),
+                TrigramWordSimilarity(query, "passage_text"),
+            )).filter(similarity__gte=0.28)
+        else:
+            passage = passage.annotate(document=(
+                SearchVector("passage_title", weight="A", config="english")
+                + SearchVector("passage_text", weight="B", config="english")
+            )).filter(document=search_query)
+        highlighted = passage.annotate(highlighted=SearchHeadline(
+            "passage_text", search_query, config="english", highlight_all=True,
+            start_sel="\x01", stop_sel="\x02",
+        )).values_list("highlighted", flat=True).first()
+        if highlighted is None:
+            continue
+
+        # Full-text highlighting also recognizes stemming (love/loved). Start
+        # the excerpt and link at the same matching verse when one is marked.
+        before_hit = highlighted.split("\x01", 1)[0] if "\x01" in highlighted else ""
+        preceding = re.findall(r"(?:^|\n)(\d+)\. ", before_hit)
+        anchor = int(preceding[-1]) if preceding else first
+        if fuzzy and not preceding:
+            # A typo has no full-text highlight. Find its closest visible verse
+            # rather than showing unrelated text at the start of the chunk.
+            anchor = Verse.objects.filter(
+                book=book, chapter=chapter, number__in=[verse["number"] for verse in visible],
+            ).annotate(similarity=TrigramWordSimilarity(query, "text")).filter(
+                similarity__gte=0.28,
+            ).order_by("-similarity", "number").values_list("number", flat=True).first() or first
+        if anchor not in {verse["number"] for verse in visible}:
+            anchor = first
+        text = "\n".join(
+            f"{verse['number']}. {verse['text']}" for verse in visible if verse["number"] >= anchor
+        )
+        slug = re.sub(r"[^a-z0-9]+", "-", book.lower())
+        return {
+            "key": chunk.key, "kind": chunk.kind, "title": title,
+            "excerpt": excerpt(text, query),
+            "url": f"/bible/day/{day}/reader?tab=scripture#verse-{slug}-{chapter}-{anchor}",
+        }
+    return None
 
 
-def chunk_result(chunk, query, bible):
+def chunk_result(chunk, query, bible, fuzzy=False):
     data = chunk.metadata
     if chunk.kind == "scripture":
-        url = scripture_url(chunk, bible)
+        return scripture_result(chunk, query, bible, fuzzy=fuzzy)
     elif chunk.kind == "catechism":
         day = data.get("day")
         first = re.match(r"\s*(\d+)\.", chunk.text)
@@ -96,6 +167,22 @@ def chunk_result(chunk, query, bible):
     }
 
 
+def ranked_results(matches, limit):
+    """Keep the best excerpt for each source, then apply the result limit."""
+    if limit <= 0:
+        return []
+    results, seen, seen_keys = [], set(), set()
+    for _, identity, result in sorted(matches, key=lambda pair: -pair[0]):
+        if identity in seen or result["key"] in seen_keys:
+            continue
+        seen.add(identity)
+        seen_keys.add(result["key"])
+        results.append(result)
+        if len(results) >= limit:
+            break
+    return results
+
+
 def site_search(user, query, limit=24):
     """Search what this member can open, without invoking an AI model."""
     query = query.strip()
@@ -109,30 +196,50 @@ def site_search(user, query, limit=24):
     bible, commentary_ranges = reading_locations()
     search_query = SearchQuery(query, search_type="websearch", config="english")
     matches = []
-    seen = set()
 
-    def add(result, score):
-        if result and result["key"] not in seen:
-            seen.add(result["key"])
-            matches.append((score, result))
+    def add(result, score, identity=None):
+        if result:
+            matches.append((score, identity or ("result", result["key"]), result))
+
+    def add_chunks(rows, score_field, boost, candidate_limit):
+        # Chunk keys and anchors identify excerpts, not distinct search results.
+        # Iterate the ranked rows until enough *openable sources* are found, so
+        # one long episode cannot use up the candidate budget before Scripture
+        # or other commentary is even considered.
+        seen = set()
+        for row in rows.iterator(chunk_size=200):
+            identity = (
+                ("episode", row.episode_id)
+                if row.kind == "commentary" and row.episode_id is not None
+                else ("chunk", row.kind, row.source)
+            )
+            if identity in seen:
+                continue
+            result = chunk_result(row, query, bible, fuzzy=score_field == "similarity")
+            if result is None:
+                continue
+            seen.add(identity)
+            matches.append((boost + float(getattr(row, score_field)), identity, result))
+            if len(seen) >= candidate_limit:
+                break
+        return len(seen)
 
     chunks = accessible_chunks(user)
     if not bible_enabled:
         chunks = chunks.exclude(kind="scripture").exclude(metadata__edition="bible")
     if not catechism_enabled:
         chunks = chunks.exclude(kind="catechism").exclude(metadata__edition="catechism")
-    lexical = list(
+    lexical = (
         chunks.annotate(document=STUDY_SEARCH_VECTOR)
         .filter(document=search_query)
         .annotate(rank=SearchRank(STUDY_SEARCH_VECTOR, search_query))
-        .order_by("-rank", "pk")[:45]
+        .order_by("-rank", "pk")
     )
-    for row in lexical:
-        add(chunk_result(row, query, bible), 2 + float(row.rank))
+    lexical_count = add_chunks(lexical, "rank", 2, 45)
 
     # Whole-word trigrams recover useful near misses such as "eucharits".
     # This only supplements indexed full-text matches; it never calls embeddings.
-    if len(query) >= 3 and len(lexical) < 12:
+    if len(query) >= 3 and lexical_count < 12:
         fuzzy = (
             chunks.filter(Q(title__trigram_similar=query) | Q(text__trigram_word_similar=query)).annotate(
                 similarity=Greatest(
@@ -141,10 +248,9 @@ def site_search(user, query, limit=24):
                 )
             )
             .filter(similarity__gte=0.28)
-            .order_by("-similarity", "pk")[:20]
+            .order_by("-similarity", "pk")
         )
-        for row in fuzzy:
-            add(chunk_result(row, query, bible), 1 + float(row.similarity))
+        add_chunks(fuzzy, "similarity", 1, 20)
 
     episode_scope = Q()
     if bible_enabled:
@@ -175,11 +281,13 @@ def site_search(user, query, limit=24):
                 "url": f"/{edition}/day/{day_id}",
             },
             2.5 + float(row.rank),
+            identity=("episode", row.pk),
         )
 
     if catechism_enabled:
         plan = (
             CatechismDay.objects.annotate(
+                search_episode_id=F("episode__pk"),
                 document=SearchVector("part", weight="A", config="english")
                 + SearchVector("section", weight="B", config="english")
                 + SearchVector("chapter", weight="B", config="english")
@@ -198,6 +306,7 @@ def site_search(user, query, limit=24):
                     "url": f"/catechism/day/{row.number}",
                 },
                 2.3 + float(row.rank),
+                identity=("episode", row.search_episode_id) if row.search_episode_id else None,
             )
 
     # Historical commentaries are a separate corpus. Only offer entries that
@@ -231,6 +340,4 @@ def site_search(user, query, limit=24):
         if historical_count >= 12:
             break
 
-    return {
-        "results": [result for _, result in sorted(matches, key=lambda pair: -pair[0])[:limit]]
-    }
+    return {"results": ranked_results(matches, limit)}
