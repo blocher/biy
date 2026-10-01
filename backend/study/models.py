@@ -170,6 +170,11 @@ class Commentary(models.Model):
                 fields=["book_key", "location_start", "location_end"],
                 name="commentary_passage_idx",
             ),
+            GinIndex(
+                SearchVector("source_title", weight="A", config="english")
+                + SearchVector("text", weight="B", config="english"),
+                name="study_commentary_fts_gin",
+            ),
         ]
 
 
@@ -362,7 +367,11 @@ class SearchChunk(models.Model):
     error = models.CharField(max_length=100, blank=True)
 
     class Meta:
-        indexes = [GinIndex(STUDY_SEARCH_VECTOR, name="study_chunk_fts_gin")]
+        indexes = [
+            GinIndex(STUDY_SEARCH_VECTOR, name="study_chunk_fts_gin"),
+            GinIndex(fields=["title"], opclasses=["gin_trgm_ops"], name="study_chunk_title_trgm"),
+            GinIndex(fields=["text"], opclasses=["gin_trgm_ops"], name="study_chunk_text_trgm"),
+        ]
 
 
 class StudyConversation(models.Model):

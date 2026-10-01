@@ -48,8 +48,16 @@ from .models import (
 )
 from .scripture import reading_text
 from .scripture_audio import align_scripture_audio
+from .site_search import site_search
 
 api = NinjaAPI(title="Bible in a Year", auth=django_auth, docs_url=None)
+
+
+@api.get("/search")
+def search(request, q: str):
+    if len(q.strip()) < 2 or len(q) > 120:
+        raise HttpError(422, "Enter 2–120 characters to search.")
+    return site_search(request.user, q)
 
 
 def requested_edition(request):
