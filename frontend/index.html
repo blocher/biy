@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#123f34" />
+    <script>
+      // Apply the saved/device theme before styles and React load to avoid a flash.
+      (() => {
+        let preference;
+        try { preference = localStorage.getItem("biy-theme"); } catch {}
+        const theme = preference === "light" || preference === "dark"
+          ? preference : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.documentElement.style.backgroundColor = theme === "dark" ? "#151e1b" : "#fbfaf6";
+        document.querySelector('meta[name="theme-color"]').content = theme === "dark" ? "#151e1b" : "#123f34";
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"

@@ -21,6 +21,7 @@ import { Account } from "./Account";
 import { AdminPeople } from "./AdminPeople";
 import { Commentaries } from "./Commentaries";
 import { NotificationSetupModal } from "./NotificationSetupModal";
+import { ThemeToggle } from "./Theme";
 import {
   EditionContext,
   editionName,
@@ -229,6 +230,7 @@ function AppContent() {
   if (!user)
     return (
       <div className="login-page">
+        <div className="login-theme"><ThemeToggle /></div>
         <section className="login-story">
           <Brand />
           <span className="eyebrow">YOUR DAILY COMPANION</span>
