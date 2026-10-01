@@ -289,9 +289,12 @@ for (const engine of engines) {
     });
     await page.emulateMedia({ colorScheme: "light" });
     await assertTheme(page, "light");
-    await page.getByRole("button", { name: "Switch to dark mode" }).focus();
+    const sidebarSwitch = page.getByRole("switch", { name: "Dark mode" });
+    await expect(sidebarSwitch).not.toBeChecked();
+    await sidebarSwitch.focus();
     await page.keyboard.press("Enter");
     await assertTheme(page, "dark");
+    await expect(sidebarSwitch).toBeChecked();
     await page.emulateMedia({ colorScheme: "dark" });
     await page.emulateMedia({ colorScheme: "light" });
     await assertTheme(page, "dark");
@@ -306,7 +309,7 @@ for (const engine of engines) {
     await assertTheme(otherTab, "dark");
     await readable(otherTab, ".account-field input");
     await otherTab.close();
-    await page.getByRole("button", { name: "Switch to dark mode" }).click();
+    await sidebarSwitch.click();
     await page.goto(base + "/bible/day/1/reader");
     await page
       .getByRole("heading", { name: "Genesis 1", exact: true, level: 1 })
@@ -314,8 +317,9 @@ for (const engine of engines) {
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 });
       await noOverflow(page, `reader ${width}`);
-      const toggle = page.getByRole("button", { name: "Switch to light mode" });
+      const toggle = page.getByRole("switch", { name: "Dark mode" });
       await expect(toggle).toBeVisible();
+      await expect(toggle).toBeChecked();
       const box = await toggle.boundingBox();
       expect(box.width).toBeGreaterThanOrEqual(44);
       expect(box.height).toBeGreaterThanOrEqual(44);
@@ -326,7 +330,8 @@ for (const engine of engines) {
       });
       await toggle.click();
       await assertTheme(page, "light");
-      await page.getByRole("button", { name: "Switch to dark mode" }).click();
+      await expect(toggle).not.toBeChecked();
+      await toggle.click();
     }
     await page
       .getByRole("button", { name: "Ask about this reading", exact: true })
@@ -380,7 +385,7 @@ for (const engine of engines) {
       .waitFor();
     await noOverflow(page, "home 320");
     await expect(
-      page.getByRole("button", { name: "Switch to light mode" }),
+      page.getByRole("switch", { name: "Dark mode" }),
     ).toBeVisible();
     await page.screenshot({
       path: screenshots + engine.name() + "-home-dark-320.png",
@@ -400,8 +405,11 @@ for (const engine of engines) {
     await login.getByLabel("Password", { exact: true }).waitFor();
     await assertTheme(login, "dark");
     await readable(login, "#password");
-    await login.getByRole("button", { name: "Switch to light mode" }).click();
+    const loginSwitch = login.getByRole("switch", { name: "Dark mode" });
+    await expect(loginSwitch).toBeChecked();
+    await loginSwitch.click();
     await assertTheme(login, "light");
+    await expect(loginSwitch).not.toBeChecked();
     await noOverflow(login, "login");
     await loginContext.close();
     console.log(
