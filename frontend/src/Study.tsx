@@ -1,4 +1,5 @@
 import { followingPlanEntry } from "./planEntries";
+import { useStudyTabScroll } from "./useStudyTabScroll";
 import { ThemeToggle } from "./Theme";
 import {
   useEffect,
@@ -118,6 +119,7 @@ function StudyContent({
       search.get("tab") ||
       (edition === "catechism" ? "catechism" : "scripture"),
     audio = useAudio();
+  useStudyTabScroll(tab, reader);
   const completionDialog = useRef<HTMLDialogElement>(null);
   const otherEdition = edition === "bible" ? "catechism" : "bible";
   useLayoutEffect(() => {
