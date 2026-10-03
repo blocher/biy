@@ -1,3 +1,10 @@
+import { useState } from "react";
+import {
+  CatechismBody,
+  CatechismReferencePanel,
+  ParagraphReferences,
+  type ReferenceView,
+} from "./CatechismReferences";
 import { Pause, Play } from "lucide-react";
 import { time } from "./api";
 import { useAudio } from "./Audio";
@@ -25,6 +32,9 @@ export function Catechism({
   toolbar: boolean;
 }) {
   const audio = useAudio();
+  const [reference, setReference] = useState<ReferenceView | null>(null);
+  const [showReferences, setShowReferences] = useState(false);
+  const structured = paragraphs.some((p) => p.content?.schema === 1);
   const cues = paragraphs.flatMap((paragraph) =>
     paragraph.audio ? [paragraph.audio] : [],
   );
@@ -42,8 +52,24 @@ export function Catechism({
     <article className="catechism-text">
       <header>
         <span className="eyebrow">{era}</span>
-        {section && <p>{section}</p>}
-        {chapter && <p>{chapter}</p>}
+        {!structured && section && <p>{section}</p>}
+        {!structured && chapter && <p>{chapter}</p>}
+        {structured && (
+          <>
+            <p>
+              {paragraphs[0]?.content?.context?.map((h) => h.text).join(" · ")}
+            </p>
+            <button
+              className="ccc-reference-toggle"
+              aria-pressed={showReferences}
+              onClick={() => setShowReferences((v) => !v)}
+            >
+              {showReferences
+                ? "Hide reference labels"
+                : "Show reference labels"}
+            </button>
+          </>
+        )}
       </header>
       {available && toolbar && (
         <div className="scripture-audio-bar">
@@ -103,6 +129,7 @@ export function Catechism({
             key={paragraph.number}
             aria-label={`Catechism paragraph ${paragraph.number}`}
           >
+            <CatechismBody paragraph={paragraph} open={setReference} before />
             {episode?.has_audio && cue && (
               <button
                 className="passage-audio-button"
@@ -121,24 +148,35 @@ export function Catechism({
                 {action} paragraph
               </button>
             )}
-            <p
+            <div
               id={`ccc-${paragraph.number}`}
               data-reading-citation={`Catechism § ${paragraph.number}`}
               data-reading-url={`#ccc-${paragraph.number}`}
             >
-              <strong>{paragraph.number}</strong> {paragraph.text}
-            </p>
+              <CatechismBody paragraph={paragraph} open={setReference} />
+            </div>
+            <ParagraphReferences
+              paragraph={paragraph}
+              open={setReference}
+              expanded={showReferences}
+            />
           </section>
         );
       })}
       <a
         className="text-link"
-        href={paragraphs[0].source_url}
+        href={paragraphs[0]?.source_url}
         target="_blank"
         rel="noopener noreferrer"
       >
-        Read the source on vatican.va
+        Read the source on {paragraphs[0]?.provenance?.source || "vatican.va"}
       </a>
+      {reference && (
+        <CatechismReferencePanel
+          initial={reference}
+          close={() => setReference(null)}
+        />
+      )}
     </article>
   );
 }

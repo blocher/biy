@@ -1,3 +1,4 @@
+import re
 from datetime import date as calendar_date
 from datetime import datetime, time, timedelta
 from typing import Literal
@@ -21,6 +22,7 @@ from ninja.security import django_auth
 from pydantic import Field
 
 from .catechism_audio import align_catechism_audio
+from .catechism_content import paragraph_data
 from .chat_api import router as chat_router
 from .commentaries import (
     CommentaryRange,
@@ -46,9 +48,9 @@ from .models import (
     Profile,
     PushSubscription,
 )
-from .scripture import reading_text
+from .scripture import reading_text, reference_ranges
 from .scripture_audio import align_scripture_audio
-from .site_search import site_search
+from .site_search import reading_locations, site_search
 
 api = NinjaAPI(title="Bible in a Year", auth=django_auth, docs_url=None)
 
@@ -634,6 +636,72 @@ def episode_detail(ep, user):
     return data
 
 
+@api.get("/catechism/paragraphs/{number}")
+def catechism_reference(request, number: int):
+    paragraph = get_object_or_404(CatechismParagraph, pk=number)
+    day = CatechismDay.objects.filter(
+        paragraph_start__lte=number, paragraph_end__gte=number
+    ).first()
+    return {
+        "paragraph": paragraph_data(paragraph),
+        "context_url": f"/catechism/day/{day.number}/reader?tab=catechism#ccc-{number}"
+        if day
+        else None,
+    }
+
+
+@api.get("/catechism/bible-reference")
+def catechism_bible_reference(request, reference: str):
+    if not 1 <= len(reference) <= 240:
+        raise HttpError(422, "Choose a shorter Bible reference.")
+    try:
+        ranges = list(reference_ranges(reference))
+    except ValueError as exc:
+        raise HttpError(422, "This Bible reference could not be resolved.") from exc
+    descending_verses = any(
+        int(end) < int(start) for start, end in re.findall(r":(\d+)-(\d+)(?=,|$)", reference)
+    )
+    if (
+        not ranges
+        or len(ranges) > 12
+        or descending_verses
+        or sum(lc - fc + 1 for _, fc, _, lc, _ in ranges) > 24
+        or any(
+            not 1 <= fc <= lc <= 150
+            or lc - fc > 10
+            or not 1 <= fv <= 176
+            or not (1 <= lv <= 176 or lv == 999)
+            or (fc, fv) > (lc, lv)
+            for _, fc, fv, lc, lv in ranges
+        )
+    ):
+        raise HttpError(422, "This Bible reference is outside the supported range.")
+    passage = reading_text(reference)
+    for group, (_, fc, fv, lc, lv) in zip(passage["groups"], ranges, strict=True):
+        present = {(v["chapter"], v["verse"]) for v in group["verses"]}
+        # Never present a partial imported passage as the whole citation.
+        group["missing"] = (
+            group["missing"] or (fc, fv) not in present or (lv != 999 and (lc, lv) not in present)
+        )
+        for chapter in range(fc, lc + 1):
+            numbers = {verse for ch, verse in present if ch == chapter}
+            if not numbers or numbers != set(range(min(numbers), max(numbers) + 1)):
+                group["missing"] = True
+    bible, _ = reading_locations()
+    book, fc, fv, _, _ = ranges[0]
+    day = next(
+        (day for b, start, end, day in bible if b == book and start <= (fc, fv) <= end), None
+    )
+    slug = re.sub(r"[^a-z0-9]+", "-", book.lower())
+    return {
+        "passage": passage,
+        "translation": "RSV-2CE",
+        "context_url": f"/bible/day/{day}/reader?tab=scripture#verse-{slug}-{fc}-{fv}"
+        if day
+        else None,
+    }
+
+
 @api.get("/days/{number}")
 def day_detail(request, number: int):
     edition = requested_edition(request)
@@ -650,12 +718,9 @@ def day_detail(request, number: int):
             if day.paragraph_start is not None
             else []
         )
-        paragraph_data = [
-            {"number": paragraph.number, "text": paragraph.text, "source_url": paragraph.source_url}
-            for paragraph in paragraphs
-        ]
+        paragraph_rows = [paragraph_data(paragraph) for paragraph in paragraphs]
         cues = (
-            align_catechism_audio(paragraph_data, ep.transcript, ep.classification)
+            align_catechism_audio(paragraph_rows, ep.transcript, ep.classification)
             if ep and ep.audio_file
             else []
         )
@@ -672,7 +737,7 @@ def day_detail(request, number: int):
             "scripture": [],
             "catechism": [
                 {**paragraph, "audio": cues_by_paragraph.get(paragraph["number"])}
-                for paragraph in paragraph_data
+                for paragraph in paragraph_rows
             ],
             "episode": episode_detail(ep, request.user) if ep else None,
         }

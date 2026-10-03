@@ -17,15 +17,28 @@ The production Bible is already loaded. If the Bible source files are present un
 sudo /var/www/biy-app/deploy/manage import_bible
 ```
 
-The official English Catechism text is imported separately from Vatican pages:
+Catechism source replacement is a separate, explicitly authorized operation after
+schema migration. Deploying the code does not import or replace text. Fetch and
+review the structured Ascension snapshot first; use paths writable by `biy`:
 
 ```sh
-sudo /var/www/biy-app/deploy/manage import_catechism
+sudo /var/www/biy-app/deploy/manage fetch_catechism --output /var/www/biy-app/data/catechism/source.json
+sudo /var/www/biy-app/deploy/manage import_catechism --source /var/www/biy-app/data/catechism/source.json --report /var/www/biy-app/data/catechism/preview.json
 ```
 
-The default imports readable text without queuing embeddings or other AI work.
-Add `--index-for-ask` only when Catechism semantic indexing is intentionally
-authorized.
+After reviewing the report and when production replacement is authorized:
+
+```sh
+sudo /var/www/biy-app/deploy/manage import_catechism --source /var/www/biy-app/data/catechism/source.json --report /var/www/biy-app/data/catechism/applied.json --apply --backup /var/www/biy-app/data/catechism/before-import.json
+```
+
+Use new filenames for later snapshots and backups. The source checksum and complete
+CCC coverage are validated before any write. Roll back with `--restore --source
+/path/to/before-import.json --apply --backup /path/to/new-backup.json --report
+/path/to/restore-report.json`. Paragraph numbers and existing reading progress stay
+stable. Document citations are retained without any Magisterium integration.
+Add `--index-for-ask` only when semantic reindexing is intentionally authorized;
+without it no embeddings or other AI work is queued.
 
 After source, note, or episode changes, reconcile search indexing. The running worker embeds pending chunks asynchronously:
 

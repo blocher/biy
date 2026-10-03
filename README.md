@@ -78,15 +78,47 @@ different chapter layout for additions to Daniel and Esther.
 
 Both 365-day plans come from their supplied official PDFs. Reading references are preserved exactly, including the Bible plan's repeated Ecclesiastes reading on days 150/151 and unusual Esther chapter ordering. The Catechism plan covers CCC 1-2865 exactly once, with its four introductory days retained as days without numbered paragraphs. The importer does not silently correct either source plan.
 
-Import the official English Catechism text from Vatican pages after seeding the plan:
+The Catechism reader uses Ascension's structured text, including paragraph boundaries,
+headings, quotations, complete footnotes, Bible citations, and CCC cross-references.
+Reference previews use the local Bible and Catechism. Document citations retain their
+original wording; this feature makes no Magisterium or other document-service calls.
+
+After seeding the plan and applying migrations, capture an immutable source snapshot,
+then preview the import (no database writes):
 
 ```sh
-.venv/bin/python backend/manage.py import_catechism
+.venv/bin/python backend/manage.py fetch_catechism --output data/catechism/source.json
+.venv/bin/python backend/manage.py import_catechism --source data/catechism/source.json --report data/catechism/preview.json
 ```
 
-This imports readable text without queuing embeddings or other AI work. Add
-`--index-for-ask` only when Catechism semantic indexing is intentionally
-authorized.
+Review the report before applying. It lists text changes, structure changes,
+unplaced notes, and unresolved Bible citations. Source snapshots retain their URL,
+retrieval time, and checksum; use a fresh filename for each fetch. The importer
+requires CCC 1–2865 exactly once, rejects unsupported markup and missing footnotes,
+and keeps supplemental publisher material out of the canonical reading.
+
+```sh
+.venv/bin/python backend/manage.py import_catechism --source data/catechism/source.json --report data/catechism/applied.json --apply --backup data/catechism/before-import.json
+```
+
+This updates paragraph content in place and preserves days, progress, notes, and
+paragraph links. Audio alignment uses the derived plain text, excluding headings
+and reference markers. It does not generate audio or queue AI work. Add
+`--index-for-ask` only when refreshing semantic indexing is intentionally authorized;
+existing Ask chunks otherwise retain their previous text until explicitly reindexed.
+Raw source snapshots and backups are ignored by Git.
+
+Rollback also requires a new backup of the current state:
+
+```sh
+.venv/bin/python backend/manage.py import_catechism --restore --source data/catechism/before-import.json --report data/catechism/restored.json --apply --backup data/catechism/before-restore.json
+```
+
+The legacy plain-text Vatican importer is available as `import_catechism_vatican`
+for old mirrors and parser fixtures. It refuses to overwrite structured content.
+The 2026-10-03 Ascension snapshot contains 2,865 paragraphs, 3,744 footnotes, and
+3,123 CCC cross-references. One malformed citation, `1 Jn 2:20:27` at CCC 695,
+is preserved as readable text and reported as unresolved rather than guessed.
 
 ## One-day acceptance import
 

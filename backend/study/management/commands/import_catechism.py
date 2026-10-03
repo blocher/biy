@@ -1,135 +1,103 @@
-import re
-from concurrent.futures import ThreadPoolExecutor
+import json
 from pathlib import Path
-from urllib.parse import urljoin
 
-import httpx
-from bs4 import BeautifulSoup
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from study.catechism_content import normalize_dataset, paragraph_data, source_digest
 from study.models import CatechismParagraph
 from study.search import index_catechism
 
-BASE_URL = "https://www.vatican.va/archive/ENG0015/"
-INDEX_NAME = "_INDEX.HTM"
-PAGE_PATTERN = re.compile(r"^__P[0-9A-Z]+\.HTM$", re.I)
-PARAGRAPH_PATTERN = re.compile(r"^(\d{1,4})\s+(.*)$", re.S)
-
-
-def parse_page(content, source_url):
-    soup = BeautifulSoup(content, "lxml")
-    rows = []
-    current = None
-    for element in soup.select("p.MsoNormal"):
-        for marker in element.select("sup"):
-            marker.decompose()
-        text = " ".join(element.get_text(" ", strip=True).split())
-        match = PARAGRAPH_PATTERN.match(text)
-        if not match:
-            is_heading = bool(element.find("b")) or (
-                text and text.upper() == text and len(text) < 180
-            )
-            if current is not None and text and not is_heading:
-                current["text"] += " " + text
-            elif is_heading:
-                current = None
-            continue
-        number = int(match[1])
-        if not 1 <= number <= 2865:
-            continue
-        body = match[2].strip()
-        if not body:
-            continue
-        current = {"number": number, "text": body, "source_url": source_url}
-        rows.append(current)
-        # Two source pages merge the next numbered paragraph into this one.
-        # Split only the exact sequential number so Scripture/footnote numerals
-        # cannot accidentally become Catechism paragraph boundaries.
-        next_marker = re.search(rf"\s{number + 1}\s+(?=[A-Z\"'])", current["text"])
-        if next_marker:
-            before = current["text"][: next_marker.start()].rstrip()
-            after = current["text"][next_marker.end() :].strip()
-            current["text"] = before
-            current = {
-                "number": number + 1,
-                "text": after,
-                "source_url": source_url,
-            }
-            rows.append(current)
-    return rows
+# Preserve the parser import used by the existing Vatican regression fixtures.
+from .import_catechism_vatican import parse_page  # noqa: F401
 
 
 class Command(BaseCommand):
-    help = "Import CCC 1-2865 from the English Catechism on vatican.va."
+    help = "Validate an Ascension snapshot and report changes. Write only with --apply --backup."
 
     def add_arguments(self, parser):
+        parser.add_argument("--source", type=Path, required=True)
+        parser.add_argument("--report", type=Path, required=True)
+        parser.add_argument("--apply", action="store_true")
+        parser.add_argument("--backup", type=Path)
         parser.add_argument(
-            "--source",
-            type=Path,
-            help="Read _INDEX.HTM and linked pages from a local mirror.",
+            "--restore", action="store_true", help="Restore a backup created by this command."
         )
-        parser.add_argument(
-            "--index-for-ask",
-            action="store_true",
-            help="Queue Catechism search chunks for embedding after import.",
-        )
+        parser.add_argument("--index-for-ask", action="store_true")
 
-    def read(self, name, source, client):
-        if source:
-            return (source / name).read_bytes(), urljoin(BASE_URL, name)
-        url = urljoin(BASE_URL, name)
-        response = client.get(url)
-        response.raise_for_status()
-        return response.content, url
-
-    @transaction.atomic
     def handle(self, **options):
-        source = options["source"]
-        if source and not (source / INDEX_NAME).exists():
-            raise CommandError(f"Missing {source / INDEX_NAME}")
-        headers = {"User-Agent": "BIY-CIY private study importer"}
-        with httpx.Client(timeout=60, follow_redirects=True, headers=headers) as client:
-            index, _ = self.read(INDEX_NAME, source, client)
-            soup = BeautifulSoup(index, "lxml")
-            names = []
-            for link in soup.find_all("a", href=True):
-                name = link["href"].split("#", 1)[0]
-                if PAGE_PATTERN.match(name) and name.upper() not in {
-                    item.upper() for item in names
-                }:
-                    names.append(name)
-            if not names:
-                raise CommandError("The Vatican index did not contain Catechism text pages.")
-            parsed = {}
-
-            def fetch(name):
-                content, url = self.read(name, source, client)
-                return parse_page(content, url)
-
-            workers = 1 if source else 12
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                page_rows = executor.map(fetch, names)
-                for rows in page_rows:
-                    for row in rows:
-                        previous = parsed.get(row["number"])
-                        if previous and previous["text"] != row["text"]:
-                            raise CommandError(f"Conflicting text found for CCC {row['number']}.")
-                        parsed[row["number"]] = row
-        if sorted(parsed) != list(range(1, 2866)):
-            missing = sorted(set(range(1, 2866)) - set(parsed))
-            raise CommandError(f"Expected CCC 1-2865 exactly once; missing {missing[:10]}.")
-        CatechismParagraph.objects.bulk_create(
-            [CatechismParagraph(**parsed[number]) for number in sorted(parsed)],
-            update_conflicts=True,
-            update_fields=["text", "source_url"],
-            unique_fields=["number"],
-        )
+        if options["index_for_ask"] and not options["apply"]:
+            raise CommandError("--index-for-ask requires --apply.")
+        if options["apply"] and not options["backup"]:
+            raise CommandError("--apply requires a new --backup path for rollback.")
+        paths = [options[k].resolve() for k in ("source", "report", "backup") if options[k]]
+        if len(set(paths)) != len(paths):
+            raise CommandError("Source, report, and backup must be separate files.")
+        try:
+            snapshot = json.loads(options["source"].read_text())
+            if options["restore"]:
+                if snapshot.get("format") != "biy-catechism-backup-v1":
+                    raise ValueError("Not a Catechism backup.")
+                rows = snapshot["paragraphs"]
+                numbers = [r["number"] for r in rows]
+                if len(set(numbers)) != len(numbers) or any(not 1 <= n <= 2865 for n in numbers):
+                    raise ValueError("Backup has duplicate or invalid CCC numbers.")
+                report = {"restoring": True, "paragraphs": len(rows)}
+            else:
+                digest = source_digest(snapshot["data"])
+                if snapshot["provenance"]["sha256"] != digest:
+                    raise ValueError("Snapshot checksum does not match its data.")
+                rows, report = normalize_dataset(snapshot["data"])
+                for row in rows:
+                    row["provenance"] = snapshot["provenance"]
+        except (ValueError, KeyError, TypeError, OSError) as exc:
+            raise CommandError(f"Invalid Catechism source: {exc}") from exc
+        # Serialize imports and preserve a consistent rollback image of every
+        # paragraph. Network work happens in fetch_catechism, outside this lock.
+        with transaction.atomic():
+            old = {
+                r.number: paragraph_data(r) for r in CatechismParagraph.objects.select_for_update()
+            }
+            report["changes"] = [
+                {
+                    "number": r["number"],
+                    "old_text": old.get(r["number"], {}).get("text"),
+                    "new_text": r["text"],
+                    "structure_changed": old.get(r["number"], {}).get("content") != r["content"],
+                }
+                for r in rows
+                if old.get(r["number"]) != r
+            ]
+            report["applied"] = bool(options["apply"])
+            report["removed_paragraphs"] = (
+                sorted(set(old) - {r["number"] for r in rows}) if options["restore"] else []
+            )
+            if options["apply"]:
+                backup = options["backup"]
+                backup.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    with backup.open("x") as stream:
+                        json.dump(
+                            {"format": "biy-catechism-backup-v1", "paragraphs": list(old.values())},
+                            stream,
+                            ensure_ascii=False,
+                        )
+                except FileExistsError as exc:
+                    raise CommandError("Backup already exists; choose a new path.") from exc
+                if options["restore"]:
+                    CatechismParagraph.objects.exclude(
+                        number__in=[r["number"] for r in rows]
+                    ).delete()
+                CatechismParagraph.objects.bulk_create(
+                    [CatechismParagraph(**r) for r in rows],
+                    update_conflicts=True,
+                    update_fields=["text", "source_url", "content", "provenance"],
+                    unique_fields=["number"],
+                )
+            options["report"].parent.mkdir(parents=True, exist_ok=True)
+            options["report"].write_text(json.dumps(report, ensure_ascii=False, indent=2))
         if options["index_for_ask"]:
             index_catechism()
-            self.stdout.write("Imported 2,865 Catechism paragraphs and queued Ask indexing.")
-        else:
-            self.stdout.write(
-                "Imported 2,865 Catechism paragraphs from vatican.va. "
-                "No Ask indexing or AI work was queued."
-            )
+        self.stdout.write(
+            f"{'Applied' if options['apply'] else 'Validated'} {len(rows)} paragraphs; {len(report['changes'])} changes. Report: {options['report']}"
+        )

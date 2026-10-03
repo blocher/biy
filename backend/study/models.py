@@ -73,6 +73,8 @@ class CatechismParagraph(models.Model):
     number = models.PositiveSmallIntegerField(primary_key=True)
     text = models.TextField()
     source_url = models.URLField(max_length=2000)
+    content = models.JSONField(default=dict, blank=True)
+    provenance = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["number"]

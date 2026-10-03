@@ -1,3 +1,4 @@
+import type { CatechismContent } from "./catechismContent";
 export type Segment = {
   id: number;
   start: number;
@@ -81,6 +82,8 @@ export type CatechismAudioCue = {
   confidence: number;
 };
 export type CatechismParagraph = {
+  content?: CatechismContent;
+  provenance?: { source?: string; sha256?: string };
   audio?: CatechismAudioCue | null;
   number: number;
   text: string;

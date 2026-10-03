@@ -80,11 +80,12 @@ for (const mobile of [false, true]) {
   const page = await browser.newPage(
     mobile
       ? {
+          serviceWorkers: "block",
           viewport: { width: 390, height: 844 },
           isMobile: true,
           hasTouch: true,
         }
-      : { viewport: { width: 1440, height: 1000 } },
+      : { serviceWorkers: "block", viewport: { width: 1440, height: 1000 } },
   );
   page.setDefaultTimeout(10000);
   const errors = [];
@@ -314,7 +315,7 @@ for (const mobile of [false, true]) {
       .click();
     fixture.number = 2;
     fixture.episode.has_audio = false;
-    await page.getByRole("link", { name: "Day 2", exact: true }).click();
+    await page.goto(`${base}/catechism/day/2/reader?tab=catechism`);
     await expect(page.getByRole("status")).toContainText(
       "Audio has not been imported",
     );
@@ -326,7 +327,7 @@ for (const mobile of [false, true]) {
     fixture.catechism.forEach((p) => {
       p.audio = null;
     });
-    await page.getByRole("link", { name: "Day 3", exact: true }).click();
+    await page.goto(`${base}/catechism/day/3/reader?tab=catechism`);
     await expect(page.getByRole("status")).toContainText(
       "Paragraph audio is not available",
     );
@@ -335,13 +336,13 @@ for (const mobile of [false, true]) {
     ).toHaveCount(0);
     fixture.number = 4;
     fixture.catechism = [];
-    await page.getByRole("link", { name: "Day 4", exact: true }).click();
+    await page.goto(`${base}/catechism/day/4/reader?tab=catechism`);
     await expect(
       page.getByRole("heading", { name: "Catechism text unavailable" }),
     ).toBeVisible();
     fixture.number = 5;
     fixture.readings = [];
-    await page.getByRole("link", { name: "Day 5", exact: true }).click();
+    await page.goto(`${base}/catechism/day/5/reader?tab=catechism`);
     await expect(
       page.getByRole("heading", { name: "Introductory episode" }),
     ).toBeVisible();
