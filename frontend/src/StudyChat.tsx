@@ -198,6 +198,11 @@ export function ChatContent({
     null,
   );
   const editor = useRef<HTMLTextAreaElement>(null);
+  const selectedContext =
+    chat.question.match(
+      /^In [\s\S]*?, I highlighted:\n\n“[\s\S]*?”\n\n/,
+    )?.[0] || "";
+  const typedQuestion = chat.question.slice(selectedContext.length);
   const turns = chat.current?.turns ?? [];
   const last = turns.at(-1);
   useEffect(() => {
@@ -321,6 +326,12 @@ export function ChatContent({
           "companion-question": null,
           "companion-answer": (
             <>
+              {selectedContext && (
+                <details className="chat-selected-question">
+                  <summary>Selected passage</summary>
+                  <p>{selectedContext}</p>
+                </details>
+              )}
               {!chat.status && (
                 <p role="status">Checking study availability…</p>
               )}
@@ -477,7 +488,7 @@ export function ChatContent({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void chat.send();
+                if (typedQuestion.trim()) void chat.send();
               }}
             >
               {chat.error && (
@@ -490,11 +501,13 @@ export function ChatContent({
                 <textarea
                   ref={editor}
                   id="study-question"
-                  value={chat.question}
-                  maxLength={4000}
-                  onChange={(e) => chat.setQuestion(e.target.value)}
+                  value={typedQuestion}
+                  maxLength={4000 - selectedContext.length}
+                  onChange={(e) =>
+                    chat.setQuestion(selectedContext + e.target.value)
+                  }
                   placeholder="Ask about this reading…"
-                  rows={embedded ? 2 : 3}
+                  rows={4}
                   onKeyDown={(e) => {
                     if (
                       e.key === "Enter" &&
@@ -502,7 +515,7 @@ export function ChatContent({
                       !e.nativeEvent.isComposing
                     ) {
                       e.preventDefault();
-                      void chat.send();
+                      if (typedQuestion.trim()) void chat.send();
                     }
                   }}
                 />
@@ -511,7 +524,7 @@ export function ChatContent({
                   type="submit"
                   disabled={
                     chat.busy ||
-                    !chat.question.trim() ||
+                    !typedQuestion.trim() ||
                     !chat.status?.configured ||
                     !chat.status.worker_online
                   }

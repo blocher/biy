@@ -14,7 +14,8 @@ import type { Library } from "./types";
 import { Sidebar } from "./navigation";
 import { DayTable, Timeline } from "./Library";
 import { date, episodeTitle } from "./api";
-import { progressStats } from "./progress";
+import { nextPlanEntry } from "./planEntries";
+import { progressStats, scheduleStatus } from "./progress";
 import { useEdition } from "./Edition";
 
 function percent(value: number) {
@@ -35,27 +36,27 @@ export function Home({
   const { edition } = useEdition();
   const catechism = edition === "catechism";
   const preferenceState = usePreferences(onError);
-  const next = library.days.find((d) => d.number === library.next_day),
+  const entry = nextPlanEntry(library);
+  const extra = entry?.kind === "extra" ? entry.episode : null;
+  const next = entry?.kind === "day" ? entry.day : null,
     stats = progressStats(
       library,
       preferenceState.preferences?.progress_basis || "first-completion",
       new Date(),
       preferenceState.preferences?.leaderboard_start_date,
     );
-  const schedule =
-    stats.scheduleDelta === null
-      ? {
-          label: "Complete Day 1 to begin",
-          tone: "starting",
-          icon: CalendarDays,
-        }
-      : stats.scheduleDelta === 0
-        ? { label: "On schedule", tone: "on-schedule", icon: CheckCircle2 }
-        : {
-            label: `${Math.abs(stats.scheduleDelta)} day${Math.abs(stats.scheduleDelta) === 1 ? "" : "s"} ${stats.scheduleDelta > 0 ? "ahead of" : "behind"} schedule`,
-            tone: stats.scheduleDelta > 0 ? "ahead" : "behind",
-            icon: stats.scheduleDelta > 0 ? TrendingUp : Clock3,
-          };
+  const status = scheduleStatus(stats.scheduleDelta, stats.completed);
+  const schedule = {
+    ...status,
+    icon:
+      status.tone === "ahead"
+        ? TrendingUp
+        : status.tone === "behind"
+          ? Clock3
+          : status.tone === "starting"
+            ? CalendarDays
+            : CheckCircle2,
+  };
   const ScheduleIcon = schedule.icon;
   return (
     <Design
@@ -87,38 +88,50 @@ export function Home({
         ),
         "hero-day-label": (
           <span className="eyebrow" style={{ color: next?.color || "#123f34" }}>
-            {next
-              ? `${next.era} · DAY ${next.number}`
-              : `365 DAYS · ${catechism ? "ONE FAITH" : "ONE BEAUTIFUL JOURNEY"}`}
+            {extra
+              ? "SUPPLEMENTAL READING"
+              : next
+                ? `${next.era} · DAY ${next.number}`
+                : `365 DAYS · ${catechism ? "ONE FAITH" : "ONE BEAUTIFUL JOURNEY"}`}
           </span>
         ),
         "hero-title": (
           <h2>
-            {next
-              ? next.episode
-                ? episodeTitle(next.episode.title)
-                : next.readings[0]
-              : catechism
-                ? "You’ve read the whole Catechism."
-                : "You’ve read the whole story."}
+            {extra
+              ? episodeTitle(extra.title)
+              : next
+                ? next.episode
+                  ? episodeTitle(next.episode.title)
+                  : next.readings[0]
+                : catechism
+                  ? "You’ve read the whole Catechism."
+                  : "You’ve read the whole story."}
           </h2>
         ),
         "hero-reference": (
           <p>
-            {next?.readings.join(" · ") ||
-              `Your notes and every ${catechism ? "Catechism passage" : "reading"} are here whenever you want to return.`}
+            {extra
+              ? "An extra step in your reading journey."
+              : next?.readings.join(" · ") ||
+                `Your notes and every ${catechism ? "Catechism passage" : "reading"} are here whenever you want to return.`}
           </p>
         ),
-        "hero-continue": next ? (
+        "hero-continue": entry ? (
           <>
             <Link
               className="primary continue-button"
-              to={`/${edition}/day/${next.number}`}
+              to={
+                extra
+                  ? `/${edition}/episode/${extra.id}`
+                  : `/${edition}/day/${next!.number}`
+              }
             >
-              Continue Day {next.number}
+              {extra
+                ? "Continue supplemental reading"
+                : `Continue Day ${next!.number}`}
               <ArrowRight size={21} />
             </Link>
-            <span className="quiet">Your next unread day</span>
+            <span className="quiet">Your next unread reading</span>
           </>
         ) : (
           <Link className="primary" to={`/${edition}`}>

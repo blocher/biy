@@ -22,7 +22,7 @@ export function buildSelectionQuestion(selection: ReadingSelection) {
     selection.quote.length > 600
       ? `${selection.quote.slice(0, 599).trimEnd()}…`
       : selection.quote;
-  return `In ${selection.citation}, I highlighted:\n\n“${quote}”\n\nWhat should I notice here?`;
+  return `In ${selection.citation}, I highlighted:\n\n“${quote}”\n\n`;
 }
 
 export function ReadingCapture({

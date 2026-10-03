@@ -1,3 +1,4 @@
+import { followingPlanEntry } from "./planEntries";
 import { ThemeToggle } from "./Theme";
 import {
   useEffect,
@@ -79,12 +80,14 @@ export function Study(props: ComponentProps<typeof StudyContent>) {
 function StudyContent({
   user,
   completedDays,
+  library,
   onError,
   onChange,
   reader = false,
 }: {
   user: string;
   completedDays: number;
+  library: Library;
   onError: (e: string) => void;
   onChange: () => void;
   reader?: boolean;
@@ -187,6 +190,12 @@ function StudyContent({
   const day = isDay ? (data as DayDetail) : null,
     episode = day ? day.episode : (data as Episode),
     base = day ? `/${edition}/day/${day.number}` : `/${edition}/episode/${episode!.id}`;
+  const following = followingPlanEntry(library, day ? `day-${day.number}` : `episode-${episode!.id}`);
+  const followingUrl = following?.kind === "day"
+    ? `/${edition}/day/${following.day.number}`
+    : following ? `/${edition}/episode/${following.episode.id}` : null;
+  const followingLabel = following?.kind === "day"
+    ? `Go to Day ${following.day.number}` : "Go to next supplemental reading";
   const title = episode ? episodeTitle(episode.title) : day!.readings[0],
     completed = data.completed_at;
   const supplementarySpeakers = episode
@@ -261,9 +270,9 @@ function StudyContent({
       <h2 id="completion-dialog-title">{day ? `Day ${day.number} complete` : "Episode complete"}</h2>
       <p>Where would you like to go next?</p>
       <div className="completion-dialog-actions">
-        {day && day.number < 365 && (
-          <button className="primary" onClick={() => { setCompletionOpen(false); navigate(`/${edition}/day/${day.number + 1}`); }}>
-            Go to next day <ArrowRight size={17} />
+        {followingUrl && (
+          <button className="primary" onClick={() => { setCompletionOpen(false); navigate(followingUrl); }}>
+            {followingLabel} <ArrowRight size={17} />
           </button>
         )}
         {availability[otherEdition] && (otherLoading || otherNextDay !== null) && (
@@ -600,12 +609,12 @@ function StudyContent({
                 <Link className="text-link" to={`${base}?tab=${selected}`}>
                   <ArrowLeft size={16} /> Back to study
                 </Link>
-                {day && day.number < 365 && (
+                {followingUrl && (
                   <Link
                     className="text-link next-day-link"
-                    to={`/${edition}/day/${day.number + 1}`}
+                    to={followingUrl}
                   >
-                    Next day <ArrowRight size={16} />
+                    {followingLabel} <ArrowRight size={16} />
                   </Link>
                 )}
               </div>
@@ -999,9 +1008,9 @@ function StudyContent({
             <ArrowLeft size={16} /> Day {day.number - 1}
           </Link>
         )}
-        {day && day.number < 365 && (
-          <Link to={`/${edition}/day/${day.number + 1}`}>
-            Day {day.number + 1}
+        {followingUrl && (
+          <Link to={followingUrl}>
+            {followingLabel}
             <ArrowRight size={16} />
           </Link>
         )}

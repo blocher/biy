@@ -67,3 +67,26 @@ export function scheduleDelta(
   );
   return completed - expected;
 }
+
+export function scheduleStatus(delta: number | null, completed: number) {
+  if (completed === 365)
+    return { label: "Your year is complete", tone: "on-schedule" };
+  if (delta === null) return { label: "Ready to begin", tone: "starting" };
+  if (delta === -1)
+    return { label: "Today’s reading is ready", tone: "on-schedule" };
+  if (delta === 0)
+    return {
+      label: completed
+        ? "Today’s reading complete"
+        : "Your schedule hasn’t started yet",
+      tone: "on-schedule",
+    };
+  const count = delta > 0 ? delta : -delta - 1;
+  return {
+    label:
+      delta > 0
+        ? `${count} day${count === 1 ? "" : "s"} ahead of schedule`
+        : `${count} overdue reading${count === 1 ? "" : "s"} · plus today’s reading`,
+    tone: delta > 0 ? "ahead" : "behind",
+  };
+}

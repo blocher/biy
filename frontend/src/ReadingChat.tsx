@@ -36,6 +36,9 @@ export function ReadingChatDialog({
     if (!open || !node) return;
     const before = document.body.style.overflow;
     node.showModal();
+    const input = node.querySelector<HTMLTextAreaElement>("#study-question");
+    input?.focus({ preventScroll: true });
+    if (input) input.setSelectionRange(input.value.length, input.value.length);
     document.body.style.overflow = "hidden";
     return () => {
       node.close();

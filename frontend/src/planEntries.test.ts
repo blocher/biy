@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Episode, Library, PlanDay } from "./types";
-import { planEntries } from "./planEntries";
+import { planEntries, nextPlanEntry, followingPlanEntry } from "./planEntries";
 
 const episode = (
   id: number,
@@ -81,4 +81,33 @@ describe("planEntries", () => {
       "episode-366",
     ]);
   });
+});
+
+it("continues an incomplete supplement before the next day and skips it when complete", () => {
+  const first = day(1, episode(1, "2025-01-01T08:00:00Z", 1));
+  first.completed_at = "2026-01-01T12:00:00Z";
+  const extra = episode(2, "2025-01-01T18:00:00Z", null);
+  const data: Library = {
+    days: [first, day(2, episode(3, "2025-01-02T08:00:00Z", 2))],
+    extras: [extra],
+    completed: 1,
+    next_day: 2,
+  };
+  expect(nextPlanEntry(data)?.key).toBe("episode-2");
+  extra.completed_at = "2026-01-01T13:00:00Z";
+  expect(nextPlanEntry(data)?.key).toBe("day-2");
+  data.days[1].completed_at = first.completed_at;
+  expect(nextPlanEntry(data)).toBeUndefined();
+});
+
+it("advances from a supplement to the following reading, including at the end", () => {
+  const data: Library = {
+    days: [day(1, episode(1, "2025-01-01T08:00:00Z", 1)), day(2, episode(3, "2025-01-02T08:00:00Z", 2))],
+    extras: [episode(2, "2025-01-01T18:00:00Z", null)],
+    completed: 0, next_day: 1,
+  };
+  expect(followingPlanEntry(data, "day-1")?.key).toBe("episode-2");
+  expect(followingPlanEntry(data, "episode-2")?.key).toBe("day-2");
+  expect(followingPlanEntry(data, "day-2")).toBeUndefined();
+  expect(followingPlanEntry(data, "episode-missing")).toBeUndefined();
 });

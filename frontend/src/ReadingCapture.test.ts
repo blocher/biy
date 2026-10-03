@@ -10,7 +10,7 @@ describe("buildSelectionQuestion", () => {
         sourceUrl: "/day/1/reader?tab=scripture#verse-john-1-5",
       }),
     ).toBe(
-      "In John 1:5, I highlighted:\n\n“The light shines in the darkness.”\n\nWhat should I notice here?",
+      "In John 1:5, I highlighted:\n\n“The light shines in the darkness.”\n\n",
     );
   });
 

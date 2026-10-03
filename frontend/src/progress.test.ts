@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Library, PlanDay } from "./types";
-import { progressStats } from "./progress";
+import { progressStats, scheduleStatus } from "./progress";
 
 const days = Array.from({ length: 365 }, (_, index): PlanDay => ({
   number: index + 1,
@@ -105,4 +105,16 @@ it("leaves a personal schedule unstarted until a first completion", () => {
   expect(
     progressStats(library([]), "first-completion").scheduleDelta,
   ).toBeNull();
+});
+
+it("distinguishes today remaining, today complete, ahead, and overdue", () => {
+  expect(scheduleStatus(-1, 12).label).toBe("Today’s reading is ready");
+  expect(scheduleStatus(0, 13).label).toBe("Today’s reading complete");
+  expect(scheduleStatus(2, 15).label).toBe("2 days ahead of schedule");
+  expect(scheduleStatus(-3, 10).label).toBe(
+    "2 overdue readings · plus today’s reading",
+  );
+  expect(scheduleStatus(null, 0).label).toBe("Ready to begin");
+  expect(scheduleStatus(0, 0).label).toContain("hasn’t started");
+  expect(scheduleStatus(0, 365).label).toBe("Your year is complete");
 });

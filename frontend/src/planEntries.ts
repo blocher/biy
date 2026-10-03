@@ -22,15 +22,15 @@ function episodeId(entry: PlanEntry) {
 /** Combine daily and supplementary episodes in the publisher's exact order. */
 export function planEntries(library: Library): PlanEntry[] {
   const days = library.days.map((day): PlanEntry => ({
-      kind: "day",
-      key: `day-${day.number}`,
-      day,
-    }));
+    kind: "day",
+    key: `day-${day.number}`,
+    day,
+  }));
   const extras = library.extras.map((episode): PlanEntry => ({
-      kind: "extra",
-      key: `episode-${episode.id}`,
-      episode,
-    }));
+    kind: "extra",
+    key: `episode-${episode.id}`,
+    episode,
+  }));
 
   if (library.edition === "catechism") return [...days, ...extras];
 
@@ -39,4 +39,21 @@ export function planEntries(library: Library): PlanEntry[] {
   return entries.sort(
     (a, b) => publishedAt(a) - publishedAt(b) || episodeId(a) - episodeId(b),
   );
+}
+
+/** Next unfinished item, including supplements without changing daily progress. */
+export function nextPlanEntry(library: Library) {
+  return planEntries(library).find(
+    (entry) =>
+      !(entry.kind === "day"
+        ? entry.day.completed_at
+        : entry.episode.completed_at),
+  );
+}
+
+/** The next reading in plan order, whether daily or supplemental. */
+export function followingPlanEntry(library: Library, currentKey: string) {
+  const entries = planEntries(library);
+  const index = entries.findIndex((entry) => entry.key === currentKey);
+  return index < 0 ? undefined : entries[index + 1];
 }

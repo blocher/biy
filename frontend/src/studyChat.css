@@ -274,7 +274,7 @@
   background: transparent;
   color: var(--ink);
   min-height: 85px;
-  font-size: 15px;
+  font-size: 16px;
 }
 .chat-composer button {
   flex-shrink: 0;
@@ -380,10 +380,10 @@
   margin: auto;
   position: fixed;
   inset: 0;
-  width: min(820px, calc(100vw - 40px));
-  height: min(760px, calc(100dvh - 56px));
+  width: min(960px, calc(100vw - 40px));
+  height: calc(100dvh - 40px);
   max-width: none;
-  max-height: calc(100dvh - 56px);
+  max-height: calc(100dvh - 40px);
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -488,7 +488,7 @@
   padding: 4px 2px 18px;
 }
 #reading-companion-answer .chat-composer textarea {
-  min-height: 56px;
+  min-height: 112px;
 }
 #reading-companion-answer .study-chat #companion-meta {
   border-top: 0;
@@ -732,8 +732,8 @@
     align-items: center;
   }
   #reading-companion-answer .chat-composer textarea {
-    min-height: 42px;
-    max-height: 110px;
+    min-height: 96px;
+    max-height: 160px;
     resize: none;
     padding: 10px 8px;
   }
@@ -769,4 +769,27 @@
 }
 .chat-follow-ups button svg {
   flex-shrink: 0;
+}
+
+/* Let the conversation shrink while the composer stays within the dialog. */
+#reading-companion-answer .study-chat {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#reading-companion-answer .study-chat #companion {
+  flex: 1;
+  height: auto;
+  overflow: hidden;
+}
+#reading-companion-header,
+#reading-companion-answer #companion-meta {
+  flex-shrink: 0;
+}
+@media (max-width: 650px) {
+  #reading-companion-header { padding: 10px 16px; }
+  #reading-companion-header p { margin-top: 4px; max-height: 40px; overflow-y: auto; }
+  #reading-companion-answer { padding-top: 8px; }
+  #reading-companion-answer .chat-controls { margin-bottom: 6px; }
+  #reading-companion-answer .study-chat #companion-meta { padding: 6px 0; gap: 6px; margin-bottom: 4px; }
 }

@@ -403,6 +403,7 @@ function AppContent() {
                       <Study
                         user={user}
                         completedDays={library.completed}
+                        library={library}
                         onError={onError}
                         onChange={refresh}
                       />
@@ -418,6 +419,7 @@ function AppContent() {
                         <Study
                           user={user}
                           completedDays={library.completed}
+                          library={library}
                           onError={onError}
                           onChange={refresh}
                           reader
