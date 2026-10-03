@@ -23,7 +23,7 @@ const screenshots = new URL(
 await mkdir(screenshots, { recursive: true });
 const errors = [];
 
-async function open(options, { standalone = false } = {}) {
+async function open(options, { standalone = false, scripture = false } = {}) {
   const context = await browser.newContext(options);
   const page = await context.newPage();
   if (standalone) await page.addInitScript(() => {
@@ -63,7 +63,7 @@ async function open(options, { standalone = false } = {}) {
     saved.push(value);
     await route.fulfill({ json: { id: 1, ...value } });
   });
-  await page.goto(`${origin}/tests/fixtures/reading-selection.html`);
+  await page.goto(`${origin}/tests/fixtures/reading-selection.html${scripture ? "?scripture=1" : ""}`);
   await page.getByRole("heading", { name: "Reading tools" }).waitFor();
   return { context, page, saved };
 }
@@ -111,6 +111,27 @@ const collapse = (page) =>
   });
 
 try {
+  // Select the real Scripture markup, including its superscript verse number.
+  {
+    const { context, page } = await open({ viewport: { width: 390, height: 844 } }, { scripture: true });
+    const verse = page.locator("#verse-john-1-5 .verse");
+    await verse.scrollIntoViewIfNeeded();
+    const quote = await verse.evaluate((element) => {
+      element.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+      element.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch" }));
+      return selection.toString();
+    });
+    expect(quote).toBe("5 The light shines in the darkness.");
+    await toolbar(page).getByRole("button", { name: "Ask", exact: true }).click();
+    await expect(page.getByLabel("Ask draft")).toContainText(`“${quote}”`);
+    await context.close();
+  }
   // Desktop: actual keyboard extension, clamped inline placement, keyboard action.
   {
     const { context, page } = await open({

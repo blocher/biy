@@ -134,7 +134,7 @@ export function Scripture({
                             key={v.verse}
                           >
                             <span className="verse">
-                              <sup>{v.verse}</sup>
+                              <sup>{v.verse}</sup>{" "}
                               {v.text}
                             </span>
                           </p>

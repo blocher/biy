@@ -213,6 +213,83 @@ type BibleResult = {
   translation: string;
   context_url: string | null;
 };
+function BiblePassage({ result }: { result: BibleResult }) {
+  return (
+    <>
+      <p className="ccc-panel-context">{result.translation}</p>
+      {result.passage.groups.map((group, i) => (
+        <section key={i}>
+          <h3>{group.book}</h3>
+          {group.missing && (
+            <p role="status">
+              This passage is not fully available in the local Bible. Any
+              available verses are shown below.
+            </p>
+          )}
+          {group.verses.map((v) => (
+            <p key={`${v.chapter}:${v.verse}`}>
+              <sup className="ccc-verse-number">
+                {v.chapter}:{v.verse}
+              </sup>{" "}
+              {v.text}
+            </p>
+          ))}
+        </section>
+      ))}
+    </>
+  );
+}
+
+function bibleReferences(nodes: CatechismInline[]): string[] {
+  return [
+    ...new Set(
+      nodes.flatMap((node) => [
+        ...(node.type === "bible" && node.reference ? [node.reference] : []),
+        ...bibleReferences(node.children || []),
+      ]),
+    ),
+  ];
+}
+
+/** A footnote reveals its cited Scripture without another navigation step. */
+function NoteBiblePassage({ reference }: { reference: string }) {
+  const [result, setResult] = useState<BibleResult | null>(null);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setResult(null);
+    setError("");
+    api<BibleResult>(
+      `/catechism/bible-reference?reference=${encodeURIComponent(reference)}`,
+    )
+      .then((value) => {
+        if (active) setResult(value);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [reference, retry]);
+  return (
+    <section aria-label={reference}>
+      <h3>{reference}</h3>
+      {error ? (
+        <div role="alert">
+          <p>{error}</p>
+          <button onClick={() => setRetry((n) => n + 1)}>Try again</button>
+        </div>
+      ) : result ? (
+        <BiblePassage result={result} />
+      ) : (
+        <p role="status">Loading passage…</p>
+      )}
+    </section>
+  );
+}
+
 export function CatechismReferencePanel({
   initial,
   close,
@@ -287,13 +364,18 @@ export function CatechismReferencePanel({
   if (view.type === "note") {
     source = view.paragraph.source_url;
     content = (
-      <p className="ccc-note-text">
-        <CatechismInlines
-          nodes={view.note.children}
-          paragraph={view.paragraph}
-          open={open}
-        />
-      </p>
+      <>
+        <p className="ccc-note-text">
+          <CatechismInlines
+            nodes={view.note.children}
+            paragraph={view.paragraph}
+            open={open}
+          />
+        </p>
+        {bibleReferences(view.note.children).map((reference) => (
+          <NoteBiblePassage key={reference} reference={reference} />
+        ))}
+      </>
     );
   } else if (view.type === "notes") {
     source = view.paragraph.source_url;
@@ -359,30 +441,7 @@ export function CatechismReferencePanel({
       </>
     );
   } else if (view.type === "bible" && "passage" in result)
-    content = (
-      <>
-        <p className="ccc-panel-context">{result.translation}</p>
-        {result.passage.groups.map((group, i) => (
-          <section key={i}>
-            <h3>{group.book}</h3>
-            {group.missing && (
-              <p role="status">
-                This passage is not fully available in the local Bible. Any
-                available verses are shown below.
-              </p>
-            )}
-            {group.verses.map((v) => (
-              <p key={`${v.chapter}:${v.verse}`}>
-                <sup className="ccc-verse-number">
-                  {v.chapter}:{v.verse}
-                </sup>{" "}
-                {v.text}
-              </p>
-            ))}
-          </section>
-        ))}
-      </>
-    );
+    content = <BiblePassage result={result} />;
   return createPortal(
     <dialog
       ref={dialog}

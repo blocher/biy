@@ -793,3 +793,44 @@
   #reading-companion-answer .chat-controls { margin-bottom: 6px; }
   #reading-companion-answer .study-chat #companion-meta { padding: 6px 0; gap: 6px; margin-bottom: 4px; }
 }
+
+/* An unanswered conversation is a writing surface. Answers get the space only
+   after sending the first question. */
+.chat-compose-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.chat-compose-heading > label { font-family: var(--serif); }
+.chat-ideas { position: relative; font-size: 13px; }
+.chat-ideas > summary { cursor: pointer; padding: 10px; color: var(--green); }
+.chat-ideas .chat-examples { position: absolute; z-index: 5; right: 0; top: 100%; width: min(340px, calc(100vw - 48px)); max-height: 40dvh; overflow-y: auto; margin: 0; padding: 8px; display: grid; grid-template-columns: 1fr; border: 1px solid var(--line); border-radius: 10px; background: var(--paper, #fcfbf8); box-shadow: 0 8px 24px #0002; }
+.chat-ideas .chat-examples button { min-height: 44px; }
+.chat-compose-first .chat-composer { flex-direction: column; align-items: stretch; }
+.chat-compose-first .chat-composer textarea { min-height: 40dvh; resize: none; }
+.chat-compose-first .chat-composer > button { align-self: flex-end; }
+#reading-companion-answer .chat-compose-first #companion-answer { flex: 0 1 auto; max-height: 25%; padding-bottom: 0; }
+#reading-companion-answer .chat-compose-first #companion-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#reading-companion-answer .chat-compose-first #companion-form > form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#reading-companion-answer .chat-compose-first .chat-composer { flex: 1; min-height: 100px; }
+#reading-companion-answer .chat-compose-first .chat-composer textarea { flex: 1; min-height: 0; max-height: none; }
+#reading-companion-answer .chat-compose-first .chat-privacy { flex: none; max-height: 25%; overflow-y: auto; }
+@media (max-width: 650px) {
+  #reading-companion-answer .chat-compose-heading > label { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; font-size: 14px; }
+  #reading-companion-answer .chat-compose-heading { margin-bottom: 4px; min-height: 32px; }
+  #reading-companion-answer .chat-compose-first #companion-form { padding-top: 4px; }
+  #reading-companion-answer .chat-compose-first .chat-composer { padding: 8px; gap: 4px; }
+  #reading-companion-answer .chat-compose-first .chat-composer > button { padding: 10px 16px; }
+  #reading-companion-answer .chat-context { font-size: 11px; }
+  #reading-companion-answer .chat-selected-question { margin: 0; }
+}
+.chat-source-options { position: relative; }
+.chat-source-options > summary { cursor: pointer; padding: 8px 0; color: var(--green); }
+.chat-source-options > div { position: absolute; z-index: 6; right: 0; top: 100%; width: min(300px, calc(100vw - 48px)); padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper, #fcfbf8); box-shadow: 0 8px 24px #0002; }
+.chat-source-options p { margin: 0 0 12px; }
+#reading-companion-answer .chat-selected-question > summary { padding: 8px 10px; font-size: 13px; }
+.reading-chat-dialog[data-compact-viewport] #reading-companion-header p { display: none; }
+.reading-chat-dialog[data-compact-viewport] #reading-companion-header { padding-block: 6px; }
+.reading-chat-dialog[data-compact-viewport] #reading-companion-answer { padding-top: 0; }
+.reading-chat-dialog[data-compact-viewport] .chat-controls { margin-bottom: 0; }
+.reading-chat-dialog[data-compact-viewport] #companion-meta { padding: 0; margin: 0; }
+.reading-chat-dialog[data-compact-viewport] .chat-compose-heading { margin: 0; }
+#reading-companion-answer .chat-compose-first #companion-meta { padding-block: 2px; margin-bottom: 4px; }
+#reading-companion-answer .chat-compose-first #companion-answer > .chat-selected-question { margin: 0; }
+.study-chat #companion-form .chat-compose-heading > label { margin: 0; }

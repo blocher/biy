@@ -15,12 +15,20 @@ export function useMobileDialogViewport(
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         if (!window.matchMedia("(max-width: 650px)").matches) {
+          node.removeAttribute("data-compact-viewport");
           node.style.removeProperty("--dialog-viewport-top");
           node.style.removeProperty("--dialog-viewport-height");
           return;
         }
-        node.style.setProperty("--dialog-viewport-top", `${viewport.offsetTop}px`);
-        node.style.setProperty("--dialog-viewport-height", `${viewport.height}px`);
+        node.toggleAttribute("data-compact-viewport", viewport.height < 560);
+        node.style.setProperty(
+          "--dialog-viewport-top",
+          `${viewport.offsetTop}px`,
+        );
+        node.style.setProperty(
+          "--dialog-viewport-height",
+          `${viewport.height}px`,
+        );
       });
     };
     update();
@@ -32,6 +40,7 @@ export function useMobileDialogViewport(
       viewport.removeEventListener("resize", update);
       viewport.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      node.removeAttribute("data-compact-viewport");
       node.style.removeProperty("--dialog-viewport-top");
       node.style.removeProperty("--dialog-viewport-height");
     };

@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { LockKeyhole, Trash2, X } from "lucide-react";
 import type { Note } from "./types";
 import { useMobileDialogViewport } from "./useMobileDialogViewport";
@@ -44,13 +44,14 @@ export function NoteEditorDialog({
   onError: (message: string) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const editor = useRef<HTMLTextAreaElement>(null);
   useMobileDialogViewport(dialog, open);
   const fieldId = useId();
   const [draft, setDraft] = useState(value);
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     setDraft(value);
     setBusy(null);
@@ -71,8 +72,16 @@ export function NoteEditorDialog({
     if (!open || !node) return;
     const before = document.body.style.overflow;
     node.showModal();
+    editor.current?.focus({ preventScroll: true });
+    // Draft resets on opening; place the caret after that render has committed.
+    const frame = requestAnimationFrame(() => {
+      const input = editor.current;
+      if (input)
+        input.setSelectionRange(input.value.length, input.value.length);
+    });
     document.body.style.overflow = "hidden";
     return () => {
+      cancelAnimationFrame(frame);
       node.close();
       document.body.style.overflow = before;
     };
@@ -160,6 +169,7 @@ export function NoteEditorDialog({
           )}
           <label htmlFor={`${fieldId}-body`}>Your {noun}</label>
           <textarea
+            ref={editor}
             id={`${fieldId}-body`}
             rows={6}
             maxLength={50000}

@@ -172,6 +172,9 @@ for (const mobile of [false, true]) {
   await expect(
     panel.getByRole("heading", { name: "CCC 631 · Note 476" }),
   ).toBeVisible();
+  // The first footnote tap must reveal Scripture and retain the note context.
+  await expect(panel).toContainText("The final referenced verse.");
+  await expect(panel).toContainText("cf. a related source.");
   await panel.getByRole("button", { name: "Eph 4:9-10", exact: true }).click();
   await expect(panel).toContainText("RSV-2CE");
   await expect(panel).toContainText("The final referenced verse.");
@@ -215,7 +218,6 @@ for (const mobile of [false, true]) {
   // Retry path, dark theme, and narrow mobile overflow.
   failBible = true;
   await marker.click();
-  await panel.getByRole("button", { name: "Eph 4:9-10", exact: true }).click();
   await expect(panel.getByRole("alert")).toContainText(
     "Reference temporarily unavailable",
   );

@@ -2,6 +2,7 @@ import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { ReadingCapture } from "../../src/ReadingCapture";
+import { Scripture } from "../../src/Scripture";
 import type { useStudyChat } from "../../src/useStudyChat";
 import "../../src/styles.css";
 
@@ -58,6 +59,12 @@ function Fixture() {
               world.
             </p>
             <p id="inline">Find the <strong>living</strong> word in this line.</p>
+            {new URLSearchParams(window.location.search).has("scripture") && <Scripture passages={[{
+              reference: "John 1:5",
+              groups: [{ book: "John", missing: false, verses: [{
+                chapter: 1, verse: 5, text: "The light shines in the darkness.", paragraph: false,
+              }] }],
+            }]} />}
           </main>
         </ReadingCapture>
       )}

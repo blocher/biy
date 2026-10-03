@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -198,11 +199,20 @@ export function ChatContent({
     null,
   );
   const editor = useRef<HTMLTextAreaElement>(null);
+  const ideas = useRef<HTMLDetailsElement>(null);
+  function choosePrompt(prompt: string) {
+    flushSync(() => chat.setQuestion(selectedContext + prompt));
+    if (ideas.current) ideas.current.open = false;
+    editor.current?.focus({ preventScroll: true });
+    const length = selectedContext.length + prompt.length;
+    editor.current?.setSelectionRange(length, length);
+    if (editor.current) editor.current.scrollTop = editor.current.scrollHeight;
+  }
   const selectedContext =
     chat.question.match(
       /^In [\s\S]*?, I highlighted:\n\n“[\s\S]*?”\n\n/,
     )?.[0] || "";
-  const typedQuestion = chat.question.slice(selectedContext.length);
+  const typedQuestion = chat.question;
   const turns = chat.current?.turns ?? [];
   const last = turns.at(-1);
   useEffect(() => {
@@ -276,10 +286,15 @@ export function ChatContent({
         <button onClick={onHistory} disabled={chat.sending}>
           <History size={17} /> History
         </button>
-        <button onClick={() => chat.newConversation()} disabled={chat.sending}>
-          <Plus size={16} />
-          New conversation
-        </button>
+        {(chat.current || chat.question.trim()) && (
+          <button
+            onClick={() => chat.newConversation()}
+            disabled={chat.sending}
+          >
+            <Plus size={16} />
+            New conversation
+          </button>
+        )}
         {chat.current && (
           <button
             aria-label="Delete conversation"
@@ -292,7 +307,7 @@ export function ChatContent({
       </div>
       <Design
         source={source}
-        className="study-chat"
+        className={`study-chat${!turns.length ? " chat-compose-first" : ""}`}
         bindings={{
           "companion-header": embedded ? null : (
             <>
@@ -311,27 +326,34 @@ export function ChatContent({
             <>
               <span className="chat-context">
                 <BookOpen size={16} />
-                {context} · Searches Bible and Catechism
+                {context}
               </span>
-              <label className="chat-external">
-                <input
-                  type="checkbox"
-                  checked={chat.external}
-                  onChange={(e) => chat.setExternal(e.target.checked)}
-                />
-                Include outside sources
-              </label>
+              <details className="chat-source-options">
+                <summary>
+                  {chat.external
+                    ? "Study + outside sources"
+                    : "Study sources only"}
+                </summary>
+                <div>
+                  <p>
+                    Searches Bible and Catechism, commentary, and accessible
+                    notes.
+                  </p>
+                  <label className="chat-external">
+                    <input
+                      type="checkbox"
+                      checked={chat.external}
+                      onChange={(e) => chat.setExternal(e.target.checked)}
+                    />
+                    Include outside sources
+                  </label>
+                </div>
+              </details>
             </>
           ),
           "companion-question": null,
           "companion-answer": (
             <>
-              {selectedContext && (
-                <details className="chat-selected-question">
-                  <summary>Selected passage</summary>
-                  <p>{selectedContext}</p>
-                </details>
-              )}
               {!chat.status && (
                 <p role="status">Checking study availability…</p>
               )}
@@ -368,23 +390,6 @@ export function ChatContent({
                   remains available.
                 </p>
               )}
-              {!turns.length && !(embedded && chat.question.trim()) && (
-                <div className="chat-empty">
-                  <h2>What would you like to understand?</h2>
-                  <p>
-                    Start with Scripture, Fr. Mike’s commentary, or reflections
-                    from your study group.
-                  </p>
-                  <div className="chat-examples">
-                    {examples.map((q) => (
-                      <button key={q} onClick={() => chat.setQuestion(q)}>
-                        {q}
-                        <ArrowUpRight size={15} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div className="chat-turns" aria-label="Conversation">
                 {turns.map((t, index) => (
                   <article
@@ -418,7 +423,7 @@ export function ChatContent({
                                   !chat.status?.configured ||
                                   !chat.status?.worker_online
                                 }
-                                onClick={() => void chat.send(q)}
+                                onClick={() => choosePrompt(q)}
                               >
                                 {q}
                                 <ArrowUpRight size={15} />
@@ -496,22 +501,39 @@ export function ChatContent({
                   {chat.error}
                 </p>
               )}
-              <label htmlFor="study-question">Your question</label>
+              <div className="chat-compose-heading">
+                <label htmlFor="study-question">Your question</label>
+                {!turns.length && (
+                  <details ref={ideas} className="chat-ideas">
+                    <summary>Ideas</summary>
+                    <div className="chat-examples">
+                      {examples.map((q) => (
+                        <button
+                          type="button"
+                          key={q}
+                          onClick={() => choosePrompt(q)}
+                        >
+                          {q}
+                          <ArrowUpRight size={15} />
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
               <div className="chat-composer">
                 <textarea
                   ref={editor}
                   id="study-question"
                   value={typedQuestion}
-                  maxLength={4000 - selectedContext.length}
-                  onChange={(e) =>
-                    chat.setQuestion(selectedContext + e.target.value)
-                  }
+                  maxLength={4000}
+                  onChange={(e) => chat.setQuestion(e.target.value)}
                   placeholder="Ask about this reading…"
                   rows={4}
                   onKeyDown={(e) => {
                     if (
                       e.key === "Enter" &&
-                      !e.shiftKey &&
+                      (e.metaKey || e.ctrlKey) &&
                       !e.nativeEvent.isComposing
                     ) {
                       e.preventDefault();
@@ -537,7 +559,7 @@ export function ChatContent({
                 {chat.external
                   ? "Site sources first, then Magisterium and the open web when useful."
                   : "Answers use your site’s study materials."}{" "}
-                Enter to send · Shift + Enter for a new line.
+                Ctrl / ⌘ + Enter to send. Enter for a new line.
               </p>
               <details className="chat-privacy">
                 <summary>How your study materials are used</summary>

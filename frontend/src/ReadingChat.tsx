@@ -38,7 +38,10 @@ export function ReadingChatDialog({
     node.showModal();
     const input = node.querySelector<HTMLTextAreaElement>("#study-question");
     input?.focus({ preventScroll: true });
-    if (input) input.setSelectionRange(input.value.length, input.value.length);
+    if (input) {
+      input.setSelectionRange(input.value.length, input.value.length);
+      input.scrollTop = input.scrollHeight;
+    }
     document.body.style.overflow = "hidden";
     return () => {
       node.close();
