@@ -5,6 +5,12 @@ import { extname, join, resolve } from "node:path";
 import { chromium, webkit } from "@playwright/test";
 
 const dist = resolve("dist");
+const fullFixture = process.env.BIY_FULL_FIXTURE === "1";
+const oneEdition = process.env.BIY_ONE_EDITION === "1";
+const readyText = oneEdition
+  ? "Bible readings ready offline; available episode commentary saved"
+  : "Bible and Catechism readings ready offline; available episode commentary saved";
+const fixtureRoot = process.env.BIY_FIXTURE_ROOT || "/tmp/biy_offline_fixture";
 let interrupt = true;
 let signedIn = true;
 const counts = new Map();
@@ -98,12 +104,43 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/api/preferences")
     return json(res, {
       bible_enabled: true,
-      catechism_enabled: true,
+      catechism_enabled: !oneEdition,
       progress_basis: "first-completion",
       notification_setup_completed: true,
       morning_reminder_enabled: false,
       evening_reminder_enabled: false,
     });
+  if (fullFixture && url.pathname === "/api/library") {
+    const edition = url.searchParams.get("edition") || "bible";
+    return json(
+      res,
+      JSON.parse(
+        await readFile(join(fixtureRoot, `library-${edition}.json`), "utf8"),
+      ),
+    );
+  }
+  if (fullFixture && /^\/api\/days\/\d+$/.test(url.pathname)) {
+    const edition = url.searchParams.get("edition") || "bible";
+    const number = url.pathname.split("/").at(-1);
+    return json(
+      res,
+      JSON.parse(
+        await readFile(
+          join(fixtureRoot, `day-${edition}-${number}.json`),
+          "utf8",
+        ),
+      ),
+    );
+  }
+  if (fullFixture && /^\/api\/episodes\/\d+$/.test(url.pathname)) {
+    const number = url.pathname.split("/").at(-1);
+    return json(
+      res,
+      JSON.parse(
+        await readFile(join(fixtureRoot, `episode-${number}.json`), "utf8"),
+      ),
+    );
+  }
   if (url.pathname === "/api/library")
     return json(res, library(url.searchParams.get("edition") || "bible"));
   if (url.pathname === "/api/days/2" && interrupt)
@@ -165,79 +202,134 @@ page.on("console", (message) => {
 });
 try {
   await page.goto(origin);
-  try {
-    await page
-      .getByText(/Offline setup incomplete/)
-      .waitFor({ timeout: 20000 });
-  } catch (error) {
-    console.error(
-      "Page text:",
-      (await page.locator("body").innerText()).slice(0, 1500),
-    );
-    console.error("Requests:", Object.fromEntries(counts));
-    throw error;
-  }
-  assert.ok(
-    (counts.get("/api/days/1") || 0) > 0,
-    "first reading should download before interruption",
-  );
-  interrupt = false;
-  await page.getByRole("button", { name: "Retry" }).click();
-  await page
-    .getByText("Readings and episode commentary ready offline")
-    .waitFor({ timeout: 20000 });
-  if (isWebKit) {
-    await new Promise((resolve) => server.close(resolve));
-    serverClosed = true;
-  } else {
-    await context.setOffline(true);
-  }
-  await page.goto(origin + "/bible/day/1/reader?tab=scripture");
-  await page.getByText("Offline Scripture text").waitFor({ timeout: 15000 });
-  const cached = await page.evaluate(async () => {
-    const paths = [
-      "/api/days/2?edition=bible",
-      "/api/days/1?edition=catechism",
-      "/api/episodes/99?edition=bible",
-    ];
-    return Promise.all(
-      paths.map(async (path) => {
-        const response = await fetch(path);
-        return response.ok ? response.json() : null;
-      }),
-    );
-  });
-  assert.equal(cached[0].number, 2);
-  assert.equal(cached[1].catechism[0].text, "Offline catechism text");
-  assert.equal(cached[2].commentary[0].text, "Offline episode commentary");
-  assert.ok(
-    await page
-      .getByText("Readings and episode commentary ready offline")
-      .isVisible(),
-  );
-  if (!isWebKit) {
-    await context.setOffline(false);
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(origin + "/bible");
-    await page.getByRole("button", { name: "Sign out" }).first().click();
-    await page.getByRole("button", { name: "Continue your journey" }).waitFor();
-    const privateEntries = await page.evaluate(async () => {
-      const names = await caches.keys();
-      const data = names.filter((name) => name.startsWith("biy-reading-"));
-      const state = names.includes("biy-offline-state-v1")
-        ? await (await caches.open("biy-offline-state-v1")).keys()
-        : [];
-      return { data, state: state.map((request) => request.url) };
+  if (fullFixture) {
+    await page.getByText(readyText).waitFor({ timeout: 120000 });
+    const storage = await page.evaluate(async () => {
+      const cache = await caches.open("biy-reading-v1-ben");
+      const keys = await cache.keys();
+      let bytes = 0;
+      for (const key of keys) {
+        const response = await cache.match(key);
+        bytes += (await response.arrayBuffer()).byteLength;
+      }
+      const estimate = await navigator.storage.estimate();
+      return {
+        entries: keys.length,
+        responseBytes: bytes,
+        reportedUsage: estimate.usage,
+      };
     });
-    assert.deepEqual(
-      privateEntries,
-      { data: [], state: [] },
-      "sign-out should remove private offline content",
+    console.log("Full-size cache", storage);
+    assert.ok(
+      storage.entries >= 755,
+      "all 730 days, 22 extras, libraries, and preferences should be cached",
+    );
+    assert.ok(
+      storage.responseBytes > 14_000_000,
+      "full local reading content should be stored",
+    );
+    if (isWebKit) {
+      await new Promise((resolve) => server.close(resolve));
+      serverClosed = true;
+    } else {
+      await context.setOffline(true);
+    }
+    await page.goto(origin + "/bible/day/365/reader?tab=scripture");
+    await page.locator(".scripture-text").waitFor({ timeout: 15000 });
+    const lastDays = await page.evaluate(async () => {
+      const bible = await (await fetch("/api/days/365?edition=bible")).json();
+      const catechism = await (
+        await fetch("/api/days/365?edition=catechism")
+      ).json();
+      return {
+        bible: bible.scripture.length,
+        catechism: catechism.catechism.length,
+      };
+    });
+    assert.ok(lastDays.bible > 0 && lastDays.catechism > 0);
+    console.log(
+      "Full-size offline cold restart and last-day navigation passed",
+      lastDays,
+    );
+  } else {
+    try {
+      await page
+        .getByText(/Offline setup incomplete/)
+        .waitFor({ timeout: 20000 });
+    } catch (error) {
+      console.error(
+        "Page text:",
+        (await page.locator("body").innerText()).slice(0, 1500),
+      );
+      console.error("Requests:", Object.fromEntries(counts));
+      throw error;
+    }
+    assert.ok(
+      (counts.get("/api/days/1") || 0) > 0,
+      "first reading should download before interruption",
+    );
+    interrupt = false;
+    await page.getByRole("button", { name: "Retry" }).click();
+    await page.getByText(readyText).waitFor({ timeout: 20000 });
+    if (isWebKit) {
+      await new Promise((resolve) => server.close(resolve));
+      serverClosed = true;
+    } else {
+      await context.setOffline(true);
+    }
+    await page.goto(origin + "/bible/day/1/reader?tab=scripture");
+    await page.getByText("Offline Scripture text").waitFor({ timeout: 15000 });
+    const cached = await page.evaluate(async (oneEdition) => {
+      const paths = [
+        "/api/days/2?edition=bible",
+        ...(!oneEdition ? ["/api/days/1?edition=catechism"] : []),
+        "/api/episodes/99?edition=bible",
+      ];
+      return Promise.all(
+        paths.map(async (path) => {
+          const response = await fetch(path);
+          return response.ok ? response.json() : null;
+        }),
+      );
+    }, oneEdition);
+    assert.equal(cached[0].number, 2);
+    if (!oneEdition)
+      assert.equal(cached[1].catechism[0].text, "Offline catechism text");
+    assert.equal(
+      cached.at(-1).commentary[0].text,
+      "Offline episode commentary",
+    );
+    assert.ok(await page.getByText(readyText).isVisible());
+    await page.goto(origin + "/commentaries?day=1");
+    await page
+      .getByText("Historical commentaries unavailable", { exact: true })
+      .waitFor({ timeout: 15000 });
+    if (!isWebKit) {
+      await context.setOffline(false);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(origin + "/bible");
+      await page.getByRole("button", { name: "Sign out" }).first().click();
+      await page
+        .getByRole("button", { name: "Continue your journey" })
+        .waitFor();
+      const privateEntries = await page.evaluate(async () => {
+        const names = await caches.keys();
+        const data = names.filter((name) => name.startsWith("biy-reading-"));
+        const state = names.includes("biy-offline-state-v1")
+          ? await (await caches.open("biy-offline-state-v1")).keys()
+          : [];
+        return { data, state: state.map((request) => request.url) };
+      });
+      assert.deepEqual(
+        privateEntries,
+        { data: [], state: [] },
+        "sign-out should remove private offline content",
+      );
+    }
+    console.log(
+      `Offline cold restart, ${oneEdition ? "one enabled edition" : "both editions"}, commentary, and interrupted download resume passed`,
     );
   }
-  console.log(
-    "Offline cold restart, both editions, commentary, and interrupted download resume passed",
-  );
 } finally {
   await context.close();
   await browser.close();

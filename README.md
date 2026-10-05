@@ -4,9 +4,9 @@ A personal study companion for the complete **2025** editions of Fr. Mike Schmit
 
 ## Offline reading (first pass)
 
-After signing in while connected, keep the app open until it says **Readings and episode commentary ready offline**. The app automatically saves every enabled day's Scripture or Catechism text, the associated episode commentary and transcripts, and supplementary episode text. An interrupted download resumes on the next connected visit or with **Retry**. The app shell and saved readings then open after a cold restart without a connection, including in standalone PWA mode. Signing out removes private offline copies from that device.
+After signing in while connected, keep the app open until it says the enabled Bible and/or Catechism readings are ready offline. The app automatically saves every enabled day's Scripture or Catechism text, any episode commentary and transcripts currently available from the server, and supplementary episode text. An interrupted download resumes on the next connected visit or with **Retry**. The app shell and saved readings then open after a cold restart without a connection, including in standalone PWA mode. Signing out removes private offline copies from that device.
 
-Audio, the separate historical commentary catalog, Ask, and search that needs the server are not part of the offline pack. Notes and progress changes still require a connection; the app does not queue unsaved edits. Device storage can be cleared by the browser or operating system, so check the readiness message before travel.
+Audio, the separate historical commentary catalog, linked Scripture/Catechism reference previews, Ask, and search that needs the server are not part of the offline pack. Notes and progress changes still require a connection; the app does not queue unsaved edits. Device storage can be cleared by the browser or operating system, so check the readiness message before travel.
 
 ## Start locally
 

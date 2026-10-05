@@ -132,6 +132,8 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       (async () => {
         const generation = authGeneration;
+        const cacheKey =
+          url.pathname === "/api/preferences" ? "/api/preferences" : request;
         try {
           const response = await fetch(request);
           if (
@@ -142,7 +144,7 @@ self.addEventListener("fetch", (event) => {
             try {
               const cache = await dataCache();
               if (cache && generation === authGeneration)
-                await cache.put(request, response.clone());
+                await cache.put(cacheKey, response.clone());
             } catch {
               /* Do not fail an online read because offline storage is full. */
             }
@@ -157,7 +159,7 @@ self.addEventListener("fetch", (event) => {
           return response;
         } catch {
           const cache = await dataCache();
-          return (cache && (await cache.match(request))) || Response.error();
+          return (cache && (await cache.match(cacheKey))) || Response.error();
         }
       })(),
     );

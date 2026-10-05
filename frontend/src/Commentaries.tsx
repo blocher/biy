@@ -65,6 +65,7 @@ export function Commentaries({
   const [page, setPage] = useState(1);
   const [data, setData] = useState<CommentaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const selectedDay = library.days.find((day) => day.number === dayNumber);
   const query = useMemo(
@@ -83,6 +84,8 @@ export function Commentaries({
   useEffect(() => {
     let live = true;
     setLoading(true);
+    setLoadError("");
+    if (page === 1) setData(null);
     api<CommentaryResponse>(query)
       .then((result) => {
         if (live) {
@@ -100,7 +103,13 @@ export function Commentaries({
         }
       })
       .catch((error) => {
-        if (live) onError((error as Error).message);
+        if (live) {
+          const message = !navigator.onLine
+            ? "Historical commentaries need a connection. Your saved reading plan is still available offline."
+            : (error as Error).message;
+          setLoadError(message);
+          onError(message);
+        }
       })
       .finally(() => {
         if (live) setLoading(false);
@@ -218,7 +227,9 @@ export function Commentaries({
             <span className="commentary-count">
               {data
                 ? `${data.total.toLocaleString()} commentaries`
-                : "Loading commentaries…"}
+                : loadError
+                  ? "Commentaries unavailable"
+                  : "Loading commentaries…"}
             </span>
           </div>
 
@@ -297,7 +308,13 @@ export function Commentaries({
             onOpenAsk={() => setChatOpen(true)}
             onError={onError}
           >
-            {loading && !data ? (
+            {loadError && !data ? (
+              <div className="commentary-empty" role="alert">
+                <BookOpen size={28} />
+                <h3>Historical commentaries unavailable</h3>
+                <p>{loadError}</p>
+              </div>
+            ) : loading && !data ? (
               <p className="commentary-loading" role="status">
                 Gathering the witnesses…
               </p>

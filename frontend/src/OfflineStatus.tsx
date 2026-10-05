@@ -94,6 +94,13 @@ export function OfflineStatus({
         const cache = await caches.open(
           CACHE_PREFIX + encodeURIComponent(user),
         );
+        const preferences = await fetch("/api/preferences", {
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+        if (!preferences.ok)
+          throw new Error("Reconnect to finish saving account settings.");
+        await cache.put("/api/preferences", preferences);
         const editions = (["bible", "catechism"] as const).filter(
           (edition) => availability[edition],
         );
@@ -166,15 +173,21 @@ export function OfflineStatus({
   }, [user, availability.bible, availability.catechism, retry]);
 
   const ready = state.total > 0 && state.done === state.total && !state.error;
+  const planLabel =
+    availability.bible && availability.catechism
+      ? "Bible and Catechism readings"
+      : availability.bible
+        ? "Bible readings"
+        : "Catechism readings";
   return (
     <div
       className="offline-status"
       role="status"
       aria-live="polite"
-      title="Reading and episode text are saved on this device. Notes and progress need a connection."
+      title="The enabled plans and available episode text are saved on this device. Historical commentaries, notes, and progress need a connection."
     >
       {ready ? (
-        "Readings and episode commentary ready offline"
+        `${planLabel} ready offline; available episode commentary saved`
       ) : state.error ? (
         <>
           Offline setup incomplete ({state.done}/{state.total}). {state.error}{" "}
