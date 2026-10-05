@@ -2,6 +2,12 @@
 
 A personal study companion for the complete **2025** editions of Fr. Mike Schmitz's Bible in a Year and Catechism in a Year podcasts: Django 5.2, Django Ninja, PostgreSQL, React and TypeScript. Each account can show either journey or both, with independent reading progress, schedules, and leaderboards.
 
+## Offline reading (first pass)
+
+After signing in while connected, keep the app open until it says **Readings and episode commentary ready offline**. The app automatically saves every enabled day's Scripture or Catechism text, the associated episode commentary and transcripts, and supplementary episode text. An interrupted download resumes on the next connected visit or with **Retry**. The app shell and saved readings then open after a cold restart without a connection, including in standalone PWA mode. Signing out removes private offline copies from that device.
+
+Audio, the separate historical commentary catalog, Ask, and search that needs the server are not part of the offline pack. Notes and progress changes still require a connection; the app does not queue unsaved edits. Device storage can be cleared by the browser or operating system, so check the readiness message before travel.
+
 ## Start locally
 
 Double-click **`StartBIYDev.app`** in Finder. Its editable source is
@@ -256,4 +262,3 @@ The full local Bible can be imported with `import_bible` without `--day`; podcas
 Local startup now includes a PostgreSQL-backed Study Worker pane for chat and asynchronous embeddings; no Redis is required. Production has a dedicated `biy-worker` service integrated into the deployment hook. Install pgvector for your PostgreSQL version before migrating. See [study chat architecture and operations](docs/study-chat.md).
 
 See the [production command reference](docs/production-commands.md) for seeding, podcast imports, AI processing, and service checks.
-

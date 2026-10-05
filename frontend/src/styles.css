@@ -5139,3 +5139,30 @@ body:has(.reader-design) .player {
 @media (max-width: 650px) {
   .reading-note-dialog { position: fixed; top: var(--dialog-viewport-top, 0px); bottom: auto; width: 100vw; max-width: 100vw; margin: 0; border-radius: 0; }
 }
+.offline-status {
+  position: fixed;
+  z-index: 80;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  max-width: min(26rem, calc(100vw - 2rem));
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border, #d6d8d2);
+  border-radius: 0.75rem;
+  background: var(--surface, #fbfaf6);
+  color: var(--text, #20332e);
+  box-shadow: 0 4px 20px #0002;
+  font-size: 0.82rem;
+}
+
+.offline-status button {
+  margin-left: 0.4rem;
+  text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+  .offline-status {
+    right: 12px;
+    bottom: calc(118px + env(safe-area-inset-bottom));
+    max-width: min(18rem, calc(100vw - 24px));
+  }
+}
