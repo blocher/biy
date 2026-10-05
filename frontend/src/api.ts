@@ -26,9 +26,11 @@ export async function api<T>(
     });
   } catch (error) {
     if (typeof navigator !== "undefined" && !navigator.onLine)
-      throw new Error(method === "GET"
-        ? "This item is not saved offline yet. Reconnect and try again."
-        : "You're offline. Reconnect before saving changes.");
+      throw new Error(
+        method === "GET"
+          ? "This item is not saved offline yet. Reconnect and try again."
+          : "You're offline. Reconnect before saving changes.",
+      );
     throw error;
   }
   let data;
@@ -40,8 +42,13 @@ export async function api<T>(
     );
   }
   if (!response.ok) {
-    if (response.status === 401 && path !== "/login")
+    if (response.status === 401 && path !== "/login") {
+      if (typeof navigator !== "undefined")
+        navigator.serviceWorker?.controller?.postMessage({
+          type: "CLEAR_PRIVATE_DATA",
+        });
       window.dispatchEvent(new Event("session-expired"));
+    }
     const detail = Array.isArray(data.detail)
       ? data.detail.find(
           (item: { msg?: unknown }) => typeof item?.msg === "string",

@@ -16,6 +16,7 @@ import { Sidebar } from "./navigation";
 import { useStudyChat } from "./useStudyChat";
 import { ReadingChatDialog } from "./ReadingChat";
 import { ReadingCapture } from "./ReadingCapture";
+import { offlineCommentaries } from "./offlineCommentaries";
 
 function commentaryQuery(
   day: number,
@@ -86,23 +87,33 @@ export function Commentaries({
     setLoading(true);
     setLoadError("");
     if (page === 1) setData(null);
+    const accept = (result: CommentaryResponse) => {
+      if (!live) return;
+      setData((current) =>
+        page === 1 || !current
+          ? result
+          : {
+              ...result,
+              commentaries: [...current.commentaries, ...result.commentaries],
+            },
+      );
+    };
     api<CommentaryResponse>(query)
-      .then((result) => {
-        if (live) {
-          setData((current) =>
-            page === 1 || !current
-              ? result
-              : {
-                  ...result,
-                  commentaries: [
-                    ...current.commentaries,
-                    ...result.commentaries,
-                  ],
-                },
+      .then(accept)
+      .catch(async (error) => {
+        if (!live) return;
+        try {
+          const saved = await offlineCommentaries(
+            user,
+            new URLSearchParams(query.split("?")[1]),
           );
+          if (saved) {
+            accept(saved);
+            return;
+          }
+        } catch {
+          // Keep the existing connection message if a local archive is damaged.
         }
-      })
-      .catch((error) => {
         if (live) {
           const message = !navigator.onLine
             ? "Historical commentaries need a connection. Your saved reading plan is still available offline."

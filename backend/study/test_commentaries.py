@@ -1,3 +1,6 @@
+import gzip
+import json
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
@@ -115,6 +118,35 @@ class CommentaryApiTests(TestCase):
         self.assertEqual(source["kind"], "historical_commentary")
         self.assertEqual(source["metadata"]["author"], "Early Witness")
         self.assertEqual(source["metadata"]["year_label"], "c. AD 120")
+
+    def test_offline_manifest_and_unique_gzip_book(self):
+        manifest_response = self.client.get("/api/offline-commentaries/manifest")
+        self.assertEqual(manifest_response.status_code, 200)
+        manifest = manifest_response.json()
+        self.assertEqual(manifest["books"], ["john"])
+        self.assertEqual(manifest["days"]["1"]["readings"], ["John 3:16-18"])
+        self.assertEqual(manifest["days"]["1"]["ranges"][0]["book"], "john")
+        self.assertTrue(manifest["version"])
+
+        book_response = self.client.get("/api/offline-commentaries/books/john")
+        self.assertEqual(book_response.status_code, 200)
+        self.assertEqual(book_response["Content-Type"], "application/gzip")
+        rows = json.loads(gzip.decompress(book_response.content))
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[0]["database_id"], self.early.pk - 1)
+        self.assertEqual(rows[1]["text"], "An early witness.")
+        self.assertEqual(rows[1]["matched_readings"], [])
+        self.assertEqual(
+            self.client.get("/api/offline-commentaries/books/invalid!").status_code,
+            404,
+        )
+        self.client.logout()
+        self.assertEqual(
+            self.client.get("/api/offline-commentaries/manifest").status_code, 401
+        )
+        self.assertEqual(
+            self.client.get("/api/offline-commentaries/books/john").status_code, 401
+        )
 
     def test_day_lookup_links_to_the_commentary_browser_anchor(self):
         result = historical_commentaries(day=self.day.number, limit=1)

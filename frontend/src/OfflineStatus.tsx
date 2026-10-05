@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import type { EditionAvailability } from "./Edition";
 import type { Library } from "./types";
+import {
+  COMMENTARY_MANIFEST_URL,
+  READING_CACHE_PREFIX,
+  commentaryBookUrl,
+  type CommentaryManifest,
+} from "./offlineCommentaries";
 
-const CACHE_PREFIX = "biy-reading-v1-";
 const SHELL_CACHE = "biy-shell-v1";
 
-type State = { done: number; total: number; error: string | null };
+type State = {
+  done: number;
+  total: number;
+  readingsReady: boolean;
+  catalogReady?: boolean;
+  error: string | null;
+};
 
 function readingUrls(libraries: Library[]): string[] {
   const urls: string[] = [];
@@ -31,10 +42,21 @@ async function getLibrary(
     return cached.json() as Promise<Library>;
   }
   const response = await fetch(url, { credentials: "same-origin", signal });
+  if (response.status === 401) throw expiredSession();
   if (!response.ok) throw new Error("Could not load the reading plan.");
   const library = (await response.clone().json()) as Library;
   await cache.put(url, response);
   return library;
+}
+
+function expiredSession(): Error {
+  navigator.serviceWorker.controller?.postMessage({
+    type: "CLEAR_PRIVATE_DATA",
+  });
+  window.dispatchEvent(new Event("session-expired"));
+  const error = new Error("Sign in again to save readings offline.");
+  error.name = "UnauthorizedOffline";
+  return error;
 }
 
 export function OfflineStatus({
@@ -44,13 +66,19 @@ export function OfflineStatus({
   user: string;
   availability: EditionAvailability;
 }) {
-  const [state, setState] = useState<State>({ done: 0, total: 0, error: null });
+  const [state, setState] = useState<State>({
+    done: 0,
+    total: 0,
+    readingsReady: false,
+    error: null,
+  });
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("caches" in window)) {
       setState({
         done: 0,
         total: 0,
+        readingsReady: false,
         error: "Offline saving is not supported in this browser.",
       });
       return;
@@ -80,7 +108,7 @@ export function OfflineStatus({
             signal: controller.signal,
           });
           if (!response.ok || (await response.json()).user?.username !== user)
-            throw new Error("Sign in again to save readings offline.");
+            throw expiredSession();
         }
         const shell = await caches.open(SHELL_CACHE);
         const index = await shell.match("/");
@@ -92,12 +120,13 @@ export function OfflineStatus({
           if (!(await shell.match(asset)))
             throw new Error("The offline app is still installing.");
         const cache = await caches.open(
-          CACHE_PREFIX + encodeURIComponent(user),
+          READING_CACHE_PREFIX + encodeURIComponent(user),
         );
         const preferences = await fetch("/api/preferences", {
           credentials: "same-origin",
           signal: controller.signal,
         });
+        if (preferences.status === 401) throw expiredSession();
         if (!preferences.ok)
           throw new Error("Reconnect to finish saving account settings.");
         await cache.put("/api/preferences", preferences);
@@ -112,12 +141,17 @@ export function OfflineStatus({
         const urls = readingUrls(libraries);
         let done = 0;
         for (const url of urls) if (await cache.match(url)) done++;
-        update({ done, total: urls.length, error: null });
-        if (done === urls.length) return;
-        if (!navigator.onLine) {
+        update({
+          done,
+          total: urls.length,
+          readingsReady: done === urls.length,
+          error: null,
+        });
+        if (done < urls.length && !navigator.onLine) {
           update({
             done,
             total: urls.length,
+            readingsReady: false,
             error: "Reconnect to finish saving readings.",
           });
           return;
@@ -146,7 +180,12 @@ export function OfflineStatus({
                 );
               await cache.put(url, response);
               done++;
-              update({ done, total: urls.length, error: null });
+              update({
+                done,
+                total: urls.length,
+                readingsReady: false,
+                error: null,
+              });
             } catch (error) {
               downloadError = error as Error;
             }
@@ -154,6 +193,134 @@ export function OfflineStatus({
         });
         await Promise.all(workers);
         if (downloadError) throw downloadError;
+        update({ done, total: urls.length, readingsReady: true, error: null });
+        if (!availability.bible) return;
+        if (!("DecompressionStream" in window))
+          throw new Error(
+            "Historical commentary offline needs a newer browser.",
+          );
+        const cachedManifest = await cache.match(COMMENTARY_MANIFEST_URL);
+        let manifestResponse = cachedManifest?.clone();
+        let fetchedManifest = false;
+        if (navigator.onLine) {
+          try {
+            const response = await fetch(COMMENTARY_MANIFEST_URL, {
+              credentials: "same-origin",
+              signal: controller.signal,
+            });
+            if (response.status === 401) throw expiredSession();
+            if (response.ok) {
+              manifestResponse = response;
+              fetchedManifest = true;
+            }
+          } catch (error) {
+            if ((error as Error).name === "UnauthorizedOffline") throw error;
+            // A completed earlier catalog remains usable during an outage.
+          }
+        }
+        if (!manifestResponse)
+          throw new Error(
+            "Reconnect to finish saving historical commentaries.",
+          );
+        const manifest = (await manifestResponse
+          .clone()
+          .json()) as CommentaryManifest;
+        const chunkUrls = manifest.books.map((book) =>
+          commentaryBookUrl(book, manifest.version),
+        );
+        const oldVersion = cachedManifest
+          ? ((await cachedManifest.json()) as CommentaryManifest).version
+          : null;
+        let catalogDone = oldVersion === manifest.version ? 1 : 0;
+        for (const url of chunkUrls) if (await cache.match(url)) catalogDone++;
+        const total = urls.length + chunkUrls.length + 1;
+        update({
+          done: done + catalogDone,
+          total,
+          readingsReady: true,
+          catalogReady: catalogDone === chunkUrls.length + 1,
+          error: null,
+        });
+        if (catalogDone === chunkUrls.length + 1) return;
+        if (!navigator.onLine)
+          throw new Error(
+            "Reconnect to finish saving historical commentaries.",
+          );
+        for (const url of chunkUrls) {
+          if (controller.signal.aborted) return;
+          if (await cache.match(url)) continue;
+          const response = await fetch(url, {
+            credentials: "same-origin",
+            signal: controller.signal,
+          });
+          if (response.status === 401) throw expiredSession();
+          if (
+            !response.ok ||
+            !response.headers.get("content-type")?.includes("gzip")
+          )
+            throw new Error(
+              "A commentary chunk could not be saved. Retry when connected.",
+            );
+          try {
+            await cache.put(url, response);
+          } catch {
+            throw new Error(
+              "Device storage could not hold the commentary catalog. Free space and retry.",
+            );
+          }
+          catalogDone++;
+          update({
+            done: done + catalogDone,
+            total,
+            readingsReady: true,
+            error: null,
+          });
+        }
+        if (fetchedManifest) {
+          const check = await fetch(COMMENTARY_MANIFEST_URL, {
+            credentials: "same-origin",
+            signal: controller.signal,
+          });
+          if (check.status === 401) throw expiredSession();
+          if (
+            !check.ok ||
+            ((await check.json()) as CommentaryManifest).version !==
+              manifest.version
+          )
+            throw new Error(
+              "The commentary catalog changed during download. Retry to finish.",
+            );
+          try {
+            await cache.put(COMMENTARY_MANIFEST_URL, manifestResponse);
+          } catch {
+            throw new Error(
+              "Device storage could not finish the commentary catalog. Free space and retry.",
+            );
+          }
+          catalogDone++;
+        }
+        update({
+          done: done + catalogDone,
+          total,
+          readingsReady: true,
+          catalogReady: catalogDone === chunkUrls.length + 1,
+          error: null,
+        });
+        if (catalogDone === chunkUrls.length + 1) {
+          const active = new Set(chunkUrls);
+          try {
+            for (const request of await cache.keys()) {
+              const url = new URL(request.url);
+              if (
+                url.pathname.startsWith("/api/offline-commentaries/books/") &&
+                !active.has(url.pathname + url.search)
+              )
+                await cache.delete(request);
+            }
+          } catch {
+            /* Old chunks can be reclaimed on a later visit. */
+          }
+        }
       } catch (error) {
         if (!controller.signal.aborted && live)
           setState((current) => ({
@@ -172,29 +339,43 @@ export function OfflineStatus({
     };
   }, [user, availability.bible, availability.catechism, retry]);
 
-  const ready = state.total > 0 && state.done === state.total && !state.error;
+  const ready =
+    state.total > 0 &&
+    state.done === state.total &&
+    !state.error &&
+    (!availability.bible || state.catalogReady === true);
   const planLabel =
     availability.bible && availability.catechism
       ? "Bible and Catechism readings"
       : availability.bible
         ? "Bible readings"
         : "Catechism readings";
+  const readyLabel = availability.bible
+    ? `${planLabel} and historical commentaries ready offline`
+    : `${planLabel} ready offline; available episode text saved`;
   return (
     <div
       className="offline-status"
       role="status"
       aria-live="polite"
-      title="The enabled plans and available episode text are saved on this device. Historical commentaries, notes, and progress need a connection."
+      title={
+        availability.bible
+          ? "The enabled plans, available episode text, and historical commentary catalog are saved on this device. Notes and progress need a connection."
+          : "The enabled plan and available episode text are saved on this device. Notes and progress need a connection."
+      }
     >
       {ready ? (
-        `${planLabel} ready offline; available episode commentary saved`
+        readyLabel
       ) : state.error ? (
         <>
-          Offline setup incomplete ({state.done}/{state.total}). {state.error}{" "}
+          {state.readingsReady
+            ? "Readings ready; commentary setup incomplete"
+            : "Offline setup incomplete"}{" "}
+          ({state.done}/{state.total}). {state.error}{" "}
           <button onClick={() => setRetry((value) => value + 1)}>Retry</button>
         </>
       ) : state.total ? (
-        `Saving readings for offline use: ${state.done}/${state.total}`
+        `${state.readingsReady ? "Saving historical commentaries" : "Saving readings for offline use"}: ${state.done}/${state.total}`
       ) : (
         "Preparing offline readings…"
       )}

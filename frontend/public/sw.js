@@ -71,6 +71,13 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "CLEAR_PRIVATE_DATA") {
+    authGeneration++;
+    event.waitUntil(clearPrivateData());
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
