@@ -1,4 +1,5 @@
 const SHELL_CACHE = "biy-shell-v1";
+const STAGING_PREFIX = "biy-shell-staging-";
 const DATA_PREFIX = "biy-reading-v1-";
 const STATE_CACHE = "biy-offline-state-v1";
 const OWNER_KEY = "/__biy_offline_owner__";
@@ -30,6 +31,13 @@ async function setOwner(username) {
   const previous = await owner();
   if (previous && previous !== username) await clearPrivateData();
   if (username) {
+    const currentCache = DATA_PREFIX + encodeURIComponent(username);
+    const names = await caches.keys();
+    await Promise.all(
+      names
+        .filter((name) => name.startsWith(DATA_PREFIX) && name !== currentCache)
+        .map((name) => caches.delete(name)),
+    );
     await (
       await caches.open(STATE_CACHE)
     ).put(OWNER_KEY, new Response(username));
@@ -46,29 +54,59 @@ function privatePath(pathname) {
   );
 }
 
+function shellAssets(html) {
+  return [...html.matchAll(/(?:src|href)="(\/assets\/[^\"]+)"/g)].map(
+    (match) => match[1],
+  );
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
-      const cache = await caches.open(SHELL_CACHE);
-      const index = await fetch("/", { cache: "reload" });
-      if (!index.ok) throw new Error("App shell unavailable");
-      const html = await index.clone().text();
-      const assets = [
-        ...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g),
-      ].map((match) => match[1]);
-      await cache.put("/", index);
-      await cache.addAll([
-        ...assets,
-        "/manifest.webmanifest",
-        "/icons/icon-192.png",
-      ]);
-      await self.skipWaiting();
+      const stageName = STAGING_PREFIX + crypto.randomUUID();
+      try {
+        const cache = await caches.open(stageName);
+        const index = await fetch("/", { cache: "reload" });
+        if (!index.ok) throw new Error("App shell unavailable");
+        const assets = shellAssets(await index.clone().text());
+        await cache.addAll([
+          ...assets,
+          "/manifest.webmanifest",
+          "/icons/icon-192.png",
+        ]);
+        await cache.put("/", index);
+        await self.skipWaiting();
+      } catch (error) {
+        await caches.delete(stageName);
+        throw error;
+      }
     })(),
   );
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      const stages = (await caches.keys()).filter((name) =>
+        name.startsWith(STAGING_PREFIX),
+      );
+      const stageName = stages.at(-1);
+      if (stageName) {
+        const stage = await caches.open(stageName);
+        const shell = await caches.open(SHELL_CACHE);
+        // Keep the previous index until every new asset has been copied.
+        for (const request of await stage.keys()) {
+          if (new URL(request.url).pathname === "/") continue;
+          const response = await stage.match(request);
+          if (response) await shell.put(request, response);
+        }
+        const index = await stage.match("/");
+        if (index) await shell.put("/", index);
+        await Promise.all(stages.map((name) => caches.delete(name)));
+      }
+      await self.clients.claim();
+    })(),
+  );
 });
 
 self.addEventListener("message", (event) => {
@@ -184,7 +222,12 @@ self.addEventListener("fetch", (event) => {
             response.headers.get("content-type")?.includes("text/html")
           )
             try {
-              await cache.put("/", response.clone());
+              const assets = shellAssets(await response.clone().text());
+              const entries = await Promise.all(
+                assets.map((asset) => cache.match(asset)),
+              );
+              if (entries.every(Boolean))
+                await cache.put("/", response.clone());
             } catch {
               /* Continue online. */
             }

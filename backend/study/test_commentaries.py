@@ -148,6 +148,25 @@ class CommentaryApiTests(TestCase):
             self.client.get("/api/offline-commentaries/books/john").status_code, 401
         )
 
+    def test_offline_manifest_version_changes_with_content_and_plan_edits(self):
+        def version():
+            return self.client.get("/api/offline-commentaries/manifest").json()["version"]
+
+        original = version()
+        self.early.text = "An early witness!"  # Same length as the original text.
+        self.early.save(update_fields=["text"])
+        changed_text = version()
+        self.assertNotEqual(changed_text, original)
+
+        self.early.author.category = "Reclassified"
+        self.early.author.save(update_fields=["category"])
+        changed_author = version()
+        self.assertNotEqual(changed_author, changed_text)
+
+        self.day.readings = ["John 3:17-18"]
+        self.day.save(update_fields=["readings"])
+        self.assertNotEqual(version(), changed_author)
+
     def test_day_lookup_links_to_the_commentary_browser_anchor(self):
         result = historical_commentaries(day=self.day.number, limit=1)
 

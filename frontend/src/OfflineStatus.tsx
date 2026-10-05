@@ -9,6 +9,9 @@ import {
 } from "./offlineCommentaries";
 
 const SHELL_CACHE = "biy-shell-v1";
+const STATE_CACHE = "biy-offline-state-v1";
+const OWNER_KEY = "/__biy_offline_owner__";
+const SESSION_KEY = "/__biy_offline_session__";
 
 type State = {
   done: number;
@@ -33,6 +36,7 @@ function readingUrls(libraries: Library[]): string[] {
 async function getLibrary(
   edition: "bible" | "catechism",
   cache: Cache,
+  user: string,
   signal: AbortSignal,
 ): Promise<Library> {
   const url = `/api/library?edition=${edition}`;
@@ -45,8 +49,30 @@ async function getLibrary(
   if (response.status === 401) throw expiredSession();
   if (!response.ok) throw new Error("Could not load the reading plan.");
   const library = (await response.clone().json()) as Library;
-  await cache.put(url, response);
+  await putPrivate(cache, url, response, user, signal);
   return library;
+}
+
+async function currentOwner(user: string, signal: AbortSignal) {
+  if (signal.aborted) return false;
+  const saved = await (await caches.open(STATE_CACHE)).match(OWNER_KEY);
+  return !signal.aborted && (await saved?.text()) === user;
+}
+
+async function putPrivate(
+  cache: Cache,
+  key: string,
+  response: Response,
+  user: string,
+  signal: AbortSignal,
+) {
+  if (!(await currentOwner(user, signal)))
+    throw new DOMException("Session changed", "AbortError");
+  await cache.put(key, response);
+  if (!(await currentOwner(user, signal))) {
+    await caches.delete(READING_CACHE_PREFIX + encodeURIComponent(user));
+    throw new DOMException("Session changed", "AbortError");
+  }
 }
 
 function expiredSession(): Error {
@@ -110,6 +136,14 @@ export function OfflineStatus({
           if (!response.ok || (await response.json()).user?.username !== user)
             throw expiredSession();
         }
+        const sessionCache = await caches.open(STATE_CACHE);
+        const savedSession = await sessionCache.match(SESSION_KEY);
+        if (
+          !(await currentOwner(user, controller.signal)) ||
+          !savedSession ||
+          (await savedSession.json()).user?.username !== user
+        )
+          throw new Error("Reconnect to finish saving your offline session.");
         const shell = await caches.open(SHELL_CACHE);
         const index = await shell.match("/");
         if (!index) throw new Error("The offline app is still installing.");
@@ -129,13 +163,19 @@ export function OfflineStatus({
         if (preferences.status === 401) throw expiredSession();
         if (!preferences.ok)
           throw new Error("Reconnect to finish saving account settings.");
-        await cache.put("/api/preferences", preferences);
+        await putPrivate(
+          cache,
+          "/api/preferences",
+          preferences,
+          user,
+          controller.signal,
+        );
         const editions = (["bible", "catechism"] as const).filter(
           (edition) => availability[edition],
         );
         const libraries = await Promise.all(
           editions.map((edition) =>
-            getLibrary(edition, cache, controller.signal),
+            getLibrary(edition, cache, user, controller.signal),
           ),
         );
         const urls = readingUrls(libraries);
@@ -178,7 +218,7 @@ export function OfflineStatus({
                 throw new Error(
                   "A reading could not be saved. The download will resume when you reconnect.",
                 );
-              await cache.put(url, response);
+              await putPrivate(cache, url, response, user, controller.signal);
               done++;
               update({
                 done,
@@ -262,7 +302,7 @@ export function OfflineStatus({
               "A commentary chunk could not be saved. Retry when connected.",
             );
           try {
-            await cache.put(url, response);
+            await putPrivate(cache, url, response, user, controller.signal);
           } catch {
             throw new Error(
               "Device storage could not hold the commentary catalog. Free space and retry.",
@@ -291,7 +331,13 @@ export function OfflineStatus({
               "The commentary catalog changed during download. Retry to finish.",
             );
           try {
-            await cache.put(COMMENTARY_MANIFEST_URL, manifestResponse);
+            await putPrivate(
+              cache,
+              COMMENTARY_MANIFEST_URL,
+              manifestResponse,
+              user,
+              controller.signal,
+            );
           } catch {
             throw new Error(
               "Device storage could not finish the commentary catalog. Free space and retry.",
@@ -331,11 +377,17 @@ export function OfflineStatus({
     }
     void prepare();
     const reconnect = () => setRetry((value) => value + 1);
+    const resumed = () => {
+      if (document.visibilityState === "visible")
+        setRetry((value) => value + 1);
+    };
     window.addEventListener("online", reconnect);
+    document.addEventListener("visibilitychange", resumed);
     return () => {
       live = false;
       controller.abort();
       window.removeEventListener("online", reconnect);
+      document.removeEventListener("visibilitychange", resumed);
     };
   }, [user, availability.bible, availability.catechism, retry]);
 

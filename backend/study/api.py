@@ -1,4 +1,5 @@
 import gzip
+import hashlib
 import io
 import json
 import re
@@ -13,8 +14,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
-from django.db.models import Count, Max, Min, Q, Sum
-from django.db.models.functions import Length
+from django.db.models import Max, Min, Q
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
@@ -897,16 +897,26 @@ def offline_commentary_manifest(request):
                 for item in ranges
             ],
         }
-    catalog = Commentary.objects.aggregate(
-        count=Count("id"), max_id=Max("id"), text_chars=Sum(Length("text")),
-        min_year=Min("year"), max_year=Max("year"),
-    )
+    # The version must change for edits as well as inserts and deletions. A
+    # count/length fingerprint can silently bless a stale offline catalog.
+    digest = hashlib.sha256()
+    digest.update(json.dumps(days, sort_keys=True, separators=(",", ":")).encode())
+    for row in CommentaryAuthor.objects.order_by("pk").values_list(
+        "pk", "name", "category", "default_year", "wiki_url", "condemned_by_council"
+    ).iterator(chunk_size=500):
+        digest.update(json.dumps(row, separators=(",", ":")).encode())
+    for row in Commentary.objects.order_by("pk").values_list(
+        "pk", "external_id", "author_id", "append_to_author_name", "year",
+        "book_key", "location_start", "location_end", "text", "source_url", "source_title",
+    ).iterator(chunk_size=500):
+        digest.update(json.dumps(row, separators=(",", ":")).encode())
+    catalog = Commentary.objects.aggregate(min_year=Min("year"), max_year=Max("year"))
     books = sorted(
         set(Commentary.objects.values_list("book_key", flat=True).distinct())
         & referenced_books
     )
     return {
-        "version": f"{catalog['count']}-{catalog['max_id'] or 0}-{catalog['text_chars'] or 0}",
+        "version": digest.hexdigest(),
         "books": books,
         "days": days,
         "filters": {
