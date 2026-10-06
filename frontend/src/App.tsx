@@ -22,6 +22,7 @@ import { AdminPeople } from "./AdminPeople";
 import { Commentaries } from "./Commentaries";
 import { NotificationSetupModal } from "./NotificationSetupModal";
 import { ThemeToggle } from "./Theme";
+import { OfflineStatus } from "./OfflineStatus";
 import {
   EditionContext,
   editionName,
@@ -323,6 +324,7 @@ function AppContent() {
               Skip to content
             </a>
             <div id="main-content">
+              <OfflineStatus user={user} availability={availability} />
               <Routes>
                 <Route
                   path="/chat"

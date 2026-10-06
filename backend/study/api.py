@@ -1,3 +1,7 @@
+import gzip
+import hashlib
+import io
+import json
 import re
 from datetime import date as calendar_date
 from datetime import datetime, time, timedelta
@@ -870,6 +874,86 @@ def commentaries(
             "Some deuterocanonical source traditions use different chapter layouts; the displayed readings remain the RSV-2CE references.",
         ],
     }
+
+
+@api.get("/offline-commentaries/manifest")
+def offline_commentary_manifest(request):
+    """Small day-to-passage index for an offline copy of the unique catalog."""
+
+    days = {}
+    referenced_books = set()
+    for day in Day.objects.order_by("number").only("number", "readings"):
+        ranges = commentary_ranges_for_readings(day.readings)
+        referenced_books.update(item.book_key for item in ranges)
+        days[str(day.number)] = {
+            "readings": day.readings,
+            "ranges": [
+                {
+                    "reference": item.reference,
+                    "book": item.book_key,
+                    "start": item.start,
+                    "end": item.end,
+                }
+                for item in ranges
+            ],
+        }
+    # The version must change for edits as well as inserts and deletions. A
+    # count/length fingerprint can silently bless a stale offline catalog.
+    digest = hashlib.sha256()
+    digest.update(json.dumps(days, sort_keys=True, separators=(",", ":")).encode())
+    for row in CommentaryAuthor.objects.order_by("pk").values_list(
+        "pk", "name", "category", "default_year", "wiki_url", "condemned_by_council"
+    ).iterator(chunk_size=500):
+        digest.update(json.dumps(row, separators=(",", ":")).encode())
+    for row in Commentary.objects.order_by("pk").values_list(
+        "pk", "external_id", "author_id", "append_to_author_name", "year",
+        "book_key", "location_start", "location_end", "text", "source_url", "source_title",
+    ).iterator(chunk_size=500):
+        digest.update(json.dumps(row, separators=(",", ":")).encode())
+    catalog = Commentary.objects.aggregate(min_year=Min("year"), max_year=Max("year"))
+    books = sorted(
+        set(Commentary.objects.values_list("book_key", flat=True).distinct())
+        & referenced_books
+    )
+    return {
+        "version": digest.hexdigest(),
+        "books": books,
+        "days": days,
+        "filters": {
+            "categories": list(
+                CommentaryAuthor.objects.order_by("category")
+                .values_list("category", flat=True).distinct()
+            ),
+            "min_year": catalog["min_year"],
+            "max_year": catalog["max_year"],
+        },
+        "matching_notes": [
+            "Passages are matched by RSV-2CE book and verse span. Psalms use modern numbering in this historical index.",
+            "Some deuterocanonical source traditions use different chapter layouts; the displayed readings remain the RSV-2CE references.",
+        ],
+    }
+
+
+@api.get("/offline-commentaries/books/{book_key}")
+def offline_commentary_book(request, book_key: str):
+    """Gzip a book once, preserving each commentary only once across all days."""
+
+    if not re.fullmatch(r"[a-z0-9]{1,40}", book_key):
+        raise HttpError(404, "Commentary book not found.")
+    rows = Commentary.objects.filter(book_key=book_key).select_related("author").order_by("id")
+    if not rows.exists():
+        raise HttpError(404, "Commentary book not found.")
+    output = io.BytesIO()
+    with gzip.GzipFile(fileobj=output, mode="wb", compresslevel=6, mtime=0) as archive:
+        archive.write(b"[")
+        for index, row in enumerate(rows.iterator(chunk_size=500)):
+            if index:
+                archive.write(b",")
+            archive.write(json.dumps(commentary_data(row, []), separators=(",", ":")).encode())
+        archive.write(b"]")
+    response = HttpResponse(output.getvalue(), content_type="application/gzip")
+    response["Cache-Control"] = "private, max-age=0"
+    return response
 
 
 @api.get("/episodes/{episode_id}")

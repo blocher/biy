@@ -13,15 +13,26 @@ export async function api<T>(
   const editionPath = /[?&]edition=/.test(path)
     ? path
     : `${path}${separator}edition=${storedEdition()}`;
-  const response = await fetch("/api" + editionPath, {
-    method,
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...(method === "GET" ? {} : { "X-CSRFToken": csrf }),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch("/api" + editionPath, {
+      method,
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        ...(method === "GET" ? {} : { "X-CSRFToken": csrf }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    if (typeof navigator !== "undefined" && !navigator.onLine)
+      throw new Error(
+        method === "GET"
+          ? "This item is not saved offline yet. Reconnect and try again."
+          : "You're offline. Reconnect before saving changes.",
+      );
+    throw error;
+  }
   let data;
   try {
     data = await response.json();
@@ -31,8 +42,13 @@ export async function api<T>(
     );
   }
   if (!response.ok) {
-    if (response.status === 401 && path !== "/login")
+    if (response.status === 401 && path !== "/login") {
+      if (typeof navigator !== "undefined")
+        navigator.serviceWorker?.controller?.postMessage({
+          type: "CLEAR_PRIVATE_DATA",
+        });
       window.dispatchEvent(new Event("session-expired"));
+    }
     const detail = Array.isArray(data.detail)
       ? data.detail.find(
           (item: { msg?: unknown }) => typeof item?.msg === "string",
