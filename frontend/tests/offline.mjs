@@ -931,7 +931,15 @@ try {
           .waitFor();
         const privateEntries = await page.evaluate(async () => {
           const names = await caches.keys();
-          const data = names.filter((name) => name.startsWith("biy-reading-"));
+          // A racing service-worker read can reopen an empty cache after logout.
+          // Privacy depends on removing its responses, not the container's name.
+          const data = [];
+          for (const name of names.filter((name) =>
+            name.startsWith("biy-reading-"),
+          )) {
+            const requests = await (await caches.open(name)).keys();
+            data.push(...requests.map((request) => request.url));
+          }
           const state = names.includes("biy-offline-state-v1")
             ? await (await caches.open("biy-offline-state-v1")).keys()
             : [];
