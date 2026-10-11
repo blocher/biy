@@ -129,7 +129,7 @@ export function OfflineStatus({
   const [online, setOnline] = useState(navigator.onLine);
   const [dismissed, setDismissed] = useState(() => readDismissals(user));
   const location = useLocation();
-  const request = (refresh = false) => {
+  const request = (refresh = forceRefresh.current) => {
     if (running.current || !navigator.onLine) return;
     running.current = true;
     forceRefresh.current = refresh;
@@ -138,7 +138,6 @@ export function OfflineStatus({
   };
   useEffect(() => {
     const refresh = forceRefresh.current;
-    forceRefresh.current = false;
     running.current = true;
     setBusy(true);
     setState({ done: 0, total: 0, readingsReady: false, error: null });
@@ -159,6 +158,7 @@ export function OfflineStatus({
       if (live) setState(next);
     };
     async function prepare() {
+      let failed = false;
       try {
         await navigator.serviceWorker.ready;
         if (!navigator.serviceWorker.controller) {
@@ -239,6 +239,7 @@ export function OfflineStatus({
           error: null,
         });
         if (done < urls.length && !navigator.onLine) {
+          failed = true;
           update({
             done,
             total: urls.length,
@@ -422,6 +423,7 @@ export function OfflineStatus({
           error: null,
         });
       } catch (error) {
+        failed = true;
         if (!controller.signal.aborted && live)
           setState((current) => ({
             ...current,
@@ -432,6 +434,8 @@ export function OfflineStatus({
           }));
       } finally {
         if (live) {
+          // Retry/reconnect must finish the failed refresh, not just count old cache entries.
+          if (!failed) forceRefresh.current = false;
           running.current = false;
           setBusy(false);
         }
@@ -510,9 +514,9 @@ export function OfflineStatus({
         </p>
       )}
       <p>
-        Saved on this device: {planLabel}, enabled reading plans, and available
-        episode text{availability.bible ? ", plus historical commentaries" : ""}
-        .
+        Offline preparation includes: {planLabel}, enabled reading plans, and
+        available episode text
+        {availability.bible ? ", plus historical commentaries" : ""}.
       </p>
       <p>
         Refresh saved readings downloads the latest versions of this content.

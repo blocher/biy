@@ -121,6 +121,11 @@ export function Account({
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [savingDetails, setSavingDetails] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileOnline, setProfileOnline] = useState(navigator.onLine);
+  const [profileRetry, setProfileRetry] = useState(0);
   const [savingPassword, setSavingPassword] = useState(false);
   const [notice, setNotice] = useState("");
   const [devices, setDevices] = useState<PushDevice[]>([]);
@@ -212,15 +217,51 @@ export function Account({
   }
 
   useEffect(() => {
-    if (!navigator.onLine) return;
-    void api<AccountData>("/account")
-      .then(setDetails)
-      .catch((e) => onError(e.message));
-  }, [onError]);
+    let live = true;
+    let loaded = profileLoaded;
+    let loading = false;
+    const load = async () => {
+      if (loaded || loading || !navigator.onLine) return;
+      loading = true;
+      setProfileLoading(true);
+      setProfileError("");
+      try {
+        const saved = await api<AccountData>("/account");
+        if (!live) return;
+        loaded = true;
+        setDetails(saved);
+        setProfileLoaded(true);
+      } catch (error) {
+        if (live) {
+          setProfileError(
+            "Could not load your personal details. Retry before editing or saving.",
+          );
+          onError((error as Error).message);
+        }
+      } finally {
+        loading = false;
+        if (live) setProfileLoading(false);
+      }
+    };
+    const reconnect = () => {
+      setProfileOnline(true);
+      void load();
+    };
+    const disconnect = () => setProfileOnline(false);
+    void load();
+    window.addEventListener("online", reconnect);
+    window.addEventListener("offline", disconnect);
+    return () => {
+      live = false;
+      window.removeEventListener("online", reconnect);
+      window.removeEventListener("offline", disconnect);
+    };
+  }, [onError, profileRetry, profileLoaded]);
   const change = (key: keyof AccountData, value: string) =>
     setDetails((old) => ({ ...old, [key]: value }));
   async function saveDetails(event: FormEvent) {
     event.preventDefault();
+    if (!profileLoaded || !navigator.onLine || savingDetails) return;
     setSavingDetails(true);
     setNotice("");
     try {
@@ -299,10 +340,28 @@ export function Account({
                 <span>@{details.username}</span>
               </div>
             </div>
+            {!profileLoaded && (
+              <p role="status">
+                {!profileOnline
+                  ? "Reconnect to load your personal details before editing or saving."
+                  : profileLoading
+                    ? "Loading personal details…"
+                    : profileError}
+                {profileOnline && !profileLoading && profileError && (
+                  <button
+                    type="button"
+                    onClick={() => setProfileRetry((value) => value + 1)}
+                  >
+                    Retry loading details
+                  </button>
+                )}
+              </p>
+            )}
             <form onSubmit={saveDetails}>
               <label className="account-field full">
                 <span>User name</span>
                 <input
+                  disabled={!profileLoaded || savingDetails}
                   value={details.username}
                   onChange={(e) => change("username", e.target.value)}
                   autoComplete="username"
@@ -313,6 +372,7 @@ export function Account({
                 <label className="account-field">
                   <span>First name</span>
                   <input
+                    disabled={!profileLoaded || savingDetails}
                     value={details.first_name}
                     onChange={(e) => change("first_name", e.target.value)}
                     autoComplete="given-name"
@@ -321,6 +381,7 @@ export function Account({
                 <label className="account-field">
                   <span>Last name</span>
                   <input
+                    disabled={!profileLoaded || savingDetails}
                     value={details.last_name}
                     onChange={(e) => change("last_name", e.target.value)}
                     autoComplete="family-name"
@@ -331,6 +392,7 @@ export function Account({
                 <span>Email address</span>
                 <input
                   type="email"
+                  disabled={!profileLoaded || savingDetails}
                   value={details.email}
                   onChange={(e) => change("email", e.target.value)}
                   autoComplete="email"
@@ -340,7 +402,10 @@ export function Account({
                   Used for shared reflection notifications when enabled.
                 </small>
               </label>
-              <button className="primary" disabled={savingDetails}>
+              <button
+                className="primary"
+                disabled={!profileLoaded || !profileOnline || savingDetails}
+              >
                 {savingDetails ? (
                   "Saving…"
                 ) : (
