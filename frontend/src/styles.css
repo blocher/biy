@@ -5146,10 +5146,10 @@ body:has(.reader-design) .player {
   bottom: max(1rem, env(safe-area-inset-bottom));
   max-width: min(26rem, calc(100vw - 2rem));
   padding: 0.55rem 0.8rem;
-  border: 1px solid var(--border, #d6d8d2);
+  border: 1px solid var(--line);
   border-radius: 0.75rem;
   background: var(--surface, #fbfaf6);
-  color: var(--text, #20332e);
+  color: var(--ink);
   box-shadow: 0 4px 20px #0002;
   font-size: 0.82rem;
 }
@@ -5165,4 +5165,21 @@ body:has(.reader-design) .player {
     bottom: calc(118px + env(safe-area-inset-bottom));
     max-width: min(18rem, calc(100vw - 24px));
   }
+}
+
+.offline-status { display: flex; align-items: flex-start; gap: 8px; }
+.offline-status p { margin: 0 0 4px; }
+.offline-status a { color: var(--green); text-decoration: underline; }
+.offline-status button { color: var(--ink); min-height: 44px; }
+.offline-status .offline-dismiss { flex: none; display: grid; place-items: center; width: 44px; margin: -4px -4px 0 0; padding: 0; text-decoration: none; }
+.offline-status :is(button, a):focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.offline-settings { grid-column: 1 / -1; scroll-margin-top: 20px; }
+.offline-settings p { color: var(--ink-soft); margin: 12px 0; }
+.offline-settings button { min-height: 44px; max-width: 100%; }
+
+/* Keep Account and its offline controls reachable on tablet widths. */
+@media (min-width: 641px) and (max-width: 900px) {
+  .account-frame .sidebar { flex-wrap: wrap; }
+  .account-frame .edition-switcher { order: 0; margin-left: auto; }
+  .account-frame .navigation { order: 3; flex: 1 0 100%; margin: 0; overflow-x: auto; }
 }

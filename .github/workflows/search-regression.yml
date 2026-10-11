@@ -29,6 +29,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium webkit
+      - run: BIY_OFFLINE_UX=1 npm run test:offline
       - run: npm run test:find-page
       - run: npm run test:selection
         if: ${{ !cancelled() }}
@@ -38,6 +39,8 @@ jobs:
         if: always()
         with:
           name: page-find-geometry
-          path: data/screenshots/find-in-page/
+          path: |
+            data/screenshots/find-in-page/
+            data/screenshots/offline-status/
           if-no-files-found: ignore
           retention-days: 7

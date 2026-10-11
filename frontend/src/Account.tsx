@@ -17,6 +17,7 @@ import {
 import { usePreferences } from "./Preferences";
 import { api } from "./api";
 import { Sidebar } from "./navigation";
+import { OfflineSettings } from "./OfflineStatus";
 import { ThemeSettings } from "./Theme";
 import {
   canPromptInstall,
@@ -149,7 +150,7 @@ export function Account({
   }, [onError]);
 
   useEffect(() => {
-    void loadPushState();
+    if (navigator.onLine) void loadPushState();
     return onInstallPromptChange(() => setInstallAvailable(canPromptInstall()));
   }, [loadPushState]);
 
@@ -211,6 +212,7 @@ export function Account({
   }
 
   useEffect(() => {
+    if (!navigator.onLine) return;
     void api<AccountData>("/account")
       .then(setDetails)
       .catch((e) => onError(e.message));
@@ -269,7 +271,7 @@ export function Account({
       );
   }
   return (
-    <div className="app-frame">
+    <div className="app-frame account-frame">
       <Sidebar user={user} />
       <main className="account-page">
         <header className="account-header">
@@ -278,6 +280,7 @@ export function Account({
           <p>A quiet place to keep your details up to date.</p>
         </header>
         <div className="account-layout">
+          <OfflineSettings />
           <ThemeSettings />
           <section className="account-card profile-card">
             <div className="account-card-heading">

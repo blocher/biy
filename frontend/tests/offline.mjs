@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { gzipSync } from "node:zlib";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
-import { chromium, webkit } from "@playwright/test";
+import { chromium, webkit, expect } from "@playwright/test";
 
 const dist = resolve("dist");
 const fullFixture = process.env.BIY_FULL_FIXTURE === "1";
@@ -19,6 +19,11 @@ const fixtureRoot = process.env.BIY_FIXTURE_ROOT || "/tmp/biy_offline_fixture";
 let interrupt = true;
 let interruptCatalog = true;
 let signedIn = true;
+const ux = process.env.BIY_OFFLINE_UX === "1";
+let revision = 1;
+let delay = false;
+let networkFailure = false;
+let sessionFailure = false;
 const counts = new Map();
 const episode = {
   id: 99,
@@ -71,7 +76,10 @@ const day = (number, edition) => ({
                   {
                     chapter: 1,
                     verse: 1,
-                    text: "Offline Scripture text",
+                    text:
+                      revision === 1
+                        ? "Offline Scripture text"
+                        : "Refreshed Scripture text",
                     paragraph: true,
                   },
                 ],
@@ -170,6 +178,19 @@ const json = (res, value, status = 200) => {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   counts.set(url.pathname, (counts.get(url.pathname) || 0) + 1);
+  if (url.pathname === "/api/account")
+    return json(res, {
+      username: "ben",
+      first_name: "",
+      last_name: "",
+      email: "",
+    });
+  if (url.pathname === "/api/push/subscriptions") return json(res, []);
+  if (delay && url.pathname.startsWith("/api/days/"))
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  if (networkFailure && url.pathname === "/api/days/2") return res.destroy();
+  if (sessionFailure && url.pathname === "/api/session")
+    return json(res, { detail: "Session unavailable" }, 503);
   if (url.pathname === "/api/session")
     return json(res, {
       user: signedIn ? { username: "ben", is_admin: false } : null,
@@ -185,6 +206,7 @@ const server = createServer(async (req, res) => {
       catechism_enabled: !oneEdition,
       progress_basis: "first-completion",
       notification_setup_completed: true,
+      notification_timezone: "UTC",
       morning_reminder_enabled: false,
       evening_reminder_enabled: false,
     });
@@ -289,14 +311,21 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 let serverClosed = false;
 const isWebKit = process.env.BIY_BROWSER === "webkit";
 const browser = await (isWebKit ? webkit : chromium).launch(
-  isWebKit ? { headless: true } : { channel: "chrome", headless: true },
+  isWebKit
+    ? { headless: true }
+    : {
+        ...(process.env.BIY_CHROMIUM_PATH
+          ? { executablePath: process.env.BIY_CHROMIUM_PATH }
+          : {}),
+        headless: true,
+      },
 );
 const context = await browser.newContext({
   viewport: { width: 390, height: 844 },
   serviceWorkers: "allow",
-  ...(isWebKit ? { isMobile: true, hasTouch: true } : {}),
+  ...(isWebKit || ux ? { isMobile: true, hasTouch: true } : {}),
 });
-if (isWebKit)
+if (isWebKit || ux)
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "standalone", { value: true });
     localStorage.setItem(
@@ -316,6 +345,8 @@ if (storageFailure)
     };
   });
 const page = await context.newPage();
+const pageErrors = [];
+page.on("pageerror", (error) => pageErrors.push(error.message));
 page.on("pageerror", (error) => console.error("Page error:", error.message));
 page.on("console", (message) => {
   if (message.type() === "error") console.error("Browser:", message.text());
@@ -449,6 +480,206 @@ try {
       interruptCatalog = false;
       await page.getByRole("button", { name: "Retry" }).click();
       await page.getByText(readyText).waitFor({ timeout: 20000 });
+      if (ux) {
+        const screenshots = resolve("../data/screenshots/offline-status");
+        await mkdir(screenshots, { recursive: true });
+        const banner = page.locator(".offline-status");
+        const contrast = async (selector) =>
+          page.locator(selector).evaluate((el) => {
+            const style = getComputedStyle(el);
+            const luminance = (value) => {
+              const rgb = value
+                .match(/[\d.]+/g)
+                .slice(0, 3)
+                .map((v) => Number(v) / 255)
+                .map((v) =>
+                  v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4,
+                );
+              return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+            };
+            let bg = el;
+            while (
+              getComputedStyle(bg).backgroundColor === "rgba(0, 0, 0, 0)" &&
+              bg.parentElement
+            )
+              bg = bg.parentElement;
+            const a = luminance(style.color),
+              b = luminance(getComputedStyle(bg).backgroundColor);
+            return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          });
+        for (const theme of ["light", "dark"]) {
+          await page.evaluate(
+            (theme) => (document.documentElement.dataset.theme = theme),
+            theme,
+          );
+          assert.ok(
+            (await contrast(".offline-status")) >= 4.5,
+            `${theme} notice contrast`,
+          );
+          assert.ok(
+            (await contrast(".offline-status a")) >= 4.5,
+            `${theme} link contrast`,
+          );
+          await page.screenshot({
+            path: join(screenshots, `phone-notice-${theme}.png`),
+          });
+        }
+        const close = page.getByRole("button", {
+          name: "Dismiss offline notice",
+        });
+        await banner.getByRole("link").focus();
+        await page.keyboard.press("Tab");
+        await expect(close).toBeFocused();
+        assert.ok(
+          await close.evaluate(
+            (el) => getComputedStyle(el).outlineStyle !== "none",
+          ),
+        );
+        const size = await close.boundingBox();
+        assert.ok(size.width >= 44 && size.height >= 44);
+        await page.keyboard.press("Enter");
+        await expect(banner).toHaveCount(0);
+        await page.goto(origin + "/bible/day/1/reader?tab=scripture");
+        await page.getByText("Offline Scripture text").waitFor();
+        await expect(banner).toHaveCount(0);
+        await page.reload();
+        await page.getByText("Offline Scripture text").waitFor();
+        await expect(banner).toHaveCount(0);
+        await page.goto(origin + "/account");
+        const panel = page.locator(".offline-settings");
+        await expect(panel).toContainText(readyText);
+        for (const width of [390, 768, 1440]) {
+          await page.setViewportSize({ width, height: 900 });
+          for (const theme of ["light", "dark"]) {
+            await page.getByLabel("Color theme").selectOption(theme);
+            assert.ok(
+              (await contrast(".offline-settings p[role=status]")) >= 4.5,
+              `${theme} settings contrast`,
+            );
+            assert.ok(
+              await page.evaluate(
+                () => document.documentElement.scrollWidth <= innerWidth,
+              ),
+              `No overflow at ${width}`,
+            );
+            await page.screenshot({
+              path: join(screenshots, `account-${width}-${theme}.png`),
+              fullPage: true,
+            });
+          }
+        }
+        revision = 2;
+        delay = true;
+        const refresh = panel.getByRole("button", {
+          name: "Refresh saved readings",
+        });
+        const before = counts.get("/api/session");
+        await refresh.click();
+        await expect(panel.getByRole("button")).toBeDisabled();
+        await page.evaluate(() => {
+          window.dispatchEvent(new Event("online"));
+          document.dispatchEvent(new Event("visibilitychange"));
+        });
+        await expect(panel).toContainText(readyText);
+        assert.equal(
+          counts.get("/api/session"),
+          before + 1,
+          "Repeated actions do not restart preparation",
+        );
+        delay = false;
+        const refreshed = await page.evaluate(
+          async () =>
+            (
+              await (
+                await (
+                  await caches.open("biy-reading-v1-ben")
+                ).match("/api/days/1?edition=bible")
+              ).json()
+            ).scripture[0].groups[0].verses[0].text,
+        );
+        assert.equal(refreshed, "Refreshed Scripture text");
+        sessionFailure = true;
+        await refresh.click();
+        await expect(panel).toContainText(
+          "Could not verify your offline session",
+        );
+        assert.ok(
+          await page.evaluate(async () =>
+            (await caches.keys()).includes("biy-reading-v1-ben"),
+          ),
+          "Session server outage does not clear downloaded content or sign out",
+        );
+        sessionFailure = false;
+        await panel
+          .getByRole("button", { name: "Retry saving readings" })
+          .click();
+        await expect(panel).toContainText(readyText);
+        networkFailure = true;
+        await refresh.click();
+        await expect(panel).toContainText("Offline setup incomplete");
+        const retained = await page.evaluate(
+          async () =>
+            !!(await (
+              await caches.open("biy-reading-v1-ben")
+            ).match("/api/days/2?edition=bible")),
+        );
+        assert.ok(retained, "Interrupted refresh preserves saved readings");
+        await page
+          .getByRole("link", { name: "Reading plan", exact: true })
+          .first()
+          .click();
+        await expect(banner).toContainText("Offline setup incomplete");
+        await page
+          .getByRole("button", { name: "Dismiss offline notice" })
+          .click();
+        await page
+          .getByRole("link", { name: "Account", exact: true })
+          .first()
+          .click();
+        await panel
+          .getByRole("button", { name: "Retry saving readings" })
+          .click();
+        await expect(panel).toContainText("Offline setup incomplete");
+        await page
+          .getByRole("link", { name: "Reading plan", exact: true })
+          .first()
+          .click();
+        await expect(banner).toHaveCount(0);
+        await page.reload();
+        await expect(page.locator(".offline-status")).toHaveCount(0);
+        networkFailure = false;
+        catalogManifest.version = "fixture-2";
+        await page.goto(origin + "/account");
+        await expect(panel).toContainText(readyText);
+        await page.goto(origin + "/bible");
+        await expect(banner).toContainText(readyText);
+        await banner.getByRole("link", { name: "Offline settings" }).click();
+        await expect(panel).toBeInViewport();
+        await context.setOffline(true);
+        await page.reload();
+        await expect(panel).toContainText(readyText);
+        await expect(panel).toContainText("You’re offline");
+        await expect(panel.getByRole("button")).toBeDisabled();
+        await page.screenshot({
+          path: join(screenshots, "offline-account-dark.png"),
+          fullPage: true,
+        });
+        await page.goto(origin + "/bible/day/1/reader?tab=scripture");
+        await page.getByText("Refreshed Scripture text").waitFor();
+        await context.setOffline(false);
+        revision = 1;
+        await page.goto(origin + "/account");
+        await expect(panel).toContainText(readyText);
+        await panel
+          .getByRole("button", { name: "Refresh saved readings" })
+          .click();
+        await expect(panel).toContainText(readyText);
+        await page.goto(origin + "/bible");
+        assert.deepEqual(pageErrors, [], "No browser JavaScript errors");
+        console.log(
+          "Offline UX: keyboard/touch close, persistence, 390/768/1440 light/dark contrast, settings discovery, disabled pending/offline controls, fresh content, network failure with cache preservation, new catalog notice, and offline Account passed",
+        );
+      }
       if (isWebKit) {
         await new Promise((resolve) => server.close(resolve));
         serverClosed = true;
