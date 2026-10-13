@@ -1,4 +1,14 @@
-import { useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { Link, useLocation } from "react-router-dom";
+import { X } from "lucide-react";
+import { noticeKey, readDismissals, saveDismissal } from "./offlineNotice";
 import type { EditionAvailability } from "./Edition";
 import type { Library } from "./types";
 import {
@@ -19,6 +29,7 @@ type State = {
   readingsReady: boolean;
   catalogReady?: boolean;
   error: string | null;
+  catalogVersion?: string;
 };
 
 function readingUrls(libraries: Library[]): string[] {
@@ -38,6 +49,7 @@ async function getLibrary(
   cache: Cache,
   user: string,
   signal: AbortSignal,
+  refresh: boolean,
 ): Promise<Library> {
   const url = `/api/library?edition=${edition}`;
   if (!navigator.onLine) {
@@ -45,7 +57,11 @@ async function getLibrary(
     if (!cached) throw new Error("Reconnect to finish saving readings.");
     return cached.json() as Promise<Library>;
   }
-  const response = await fetch(url, { credentials: "same-origin", signal });
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    signal,
+    cache: refresh ? "reload" : "default",
+  });
   if (response.status === 401) throw expiredSession();
   if (!response.ok) throw new Error("Could not load the reading plan.");
   const library = (await response.clone().json()) as Library;
@@ -85,12 +101,20 @@ function expiredSession(): Error {
   return error;
 }
 
+const OfflineContext = createContext<ReactNode>(null);
+
+export function OfflineSettings() {
+  return useContext(OfflineContext);
+}
+
 export function OfflineStatus({
   user,
   availability,
+  children,
 }: {
   user: string;
   availability: EditionAvailability;
+  children: ReactNode;
 }) {
   const [state, setState] = useState<State>({
     done: 0,
@@ -99,7 +123,24 @@ export function OfflineStatus({
     error: null,
   });
   const [retry, setRetry] = useState(0);
+  const [busy, setBusy] = useState(true);
+  const running = useRef(true);
+  const forceRefresh = useRef(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [dismissed, setDismissed] = useState(() => readDismissals(user));
+  const location = useLocation();
+  const request = (refresh = forceRefresh.current) => {
+    if (running.current || !navigator.onLine) return;
+    running.current = true;
+    forceRefresh.current = refresh;
+    setBusy(true);
+    setRetry((value) => value + 1);
+  };
   useEffect(() => {
+    const refresh = forceRefresh.current;
+    running.current = true;
+    setBusy(true);
+    setState({ done: 0, total: 0, readingsReady: false, error: null });
     if (!("serviceWorker" in navigator) || !("caches" in window)) {
       setState({
         done: 0,
@@ -107,6 +148,8 @@ export function OfflineStatus({
         readingsReady: false,
         error: "Offline saving is not supported in this browser.",
       });
+      running.current = false;
+      setBusy(false);
       return;
     }
     const controller = new AbortController();
@@ -115,6 +158,7 @@ export function OfflineStatus({
       if (live) setState(next);
     };
     async function prepare() {
+      let failed = false;
       try {
         await navigator.serviceWorker.ready;
         if (!navigator.serviceWorker.controller) {
@@ -132,8 +176,14 @@ export function OfflineStatus({
           const response = await fetch("/api/session?edition=bible", {
             credentials: "same-origin",
             signal: controller.signal,
+            cache: refresh ? "reload" : "default",
           });
-          if (!response.ok || (await response.json()).user?.username !== user)
+          if (response.status === 401) throw expiredSession();
+          if (!response.ok)
+            throw new Error(
+              "Could not verify your offline session. Check your connection and retry; saved content is still available.",
+            );
+          if ((await response.json()).user?.username !== user)
             throw expiredSession();
         }
         const sessionCache = await caches.open(STATE_CACHE);
@@ -175,12 +225,13 @@ export function OfflineStatus({
         );
         const libraries = await Promise.all(
           editions.map((edition) =>
-            getLibrary(edition, cache, user, controller.signal),
+            getLibrary(edition, cache, user, controller.signal, refresh),
           ),
         );
         const urls = readingUrls(libraries);
         let done = 0;
-        for (const url of urls) if (await cache.match(url)) done++;
+        for (const url of urls)
+          if (!refresh && (await cache.match(url))) done++;
         update({
           done,
           total: urls.length,
@@ -188,6 +239,7 @@ export function OfflineStatus({
           error: null,
         });
         if (done < urls.length && !navigator.onLine) {
+          failed = true;
           update({
             done,
             total: urls.length,
@@ -205,12 +257,14 @@ export function OfflineStatus({
             !downloadError
           ) {
             const url = urls[cursor++];
-            if (await cache.match(url)) continue;
+            if (!refresh && (await cache.match(url))) continue;
             try {
               const response = await fetch(url, {
                 credentials: "same-origin",
                 signal: controller.signal,
+                cache: refresh ? "reload" : "default",
               });
+              if (response.status === 401) throw expiredSession();
               if (
                 !response.ok ||
                 !response.headers.get("content-type")?.includes("json")
@@ -247,14 +301,24 @@ export function OfflineStatus({
             const response = await fetch(COMMENTARY_MANIFEST_URL, {
               credentials: "same-origin",
               signal: controller.signal,
+              cache: refresh ? "reload" : "default",
             });
             if (response.status === 401) throw expiredSession();
+            if (!response.ok && refresh)
+              throw new Error(
+                "Could not refresh historical commentaries. Saved content is still available.",
+              );
             if (response.ok) {
               manifestResponse = response;
               fetchedManifest = true;
             }
           } catch (error) {
-            if ((error as Error).name === "UnauthorizedOffline") throw error;
+            if (
+              refresh ||
+              controller.signal.aborted ||
+              (error as Error).name === "UnauthorizedOffline"
+            )
+              throw error;
             // A completed earlier catalog remains usable during an outage.
           }
         }
@@ -271,14 +335,16 @@ export function OfflineStatus({
         const oldVersion = cachedManifest
           ? ((await cachedManifest.json()) as CommentaryManifest).version
           : null;
-        let catalogDone = oldVersion === manifest.version ? 1 : 0;
-        for (const url of chunkUrls) if (await cache.match(url)) catalogDone++;
+        let catalogDone = !refresh && oldVersion === manifest.version ? 1 : 0;
+        for (const url of chunkUrls)
+          if (!refresh && (await cache.match(url))) catalogDone++;
         const total = urls.length + chunkUrls.length + 1;
         update({
           done: done + catalogDone,
           total,
           readingsReady: true,
           catalogReady: catalogDone === chunkUrls.length + 1,
+          catalogVersion: manifest.version,
           error: null,
         });
         if (catalogDone === chunkUrls.length + 1) return;
@@ -288,10 +354,11 @@ export function OfflineStatus({
           );
         for (const url of chunkUrls) {
           if (controller.signal.aborted) return;
-          if (await cache.match(url)) continue;
+          if (!refresh && (await cache.match(url))) continue;
           const response = await fetch(url, {
             credentials: "same-origin",
             signal: controller.signal,
+            cache: refresh ? "reload" : "default",
           });
           if (response.status === 401) throw expiredSession();
           if (
@@ -314,12 +381,14 @@ export function OfflineStatus({
             total,
             readingsReady: true,
             error: null,
+            catalogVersion: manifest.version,
           });
         }
         if (fetchedManifest) {
           const check = await fetch(COMMENTARY_MANIFEST_URL, {
             credentials: "same-origin",
             signal: controller.signal,
+            cache: refresh ? "reload" : "default",
           });
           if (check.status === 401) throw expiredSession();
           if (
@@ -343,50 +412,52 @@ export function OfflineStatus({
               "Device storage could not finish the commentary catalog. Free space and retry.",
             );
           }
-          catalogDone++;
+          if (refresh || oldVersion !== manifest.version) catalogDone++;
         }
         update({
           done: done + catalogDone,
           total,
           readingsReady: true,
           catalogReady: catalogDone === chunkUrls.length + 1,
+          catalogVersion: manifest.version,
           error: null,
         });
-        if (catalogDone === chunkUrls.length + 1) {
-          const active = new Set(chunkUrls);
-          try {
-            for (const request of await cache.keys()) {
-              const url = new URL(request.url);
-              if (
-                url.pathname.startsWith("/api/offline-commentaries/books/") &&
-                !active.has(url.pathname + url.search)
-              )
-                await cache.delete(request);
-            }
-          } catch {
-            /* Old chunks can be reclaimed on a later visit. */
-          }
-        }
       } catch (error) {
+        failed = true;
         if (!controller.signal.aborted && live)
           setState((current) => ({
             ...current,
-            error: (error as Error).message,
+            error:
+              error instanceof TypeError
+                ? "Could not save readings. Check your connection and retry; previously saved content remains available."
+                : (error as Error).message,
           }));
+      } finally {
+        if (live) {
+          // Retry/reconnect must finish the failed refresh, not just count old cache entries.
+          if (!failed) forceRefresh.current = false;
+          running.current = false;
+          setBusy(false);
+        }
       }
     }
     void prepare();
-    const reconnect = () => setRetry((value) => value + 1);
+    const reconnect = () => {
+      setOnline(true);
+      request();
+    };
+    const disconnected = () => setOnline(false);
     const resumed = () => {
-      if (document.visibilityState === "visible")
-        setRetry((value) => value + 1);
+      if (document.visibilityState === "visible") request();
     };
     window.addEventListener("online", reconnect);
+    window.addEventListener("offline", disconnected);
     document.addEventListener("visibilitychange", resumed);
     return () => {
       live = false;
       controller.abort();
       window.removeEventListener("online", reconnect);
+      window.removeEventListener("offline", disconnected);
       document.removeEventListener("visibilitychange", resumed);
     };
   }, [user, availability.bible, availability.catechism, retry]);
@@ -405,32 +476,101 @@ export function OfflineStatus({
   const readyLabel = availability.bible
     ? `${planLabel} and historical commentaries ready offline`
     : `${planLabel} ready offline; available episode text saved`;
-  return (
-    <div
-      className="offline-status"
-      role="status"
-      aria-live="polite"
-      title={
-        availability.bible
-          ? "The enabled plans, available episode text, and historical commentary catalog are saved on this device. Notes and progress need a connection."
-          : "The enabled plan and available episode text are saved on this device. Notes and progress need a connection."
-      }
+  const message = busy
+    ? state.total
+      ? `${state.readingsReady ? "Saving historical commentaries" : "Saving readings for offline use"}: ${state.done}/${state.total}`
+      : "Preparing offline readings…"
+    : state.error
+      ? `${state.readingsReady ? "Readings ready; commentary setup incomplete" : "Offline setup incomplete"} (${state.done}/${state.total}). ${state.error}`
+      : readyLabel;
+  const key = noticeKey({
+    availability,
+    ready,
+    busy,
+    error: state.error,
+    total: state.total,
+    version: state.catalogVersion,
+  });
+  const hidden = busy ? dismissed.length > 0 : dismissed.includes(key);
+  const dismiss = () => {
+    const next = saveDismissal(user, dismissed, key);
+    setDismissed(next);
+  };
+  const supported = "serviceWorker" in navigator && "caches" in window;
+  const settings = (
+    <section
+      className="account-card offline-settings"
+      id="offline-readings"
+      aria-labelledby="offline-heading"
     >
-      {ready ? (
-        readyLabel
-      ) : state.error ? (
-        <>
-          {state.readingsReady
-            ? "Readings ready; commentary setup incomplete"
-            : "Offline setup incomplete"}{" "}
-          ({state.done}/{state.total}). {state.error}{" "}
-          <button onClick={() => setRetry((value) => value + 1)}>Retry</button>
-        </>
-      ) : state.total ? (
-        `${state.readingsReady ? "Saving historical commentaries" : "Saving readings for offline use"}: ${state.done}/${state.total}`
-      ) : (
-        "Preparing offline readings…"
+      <h2 id="offline-heading">Offline readings</h2>
+      <p role="status" aria-live="polite">
+        {message}
+      </p>
+      {!online && (
+        <p>
+          You’re offline. Saved content remains available; reconnect to refresh
+          or finish downloading.
+        </p>
       )}
-    </div>
+      <p>
+        Offline preparation includes: {planLabel}, enabled reading plans, and
+        available episode text
+        {availability.bible ? ", plus historical commentaries" : ""}.
+      </p>
+      <p>
+        Refresh saved readings downloads the latest versions of this content.
+        Notes, progress, and audio need a connection and are not synced by this
+        control.
+      </p>
+      <button
+        type="button"
+        className="outline-button"
+        disabled={busy || !online || !supported}
+        onClick={() => request(true)}
+      >
+        {busy
+          ? "Saving readings…"
+          : state.error
+            ? "Retry saving readings"
+            : "Refresh saved readings"}
+      </button>
+      <p className="quiet">
+        Automatic preparation resumes when you reconnect. Refresh keeps your
+        saved content available while downloading.
+      </p>
+    </section>
+  );
+  return (
+    <OfflineContext.Provider value={settings}>
+      {children}
+      {!hidden && location.pathname !== "/account" && (
+        <div className="offline-status">
+          <div>
+            <p role="status" aria-live="polite">
+              {message}
+            </p>
+            <Link to="/account#offline-readings">Offline settings</Link>
+            {state.error && !busy && (
+              <button
+                type="button"
+                disabled={!online || !supported}
+                onClick={() => request()}
+              >
+                Retry
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            className="offline-dismiss"
+            aria-label="Dismiss offline notice"
+            onClick={dismiss}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+    </OfflineContext.Provider>
   );
 }

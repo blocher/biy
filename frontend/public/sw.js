@@ -203,6 +203,8 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         } catch {
+          // An explicit refresh must report a network failure, not cached success.
+          if (request.cache === "reload") return Response.error();
           const cache = await dataCache();
           return (cache && (await cache.match(cacheKey))) || Response.error();
         }

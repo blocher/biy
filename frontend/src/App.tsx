@@ -324,7 +324,7 @@ function AppContent() {
               Skip to content
             </a>
             <div id="main-content">
-              <OfflineStatus user={user} availability={availability} />
+              <OfflineStatus key={user} user={user} availability={availability}>
               <Routes>
                 <Route
                   path="/chat"
@@ -440,6 +440,7 @@ function AppContent() {
                   }
                 />
               </Routes>
+              </OfflineStatus>
             </div>
             <NotificationSetupModal onError={onError} />
             {notice}
