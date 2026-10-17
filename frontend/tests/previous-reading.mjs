@@ -78,9 +78,9 @@ try {
       const { page, unexpected, dayRequests } = await open(browser, path, viewport);
       const label = /Where you left off in Genesis: Day 1, Genesis 1-2/;
       const buttons = page.getByRole("button", { name: /Where you left off in/ });
-      // Only the first chapter heading of each reading carries the reminder.
-      await expect(buttons).toHaveCount(2);
-      await expect(page.getByRole("button", { name: /Where you left off in Psalm: Day 1, Psalm 19/ })).toHaveCount(1);
+      // Only the first chapter heading of each reading carries the reminder,
+      // and psalms never do.
+      await expect(buttons).toHaveCount(1);
       const button = page.getByRole("button", { name: label });
       await button.scrollIntoViewIfNeeded();
       const before = await page.evaluate(() => scrollY);

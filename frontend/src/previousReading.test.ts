@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { previousReadings, readingBook } from "./previousReading";
+import {
+  previousReadings,
+  readingBook,
+  readingChapter,
+} from "./previousReading";
 import type { PlanDay } from "./types";
 
 const day = (number: number, readings: string[]): PlanDay => ({
@@ -23,6 +27,16 @@ describe("readingBook", () => {
   });
 });
 
+describe("readingChapter", () => {
+  it("reads the opening chapter, treating single-chapter books as 1", () => {
+    expect(readingChapter("Genesis 3-4")).toBe(3);
+    expect(readingChapter("1 Samuel 12")).toBe(12);
+    expect(readingChapter("Proverbs 1:8-19")).toBe(1);
+    expect(readingChapter("Esther 15, 6-7")).toBe(15);
+    expect(readingChapter("Jude")).toBe(1);
+  });
+});
+
 describe("previousReadings", () => {
   const days = [
     day(51, ["Exodus 39-40", "Leviticus 27", "Psalm 84"]),
@@ -31,19 +45,17 @@ describe("previousReadings", () => {
   ];
 
   it("finds the latest earlier day reading the same book", () => {
-    expect(
-      previousReadings(days, 53, ["Numbers 2", "Deuteronomy 2", "Psalm 86"]),
-    ).toEqual([
-      { day: 52, index: 0, reference: "Numbers 1" },
-      { day: 52, index: 1, reference: "Deuteronomy 1" },
-      { day: 52, index: 2, reference: "Psalm 85" },
-    ]);
+    expect(previousReadings(days, 53, ["Numbers 2", "Deuteronomy 2"])).toEqual(
+      [
+        { day: 52, index: 0, reference: "Numbers 1" },
+        { day: 52, index: 1, reference: "Deuteronomy 1" },
+      ],
+    );
   });
 
-  it("returns null for a book's first reading", () => {
-    expect(previousReadings(days, 52, ["Numbers 1", "Psalm 85"])).toEqual([
-      null,
-      { day: 51, index: 2, reference: "Psalm 84" },
-    ]);
+  it("skips chapter 1 and psalms", () => {
+    expect(
+      previousReadings(days, 53, ["Numbers 1:5-9", "Psalm 86"]),
+    ).toEqual([null, null]);
   });
 });
