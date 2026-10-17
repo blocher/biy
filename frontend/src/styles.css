@@ -2672,6 +2672,43 @@ input[type="checkbox"] {
   margin: 25px 0 16px;
   color: #987c46;
 }
+.previous-reading-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: -6px 0 -6px 6px;
+  padding: 0;
+  vertical-align: middle;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  cursor: pointer;
+}
+.previous-reading-button::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+}
+.previous-reading-button:hover,
+.previous-reading-button:focus-visible {
+  opacity: 1;
+  background: #f0eee3;
+}
+.previous-reading-panel h2 .eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.previous-reading-panel .chapter:first-child h3 {
+  margin-top: 0;
+}
 .chapter > p,
 .chapter .verse-paragraph {
   font-family: var(--reading);
