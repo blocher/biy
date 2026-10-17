@@ -525,3 +525,6 @@ html[data-theme="dark"] .member-avatar {
 html[data-theme="dark"] .notification-setup-condition {
   color: var(--ink);
 }
+html[data-theme="dark"] :is(.previous-reading-button:hover, .previous-reading-button:focus-visible) {
+  background: var(--surface-hover);
+}

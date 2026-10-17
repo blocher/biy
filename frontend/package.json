@@ -14,7 +14,8 @@
     "test:completion-dialog": "node tests/completion-dialog.mjs",
     "test:catechism-audio": "node tests/catechism-audio.mjs",
     "test:catechism-references": "node tests/catechism-references.mjs",
-    "test:offline": "node tests/offline.mjs"
+    "test:offline": "node tests/offline.mjs",
+    "test:previous-reading": "node tests/previous-reading.mjs"
   },
   "dependencies": {
     "html-react-parser": "^5.2.0",

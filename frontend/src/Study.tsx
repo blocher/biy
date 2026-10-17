@@ -53,6 +53,7 @@ import readerSource from "./design/reader.html?raw";
 import { useAudio } from "./Audio";
 import { Notes } from "./Notes";
 import { Scripture } from "./Scripture";
+import { previousReadings } from "./previousReading";
 import { Catechism } from "./Catechism";
 import { Sidebar } from "./navigation";
 import { useStudyChat } from "./useStudyChat";
@@ -418,6 +419,17 @@ function StudyContent({
         passages={day.scripture}
         audio={scriptureAudio}
         toolbar={reader}
+        previous={previousReadings(
+          library.days,
+          day.number,
+          day.scripture.map((passage) => passage.reference),
+        ).map(
+          (reading) =>
+            reading && {
+              ...reading,
+              url: `/bible/day/${reading.day}${reader ? "/reader" : ""}?tab=scripture`,
+            },
+        )}
       />
     ) : selected === "transcript" ? (
       transcript(episode?.transcript, "Full transcript")
