@@ -10,15 +10,17 @@ export function readingBook(reference: string) {
     .replace(/\s+\d[\d:\-–\s]*$/, "");
 }
 
-/** The chapter a plan reading opens on; single-chapter books have no number. */
-export function readingChapter(reference: string) {
-  const book = readingBook(reference);
-  return Number(/^\d+/.exec(reference.slice(book.length).trim())?.[0] || 1);
+/** Whether a plan reading opens its book; single-chapter books have no number. */
+export function readingOpensBook(reference: string) {
+  const start = /^(\d+)(?::(\d+))?/.exec(
+    reference.slice(readingBook(reference).length).trim(),
+  );
+  return !start || (start[1] === "1" && (start[2] || "1") === "1");
 }
 
 /**
  * For each of a day's readings, the most recent earlier reading of that book.
- * A book's opening chapter has nothing to recall, and each psalm stands alone.
+ * A book's first verse has nothing to recall, and each psalm stands alone.
  */
 export function previousReadings(
   days: PlanDay[],
@@ -30,7 +32,7 @@ export function previousReadings(
     .sort((a, b) => b.number - a.number);
   return references.map((reference) => {
     const book = readingBook(reference);
-    if (book === "Psalm" || readingChapter(reference) === 1) return null;
+    if (book === "Psalm" || readingOpensBook(reference)) return null;
     for (const day of earlier) {
       const index = day.readings.findIndex((r) => readingBook(r) === book);
       if (index >= 0)

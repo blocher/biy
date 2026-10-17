@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   previousReadings,
   readingBook,
-  readingChapter,
+  readingOpensBook,
 } from "./previousReading";
 import type { PlanDay } from "./types";
 
@@ -27,13 +27,16 @@ describe("readingBook", () => {
   });
 });
 
-describe("readingChapter", () => {
-  it("reads the opening chapter, treating single-chapter books as 1", () => {
-    expect(readingChapter("Genesis 3-4")).toBe(3);
-    expect(readingChapter("1 Samuel 12")).toBe(12);
-    expect(readingChapter("Proverbs 1:8-19")).toBe(1);
-    expect(readingChapter("Esther 15, 6-7")).toBe(15);
-    expect(readingChapter("Jude")).toBe(1);
+describe("readingOpensBook", () => {
+  it("is true only for readings starting at chapter 1, verse 1", () => {
+    expect(readingOpensBook("Genesis 1-2")).toBe(true);
+    expect(readingOpensBook("Proverbs 1:1-7")).toBe(true);
+    expect(readingOpensBook("Jude")).toBe(true);
+    expect(readingOpensBook("1 Samuel 1")).toBe(true);
+    expect(readingOpensBook("Proverbs 1:8-19")).toBe(false);
+    expect(readingOpensBook("Genesis 3-4")).toBe(false);
+    expect(readingOpensBook("1 Samuel 12")).toBe(false);
+    expect(readingOpensBook("Esther 15, 6-7")).toBe(false);
   });
 });
 
@@ -53,9 +56,9 @@ describe("previousReadings", () => {
     );
   });
 
-  it("skips chapter 1 and psalms", () => {
+  it("skips a book's first verse and psalms", () => {
     expect(
-      previousReadings(days, 53, ["Numbers 1:5-9", "Psalm 86"]),
-    ).toEqual([null, null]);
+      previousReadings(days, 53, ["Numbers 1", "Numbers 1:5-9", "Psalm 86"]),
+    ).toEqual([null, { day: 52, index: 0, reference: "Numbers 1" }, null]);
   });
 });
