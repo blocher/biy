@@ -51,7 +51,7 @@ function AppContent() {
     [libraryFailure, setLibraryFailure] = useState(false),
     [slowLibrary, setSlowLibrary] = useState(false),
     [error, setError] = useState(""),
-    [username, setUsername] = useState("ben"),
+    [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false),
     [edition, setEditionState] = useState<Edition>(storedEdition),

@@ -8,6 +8,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 await page.goto("http://127.0.0.1:5178/");
+await page.getByLabel("Username", { exact: true }).fill("ben");
 await page.getByLabel("Password", { exact: true }).fill(password);
 await page.getByRole("button", { name: "Continue your journey" }).click();
 await page.getByRole("link", { name: "Continue Day 1", exact: true }).waitFor();

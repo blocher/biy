@@ -3,6 +3,7 @@ import fs from "node:fs";
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 await page.goto("http://127.0.0.1:5178");
+await page.getByLabel("Username", { exact: true }).fill("ben");
 await page
   .getByLabel("Password", { exact: true })
   .fill(
