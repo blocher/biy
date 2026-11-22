@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from datetime import timezone as dt_timezone
+from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -120,8 +121,30 @@ class TranscriptionTests(TestCase):
         self.assertEqual(Day.objects.count(), 365)
         self.assertEqual(Day.objects.get(pk=1).readings, ["Genesis 1-2", "Psalm 19"])
         self.assertEqual(Day.objects.get(pk=1).era.color, "#64b6bd")
-        self.assertEqual(Day.objects.get(pk=275).readings[1], "Esther 3, 13")
+        self.assertEqual(Day.objects.get(pk=276).readings[1], "Esther 3, 13")
+        self.assertEqual(
+            [Day.objects.get(pk=n).readings[-1] for n in range(43, 56)],
+            ["Psalm 119:1-56", "Psalm 119:57-120", "Psalm 119:121-176", "Psalm 115"]
+            + [f"Psalm {n}" for n in (79, 80, 81, 82, 83, 84, 85, 87, 88)],
+        )
         self.assertEqual(Day.objects.get(pk=321).readings[0], "Luke 22:39-24")
+
+
+class FixReadingPlanTests(TestCase):
+    def test_reports_then_applies_plan_differences(self):
+        call_command("seed_plan", verbosity=0)
+        Day.objects.filter(pk=54).update(readings=["Numbers 3", "Deuteronomy 3", "Psalm 88"])
+        out = StringIO()
+        call_command("fix_reading_plan", stdout=out)
+        self.assertIn("Day 54", out.getvalue())
+        self.assertIn("Dry run", out.getvalue())
+        self.assertEqual(Day.objects.get(pk=54).readings[-1], "Psalm 88")
+
+        call_command("fix_reading_plan", "--apply", stdout=StringIO())
+        self.assertEqual(Day.objects.get(pk=54).readings[-1], "Psalm 87")
+        out = StringIO()
+        call_command("fix_reading_plan", stdout=out)
+        self.assertIn("already match", out.getvalue())
 
 
 class ScriptureTests(TestCase):

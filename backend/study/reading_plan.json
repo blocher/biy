@@ -419,7 +419,7 @@
     "readings": [
       "Exodus 25-26",
       "Leviticus 19",
-      "Psalm 79"
+      "Psalm 119:1-56"
     ],
     "era": "Egypt and Exodus",
     "color": "#cd3d37"
@@ -429,7 +429,7 @@
     "readings": [
       "Exodus 27-28",
       "Leviticus 20",
-      "Psalm 119:1-88"
+      "Psalm 119:57-120"
     ],
     "era": "Egypt and Exodus",
     "color": "#cd3d37"
@@ -439,7 +439,7 @@
     "readings": [
       "Exodus 29",
       "Leviticus 21",
-      "Psalm 119:89-176"
+      "Psalm 119:121-176"
     ],
     "era": "Egypt and Exodus",
     "color": "#cd3d37"
@@ -459,7 +459,7 @@
     "readings": [
       "Exodus 32",
       "Leviticus 23",
-      "Psalm 80"
+      "Psalm 79"
     ],
     "era": "Egypt and Exodus",
     "color": "#cd3d37"
@@ -469,7 +469,7 @@
     "readings": [
       "Exodus 33-34",
       "Leviticus 24",
-      "Psalm 81"
+      "Psalm 80"
     ],
     "era": "Egypt and Exodus",
     "color": "#cd3d37"
@@ -479,7 +479,7 @@
     "readings": [
       "Exodus 35-36",
       "Leviticus 25",
-      "Psalm 82"
+      "Psalm 81"
     ],
     "era": "Egypt and Exodus",
     "color": "#cd3d37"
@@ -489,7 +489,7 @@
     "readings": [
       "Exodus 37-38",
       "Leviticus 26",
-      "Psalm 83"
+      "Psalm 82"
     ],
     "era": "Egypt and Exodus",
     "color": "#cd3d37"
@@ -499,7 +499,7 @@
     "readings": [
       "Exodus 39-40",
       "Leviticus 27",
-      "Psalm 84"
+      "Psalm 83"
     ],
     "era": "Egypt and Exodus",
     "color": "#cd3d37"
@@ -509,7 +509,7 @@
     "readings": [
       "Numbers 1",
       "Deuteronomy 1",
-      "Psalm 85"
+      "Psalm 84"
     ],
     "era": "Desert Wanderings",
     "color": "#dbbe7d"
@@ -519,7 +519,7 @@
     "readings": [
       "Numbers 2",
       "Deuteronomy 2",
-      "Psalm 87"
+      "Psalm 85"
     ],
     "era": "Desert Wanderings",
     "color": "#dbbe7d"
@@ -529,7 +529,7 @@
     "readings": [
       "Numbers 3",
       "Deuteronomy 3",
-      "Psalm 88"
+      "Psalm 87"
     ],
     "era": "Desert Wanderings",
     "color": "#dbbe7d"
@@ -539,7 +539,7 @@
     "readings": [
       "Numbers 4",
       "Deuteronomy 4",
-      "Psalm 89"
+      "Psalm 88"
     ],
     "era": "Desert Wanderings",
     "color": "#dbbe7d"
@@ -991,7 +991,7 @@
     "number": 102,
     "readings": [
       "John 10-12",
-      "Proverbs 6:1-11"
+      "Proverbs 6:1-5"
     ],
     "era": "Messianic Checkpoint",
     "color": "#b1922f"
@@ -1000,7 +1000,7 @@
     "number": 103,
     "readings": [
       "John 13-15",
-      "Proverbs 6:12-19"
+      "Proverbs 6:6-11"
     ],
     "era": "Messianic Checkpoint",
     "color": "#b1922f"
@@ -1009,7 +1009,7 @@
     "number": 104,
     "readings": [
       "John 16-18",
-      "Proverbs 6:20-24"
+      "Proverbs 6:12-15"
     ],
     "era": "Messianic Checkpoint",
     "color": "#b1922f"
@@ -1018,7 +1018,7 @@
     "number": 105,
     "readings": [
       "John 19-21",
-      "Proverbs 6:25-35"
+      "Proverbs 6:16-22"
     ],
     "era": "Messianic Checkpoint",
     "color": "#b1922f"
@@ -1027,7 +1027,7 @@
     "number": 106,
     "readings": [
       "1 Samuel 9-10",
-      "Psalm 50"
+      "Proverbs 6:23-35"
     ],
     "era": "Royal Kingdom",
     "color": "#493390"
@@ -1443,7 +1443,7 @@
     "number": 149,
     "readings": [
       "1 Kings 7",
-      "Ecclesiastes 1-3",
+      "Ecclesiastes 1-2",
       "Psalm 5"
     ],
     "era": "Royal Kingdom",
@@ -1453,7 +1453,7 @@
     "number": 150,
     "readings": [
       "1 Kings 8",
-      "Ecclesiastes 4-6",
+      "Ecclesiastes 3-5",
       "Psalm 6"
     ],
     "era": "Royal Kingdom",
@@ -1463,7 +1463,7 @@
     "number": 151,
     "readings": [
       "1 Kings 9",
-      "Ecclesiastes 5-6",
+      "Ecclesiastes 6-7",
       "Psalm 7"
     ],
     "era": "Royal Kingdom",
@@ -1473,7 +1473,7 @@
     "number": 152,
     "readings": [
       "1 Kings 10",
-      "Ecclesiastes 7-9",
+      "Ecclesiastes 8-9",
       "Psalm 8"
     ],
     "era": "Royal Kingdom",
@@ -2476,7 +2476,7 @@
     "readings": [
       "Jeremiah 45-46",
       "Lamentations 1",
-      "Proverbs 17:21-24"
+      "Proverbs 17:21-28"
     ],
     "era": "Exile",
     "color": "#8db5e2"
@@ -2676,7 +2676,7 @@
     "number": 274,
     "readings": [
       "Nehemiah 4-5",
-      "Esther 1-2",
+      "Esther 11-12",
       "Proverbs 20:27-30"
     ],
     "era": "Return",
@@ -2686,7 +2686,7 @@
     "number": 275,
     "readings": [
       "Nehemiah 6-7",
-      "Esther 3, 13",
+      "Esther 1-2",
       "Proverbs 21:1-4"
     ],
     "era": "Return",
@@ -2696,7 +2696,7 @@
     "number": 276,
     "readings": [
       "Nehemiah 8",
-      "Esther 4, 14",
+      "Esther 3, 13",
       "Proverbs 21:5-8"
     ],
     "era": "Return",
@@ -2706,7 +2706,7 @@
     "number": 277,
     "readings": [
       "Nehemiah 9",
-      "Esther 15, 6-7",
+      "Esther 4, 14",
       "Proverbs 21:9-12"
     ],
     "era": "Return",
@@ -2716,7 +2716,7 @@
     "number": 278,
     "readings": [
       "Nehemiah 10",
-      "Esther 8, 16",
+      "Esther 15, 6-7",
       "Proverbs 21:13-16"
     ],
     "era": "Return",
@@ -2726,7 +2726,7 @@
     "number": 279,
     "readings": [
       "Nehemiah 11",
-      "Esther 9-11",
+      "Esther 8, 16",
       "Proverbs 21:17-20"
     ],
     "era": "Return",
@@ -2736,7 +2736,7 @@
     "number": 280,
     "readings": [
       "Nehemiah 12",
-      "Esther 10-12",
+      "Esther 9-11",
       "Proverbs 21:21-24"
     ],
     "era": "Return",
